@@ -51,7 +51,18 @@ end
 
 local function sellAllItems(player: Player)
 	local inventory = player:FindFirstChild("Inventory")
+	local equippedItemsFolder = player:FindFirstChild("EquippedItems")
 	if not inventory or #inventory:GetChildren() == 0 then return end
+	
+	-- Create a lookup table for equipped asset IDs for faster checking
+	local equippedAssetIds = {}
+	if equippedItemsFolder then
+		for _, equippedItemSlot in ipairs(equippedItemsFolder:GetChildren()) do
+			if equippedItemSlot:IsA("StringValue") then
+				equippedAssetIds[equippedItemSlot.Value] = true
+			end
+		end
+	end
 
 	local totalSellPrice = 0
 	local itemsSold = 0
@@ -60,14 +71,21 @@ local function sellAllItems(player: Player)
 		if not itemToSell:GetAttribute("Locked") then
 			local itemName = itemToSell.Name
 			local itemConfig = GameConfig.Items[itemName]
-			if itemConfig then
+			
+			-- Check if the item is equipped
+			local isEquipped = false
+			if itemConfig and itemConfig.AssetId then
+				isEquipped = equippedAssetIds[tostring(itemConfig.AssetId)] or false
+			end
+			
+			if itemConfig and not isEquipped then
 				local mutationName = itemToSell:GetAttribute("Mutation")
 				local mutationConfig = mutationName and GameConfig.Mutations[mutationName]
 				local size = itemToSell:GetAttribute("Size") or 1
 				totalSellPrice = totalSellPrice + ItemValueCalculator.GetValue(itemConfig, mutationConfig, size)
 				itemsSold = itemsSold + 1
+				itemToSell:Destroy()
 			end
-			itemToSell:Destroy()
 		end
 	end
 	

@@ -14,10 +14,10 @@ This is a box-opening RNG game created for Roblox and managed with Rojo.
 
 ## Project Structure
 
--   `src/shared`: Contains shared code between the client and server.
+-   `src/shared`: Contains shared code between the client and server. [ReplicatedStorage.Shared]
     -   `Modules/`: Contains shared modules like `GameConfig.lua`, `Box.lua`, and `ItemValueCalculator.lua`.
     -   `Remotes/`: Contains `Remotes.lua` for remote event and function definitions.
--   `src/server`: Manages all the backend logic.
+-   `src/server`: Manages all the backend logic. [ServerScriptService.Server]
     -   `Main.server.lua`: The main entry point for the server.
     -   `Services/`: Contains various services to handle game logic.
         -   `PlayerDataService.lua`: Manages player data.
@@ -25,7 +25,7 @@ This is a box-opening RNG game created for Roblox and managed with Rojo.
         -   `BoxService.lua`: Handles box opening logic.
         -   `CollisionService.lua`: Manages game collisions.
         -   `InventoryService.lua`: Manages player inventories.
--   `src/client`: Handles the user interface and client-side logic.
+-   `src/client`: Handles the user interface and client-side logic. [StarterPlayerScripts.Client]
     -   `Main.client.lua`: The main entry point for the client.
     -   `Controllers/`: Contains various controllers for client-side logic.
         -   `CameraShaker.lua`: Shakes the camera during events.

@@ -13,6 +13,9 @@ local playerDataStore = DataStoreService:GetDataStore("PlayerData_UGC_V1")
 
 local DataService = {}
 
+-- Import AvatarService for equipped items (will be required after it's created)
+local AvatarService
+
 local function calculatePlayerRAP(player)
 	local inventory = player:FindFirstChild("Inventory")
 	if not inventory then return 0, 0 end
@@ -97,6 +100,36 @@ local function onPlayerAdded(player: Player)
 			end
 		end
 		
+		-- Load equipped items
+		if data.equippedItems then
+			-- Apply equipped items after character spawns
+			local function onCharacterAdded()
+				task.wait(1) -- Wait for character to load
+				-- Lazy load AvatarService to avoid circular dependencies
+				if not AvatarService then
+					AvatarService = require(script.Parent.AvatarService)
+				end
+				
+				for itemType, assetId in pairs(data.equippedItems) do
+					-- Find the item name by asset ID
+					for itemName, itemConfig in pairs(GameConfig.Items) do
+						if itemConfig.AssetId == assetId and itemConfig.Type == itemType then
+							-- Use the shared service directly to avoid circular dependency
+							local SharedAvatarService = require(game.ReplicatedStorage.Shared.Services.AvatarService)
+							SharedAvatarService.EquipItem(player, itemName)
+							break
+						end
+					end
+				end
+			end
+			
+			if player.Character then
+				onCharacterAdded()
+			else
+				player.CharacterAdded:Connect(onCharacterAdded)
+			end
+		end
+		
 		-- Calculate and set RAP
 		updatePlayerRAP(player)
 		
@@ -139,6 +172,7 @@ local function saveData(player: Player)
 		robux = leaderstats and leaderstats:FindFirstChild("R$") and leaderstats["R$"].Value or 0,
 		boxesOpened = leaderstats and leaderstats:FindFirstChild("Boxes Opened") and leaderstats["Boxes Opened"].Value or 0,
 		inventory = {},
+		equippedItems = {},
 	}
 
 	if inventory then
@@ -151,6 +185,14 @@ local function saveData(player: Player)
 			})
 		end
 	end
+	
+	-- Save equipped items
+	if not AvatarService then
+		AvatarService = require(script.Parent.AvatarService)
+	end
+	-- Use the shared service to get equipped items
+	local SharedAvatarService = require(game.ReplicatedStorage.Shared.Services.AvatarService)
+	dataToSave.equippedItems = SharedAvatarService.GetEquippedItems(player)
 
 	-- Retry logic for DataStore operations
 	local attempts = 0
@@ -205,7 +247,7 @@ function DataService.Start()
 
 	-- Start a more frequent auto-save loop
 	task.spawn(function()
-		while task.wait(10) do -- Save every 10 seconds
+		while task.wait(60) do -- Save every 60 seconds
 			for _, player in ipairs(Players:GetPlayers()) do
 				-- Use a coroutine to prevent one player's save from blocking others
 				task.spawn(saveData, player)

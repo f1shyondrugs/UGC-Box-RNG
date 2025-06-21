@@ -16,86 +16,446 @@ Config.Rarities = {
 
 Config.Items = {
     -- Common UGC Items (R$ 10 - 50)
-    ["Basic Cap"] = { Rarity = "Common", Value = 10 },
-    ["Plain T-Shirt"] = { Rarity = "Common", Value = 15 },
-    ["Simple Pants"] = { Rarity = "Common", Value = 20 },
-    ["Basic Glasses"] = { Rarity = "Common", Value = 25 },
-    ["School Backpack"] = { Rarity = "Common", Value = 30 },
-    ["White Sneakers"] = { Rarity = "Common", Value = 35 },
+    ["Basic Cap"] = { 
+        Rarity = "Common", 
+        Value = 10, 
+        AssetId = 12608560678,
+        Type = "Hat",
+        Description = "A simple cap perfect for everyday wear."
+    },
+    ["Plain T-Shirt"] = { 
+        Rarity = "Common", 
+        Value = 15, 
+        AssetId = 7867838611,
+        Type = "Shirt",
+        Description = "A basic t-shirt in classic white."
+    },
+    ["Simple Pants"] = { 
+        Rarity = "Common", 
+        Value = 20, 
+        AssetId = 1804739,
+        Type = "Pants",
+        Description = "Comfortable everyday pants."
+    },
+    ["Basic Glasses"] = { 
+        Rarity = "Common", 
+        Value = 25, 
+        AssetId = 12568844178,
+        Type = "Face",
+        Description = "Simple reading glasses for a smart look."
+    },
+    ["School Backpack"] = { 
+        Rarity = "Common", 
+        Value = 30, 
+        AssetId = 15750709511,
+        Type = "Back",
+        Description = "A practical backpack for carrying your belongings."
+    },
+    ["White Sneakers"] = { 
+        Rarity = "Common", 
+        Value = 35, 
+        AssetId = 13905362703,
+        Type = "Shoes",
+        Description = "Clean white sneakers for any occasion."
+    },
 
     -- Uncommon UGC Items (R$ 50 - 250)
-    ["Stylish Hat"] = { Rarity = "Uncommon", Value = 55 },
-    ["Cool Hoodie"] = { Rarity = "Uncommon", Value = 75 },
-    ["Designer Jeans"] = { Rarity = "Uncommon", Value = 90 },
-    ["Sunglasses"] = { Rarity = "Uncommon", Value = 110 },
-    ["Sports Watch"] = { Rarity = "Uncommon", Value = 150 },
-    ["Leather Jacket"] = { Rarity = "Uncommon", Value = 200 },
+    ["Stylish Hat"] = { 
+        Rarity = "Uncommon", 
+        Value = 55, 
+        AssetId = 95868078367137,
+        Type = "Hat",
+        Description = "A trendy hat that stands out from the crowd."
+    },
+    ["Cool Hoodie"] = { 
+        Rarity = "Uncommon", 
+        Value = 75, 
+        AssetId = 14784743786,
+        Type = "Shirt",
+        Description = "A comfortable hoodie with a modern design."
+    },
+    ["Designer Jeans"] = { 
+        Rarity = "Uncommon", 
+        Value = 90, 
+        AssetId = 93307791450624,
+        Type = "Pants",
+        Description = "Stylish jeans with premium denim fabric."
+    },
+    ["Sunglasses"] = { 
+        Rarity = "Uncommon", 
+        Value = 110, 
+        AssetId = 15171164330,
+        Type = "Face",
+        Description = "Cool sunglasses that block out the haters."
+    },
+    ["Sports Watch"] = { 
+        Rarity = "Uncommon", 
+        Value = 150, 
+        AssetId = 15713273681,
+        Type = "Front",
+        Description = "A digital sports watch for tracking your activities."
+    },
+    ["Leather Jacket"] = { 
+        Rarity = "Uncommon", 
+        Value = 200, 
+        AssetId = 7192549218,
+        Type = "Shirt",
+        Description = "A classic leather jacket that never goes out of style."
+    },
 
     -- Rare UGC Items (R$ 250 - 1,000)
-    ["Gaming Headset"] = { Rarity = "Rare", Value = 260 },
-    ["Neon Jacket"] = { Rarity = "Rare", Value = 350 },
-    ["Cargo Pants"] = { Rarity = "Rare", Value = 450 },
-    ["VR Goggles"] = { Rarity = "Rare", Value = 600 },
-    ["Holographic Visor"] = { Rarity = "Rare", Value = 800 },
-    ["Jetpack"] = { Rarity = "Rare", Value = 1000 },
+    ["Gaming Headset"] = { 
+        Rarity = "Rare", 
+        Value = 260, 
+        AssetId = 6097845436,
+        Type = "Hat",
+        Description = "Professional gaming headset with crystal clear audio."
+    },
+    ["Neon Jacket"] = { 
+        Rarity = "Rare", 
+        Value = 350, 
+        AssetId = 14971476921,
+        Type = "Shirt",
+        Description = "A futuristic jacket that glows with neon colors."
+    },
+    ["Cargo Pants"] = { 
+        Rarity = "Rare", 
+        Value = 450, 
+        AssetId = 18522156233,
+        Type = "Pants",
+        Description = "Tactical cargo pants with multiple pockets."
+    },
+    ["VR Goggles"] = { 
+        Rarity = "Rare", 
+        Value = 600, 
+        AssetId = 11989097369,
+        Type = "Face",
+        Description = "Virtual reality goggles that transport you to other worlds."
+    },
+    ["Holographic Visor"] = { 
+        Rarity = "Rare", 
+        Value = 800, 
+        AssetId = 5618036089,
+        Type = "Hat",
+        Description = "A high-tech visor with holographic display capabilities."
+    },
+    ["Jetpack"] = { 
+        Rarity = "Rare", 
+        Value = 1000, 
+        AssetId = 5768738455,
+        Type = "Back",
+        Description = "A personal jetpack for aerial adventures."
+    },
 
     -- Epic UGC Items (R$ 1,000 - 5,000)
-    ["Crown"] = { Rarity = "Epic", Value = 1200 },
-    ["Dragon Robe"] = { Rarity = "Epic", Value = 1800 },
-    ["Knight Armor"] = { Rarity = "Epic", Value = 2500 },
-    ["Angel Wings"] = { Rarity = "Epic", Value = 3500 },
-    ["Wizard Hat"] = { Rarity = "Epic", Value = 4200 },
-    ["Power Gauntlet"] = { Rarity = "Epic", Value = 5000 },
+    ["Crown"] = { 
+        Rarity = "Epic", 
+        Value = 1200, 
+        AssetId = 14943768260,
+        Type = "Hat",
+        Description = "A royal crown fit for a king or queen."
+    },
+    ["Dragon Robe"] = { 
+        Rarity = "Epic", 
+        Value = 1800, 
+        AssetId = 82347235066957,
+        Type = "Shirt",
+        Description = "An ancient robe adorned with dragon motifs."
+    },
+    ["Knight Armor"] = { 
+        Rarity = "Epic", 
+        Value = 2500, 
+        AssetId = 14458547725,
+        Type = "Shirt",
+        Description = "Medieval knight armor forged from the finest steel."
+    },
+    ["Angel Wings"] = { 
+        Rarity = "Epic", 
+        Value = 3500, 
+        AssetId = 135727710186452,
+        Type = "Back",
+        Description = "Ethereal wings that grant the appearance of divine grace."
+    },
+    ["Wizard Hat"] = { 
+        Rarity = "Epic", 
+        Value = 4200, 
+        AssetId = 17187373352,
+        Type = "Hat",
+        Description = "A mystical hat imbued with ancient magical powers."
+    },
+    ["Power Gauntlet"] = { 
+        Rarity = "Epic", 
+        Value = 5000, 
+        AssetId = 90027970393139,
+        Type = "Front",
+        Description = "A gauntlet that channels incredible energy."
+    },
 
     -- Legendary UGC Items (R$ 5,000 - 25,000)
-    ["Diamond Crown"] = { Rarity = "Legendary", Value = 6000 },
-    ["Phoenix Wings"] = { Rarity = "Legendary", Value = 8500 },
-    ["Void Cloak"] = { Rarity = "Legendary", Value = 12000 },
-    ["Time Boots"] = { Rarity = "Legendary", Value = 16000 },
-    ["Crystal Sword"] = { Rarity = "Legendary", Value = 20000 },
-    ["Celestial Armor"] = { Rarity = "Legendary", Value = 25000 },
+    ["Diamond Crown"] = { 
+        Rarity = "Legendary", 
+        Value = 6000, 
+        AssetId = 14815863631,
+        Type = "Hat",
+        Description = "A crown encrusted with the finest diamonds."
+    },
+    ["Phoenix Wings"] = { 
+        Rarity = "Legendary", 
+        Value = 8500, 
+        AssetId = 126032464353482,
+        Type = "Back",
+        Description = "Wings of the legendary phoenix, said to grant rebirth."
+    },
+    ["Void Cloak"] = { 
+        Rarity = "Legendary", 
+        Value = 12000, 
+        AssetId = 101396490083754,
+        Type = "Shirt",
+        Description = "A cloak woven from the fabric of space itself."
+    },
+    ["Time Boots"] = { 
+        Rarity = "Legendary", 
+        Value = 16000, 
+        AssetId = 100378706924256,
+        Type = "Shoes",
+        Description = "Boots that allow the wearer to manipulate time."
+    },
+    ["Crystal Sword"] = { 
+        Rarity = "Legendary", 
+        Value = 20000, 
+        AssetId = 14751422959,
+        Type = "Front",
+        Description = "A blade forged from pure crystal energy."
+    },
+    ["Celestial Armor"] = { 
+        Rarity = "Legendary", 
+        Value = 25000, 
+        AssetId = 82943442611683,
+        Type = "Shirt",
+        Description = "Armor blessed by celestial beings."
+    },
 
     -- Mythical UGC Items (R$ 25,000 - 100,000)
-    ["God's Halo"] = { Rarity = "Mythical", Value = 30000 },
-    ["Reality Gloves"] = { Rarity = "Mythical", Value = 45000 },
-    ["Infinity Cloak"] = { Rarity = "Mythical", Value = 65000 },
-    ["Cosmic Crown"] = { Rarity = "Mythical", Value = 80000 },
-    ["Singularity Staff"] = { Rarity = "Mythical", Value = 100000 },
+    ["God's Halo"] = { 
+        Rarity = "Mythical", 
+        Value = 30000, 
+        AssetId = 18780268549,
+        Type = "Hat",
+        Description = "A divine halo that radiates holy light."
+    },
+    ["Reality Gloves"] = { 
+        Rarity = "Mythical", 
+        Value = 45000, 
+        AssetId = 15435394705,
+        Type = "Front",
+        Description = "Gloves that can bend reality to the wearer's will."
+    },
+    ["Infinity Cloak"] = { 
+        Rarity = "Mythical", 
+        Value = 65000, 
+        AssetId = 10552660662,
+        Type = "Shirt",
+        Description = "A cloak that extends beyond the boundaries of existence."
+    },
+    ["Cosmic Crown"] = { 
+        Rarity = "Mythical", 
+        Value = 80000, 
+        AssetId = 14971249131,
+        Type = "Hat",
+        Description = "A crown forged from the heart of a dying star."
+    },
+    ["Singularity Staff"] = { 
+        Rarity = "Mythical", 
+        Value = 100000, 
+        AssetId = 89383395698855,
+        Type = "Front",
+        Description = "A staff that contains the power of a black hole."
+    },
 
     -- Celestial UGC Items (R$ 100,000 - 500,000)
-    ["Galaxy Wings"] = { Rarity = "Celestial", Value = 120000 },
-    ["Nebula Armor"] = { Rarity = "Celestial", Value = 180000 },
-    ["Stardust Pauldrons"] = { Rarity = "Celestial", Value = 250000 },
-    ["Supernova Helmet"] = { Rarity = "Celestial", Value = 350000 },
-    ["Black Hole Blade"] = { Rarity = "Celestial", Value = 500000 },
+    ["Galaxy Wings"] = { 
+        Rarity = "Celestial", 
+        Value = 120000, 
+        AssetId = 18746999284,
+        Type = "Back",
+        Description = "Wings that sparkle with the light of a thousand stars."
+    },
+    ["Nebula Armor"] = { 
+        Rarity = "Celestial", 
+        Value = 180000, 
+        AssetId = 71453601384352,
+        Type = "Shirt",
+        Description = "Armor forged from the dust of distant nebulae."
+    },
+    ["Stardust Pauldrons"] = { 
+        Rarity = "Celestial", 
+        Value = 250000, 
+        AssetId = 17799345182,
+        Type = "Shoulders",
+        Description = "Shoulder guards made from compressed stardust."
+    },
+    ["Supernova Helmet"] = { 
+        Rarity = "Celestial", 
+        Value = 350000, 
+        AssetId = 17662144185,
+        Type = "Hat",
+        Description = "A helmet that burns with the intensity of a supernova."
+    },
+    ["Black Hole Blade"] = { 
+        Rarity = "Celestial", 
+        Value = 500000, 
+        AssetId = 111367840820187,
+        Type = "Front",
+        Description = "A weapon that devours light itself."
+    },
     
     -- Divine UGC Items (R$ 500,000 - 2,500,000)
-    ["Aura of the Gods"] = { Rarity = "Divine", Value = 600000 },
-    ["Creator's Cape"] = { Rarity = "Divine", Value = 850000 },
-    ["The All-Seeing Eye"] = { Rarity = "Divine", Value = 1200000 },
-    ["Dominus Astra"] = { Rarity = "Divine", Value = 1800000 },
-    ["Valkyrie of the Metaverse"] = { Rarity = "Divine", Value = 2500000 },
+    ["Aura of the Gods"] = { 
+        Rarity = "Divine", 
+        Value = 600000, 
+        AssetId = 131802293344145,
+        Type = "Shirt",
+        Description = "An aura that marks the wearer as divine."
+    },
+    ["Creator's Cape"] = { 
+        Rarity = "Divine", 
+        Value = 850000, 
+        AssetId = 112619410096862,
+        Type = "Back",
+        Description = "The cape worn by the creator of worlds."
+    },
+    ["The All-Seeing Eye"] = { 
+        Rarity = "Divine", 
+        Value = 1200000, 
+        AssetId = 118030,
+        Type = "Face",
+        Description = "An eye that sees across all dimensions."
+    },
+    ["Dominus Astra"] = { 
+        Rarity = "Divine", 
+        Value = 1800000, 
+        AssetId = 162067148,
+        Type = "Hat",
+        Description = "The crown of the stellar emperor."
+    },
+    ["Valkyrie of the Metaverse"] = { 
+        Rarity = "Divine", 
+        Value = 2500000, 
+        AssetId = 16166647111,
+        Type = "Shirt",
+        Description = "Armor worn by the guardian of digital realms."
+    },
 
     -- Transcendent UGC Items (R$ 5,000,000 - 25,000,000)
-    ["Rift Walker's Scythe"] = { Rarity = "Transcendent", Value = 5000000 },
-    ["Chronomancer's Crown"] = { Rarity = "Transcendent", Value = 8000000 },
-    ["Echoes of the Void"] = { Rarity = "Transcendent", Value = 12000000 },
-    ["Heart of a Dying Star"] = { Rarity = "Transcendent", Value = 18000000 },
-    ["Singularity Wings"] = { Rarity = "Transcendent", Value = 25000000 },
+    ["Rift Walker's Scythe"] = { 
+        Rarity = "Transcendent", 
+        Value = 5000000, 
+        AssetId = 82818827434214,
+        Type = "Front",
+        Description = "A scythe that can cut through the fabric of reality."
+    },
+    ["Chronomancer's Crown"] = { 
+        Rarity = "Transcendent", 
+        Value = 8000000, 
+        AssetId = 116875747342075,
+        Type = "Hat",
+        Description = "A crown that grants mastery over time itself."
+    },
+    ["Echoes of the Void"] = { 
+        Rarity = "Transcendent", 
+        Value = 12000000, 
+        AssetId = 18528865852,
+        Type = "Shirt",
+        Description = "Clothing that resonates with the emptiness between worlds."
+    },
+    ["Heart of a Dying Star"] = { 
+        Rarity = "Transcendent", 
+        Value = 18000000, 
+        AssetId = 122518448724885,
+        Type = "Front",
+        Description = "The crystallized heart of a star in its final moments."
+    },
+    ["Singularity Wings"] = { 
+        Rarity = "Transcendent", 
+        Value = 25000000, 
+        AssetId = 15099368793,
+        Type = "Back",
+        Description = "Wings forged from the event horizon itself."
+    },
 
     -- Ethereal UGC Items (R$ 30,000,000 - 150,000,000)
-    ["The First Omen"] = { Rarity = "Ethereal", Value = 30000000 },
-    ["Crown of the Silent King"] = { Rarity = "Ethereal", Value = 50000000 },
-    ["Aetherium Blade"] = { Rarity = "Ethereal", Value = 75000000 },
-    ["Mantle of the Architect"] = { Rarity = "Ethereal", Value = 110000000 },
-    ["The Unseen Hand"] = { Rarity = "Ethereal", Value = 150000000 },
+    ["The First Omen"] = { 
+        Rarity = "Ethereal", 
+        Value = 30000000, 
+        AssetId = 14814064596,
+        Type = "Hat",
+        Description = "The first sign of the coming digital apocalypse."
+    },
+    ["Crown of the Silent King"] = { 
+        Rarity = "Ethereal", 
+        Value = 50000000, 
+        AssetId = 146083020,
+        Type = "Hat",
+        Description = "A crown that speaks without words."
+    },
+    ["Aetherium Blade"] = { 
+        Rarity = "Ethereal", 
+        Value = 75000000, 
+        AssetId = 86216026118611,
+        Type = "Front",
+        Description = "A blade forged from pure aetherium energy."
+    },
+    ["Mantle of the Architect"] = { 
+        Rarity = "Ethereal", 
+        Value = 110000000, 
+        AssetId = 95824173117693,
+        Type = "Shirt",
+        Description = "The mantle worn by the architect of existence."
+    },
+    ["The Unseen Hand"] = { 
+        Rarity = "Ethereal", 
+        Value = 150000000, 
+        AssetId = 12725518393,
+        Type = "Front",
+        Description = "A hand that shapes destiny from the shadows."
+    },
 
     -- Quantum UGC Items (R$ 200,000,000 - 1,000,000,000)
-    ["Fragment of Creation"] = { Rarity = "Quantum", Value = 200000000 },
-    ["The Final Shape"] = { Rarity = "Quantum", Value = 350000000 },
-    ["Event Horizon"] = { Rarity = "Quantum", Value = 500000000 },
-    ["Glimpse of Infinity"] = { Rarity = "Quantum", Value = 750000000 },
-    ["The Robloxian"] = { Rarity = "Quantum", Value = 1000000000 },
+    ["Fragment of Creation"] = { 
+        Rarity = "Quantum", 
+        Value = 200000000, 
+        AssetId = 8782356060,
+        Type = "Front",
+        Description = "A fragment from the moment of universal creation."
+    },
+    ["The Final Shape"] = { 
+        Rarity = "Quantum", 
+        Value = 350000000, 
+        AssetId = 93566247282147,
+        Type = "Shirt",
+        Description = "The ultimate form that all things aspire to become."
+    },
+    ["Event Horizon"] = { 
+        Rarity = "Quantum", 
+        Value = 500000000, 
+        AssetId = 13241957708,
+        Type = "Back",
+        Description = "The boundary beyond which nothing can return."
+    },
+    ["Glimpse of Infinity"] = { 
+        Rarity = "Quantum", 
+        Value = 750000000, 
+        AssetId = 16580998098,
+        Type = "Face",
+        Description = "A view into the endless expanse of possibility."
+    },
+    ["The Robloxian"] = { 
+        Rarity = "Quantum", 
+        Value = 1000000000, 
+        AssetId = 17720934054,
+        Type = "Hat",
+        Description = "The ultimate expression of what it means to be Robloxian."
+    },
 }
 
 Config.Mutations = {
@@ -113,27 +473,27 @@ Config.Boxes = {
         Name = "Starter Crate",
         Price = 25,
         Rewards = {
-            ["Plain T-Shirt"] = 25,         -- R$15 (Small Loss)
-            ["Simple Pants"] = 20,          -- R$20 (Small Loss)
-            ["Basic Glasses"] = 15,         -- R$25 (Break-even!)
-            ["School Backpack"] = 15,       -- R$30 (Win!)
-            ["White Sneakers"] = 10,        -- R$35 (Win!)
-            ["Stylish Hat"] = 10,           -- R$55 (Big Win!)
-            ["Cool Hoodie"] = 5,            -- R$75 (Jackpot!)
+            ["Plain T-Shirt"] = 25,
+            ["Simple Pants"] = 20,
+            ["Basic Glasses"] = 15,
+            ["School Backpack"] = 15,
+            ["White Sneakers"] = 10,
+            ["Stylish Hat"] = 10,
+            ["Cool Hoodie"] = 5,
         },
     },
     ["PremiumCrate"] = {
         Name = "Premium Crate",
         Price = 150,
         Rewards = {
-            ["Designer Jeans"] = 20,        -- R$90 (Loss)
-            ["Sunglasses"] = 20,            -- R$110 (Loss)
-            ["Sports Watch"] = 15,          -- R$150 (Break-even!)
-            ["Leather Jacket"] = 15,        -- R$200 (Win!)
-            ["Gaming Headset"] = 10,        -- R$260 (Win!)
-            ["Neon Jacket"] = 10,           -- R$350 (Big Win!)
-            ["Cargo Pants"] = 7,            -- R$450 (Big Win!)
-            ["VR Goggles"] = 3,             -- R$600 (Jackpot!)
+            ["Designer Jeans"] = 20,
+            ["Sunglasses"] = 20,
+            ["Sports Watch"] = 15,
+            ["Leather Jacket"] = 15,
+            ["Gaming Headset"] = 10,
+            ["Neon Jacket"] = 10,
+            ["Cargo Pants"] = 7,
+            ["VR Goggles"] = 3,
         },
     },
     ["LegendaryCrate"] = {
@@ -194,7 +554,7 @@ Config.Boxes = {
     },
     ["TranscendentCrate"] = {
         Name = "Transcendent Crate",
-        Price = 750000, -- 750k
+        Price = 750000,
         Rewards = {
             ["Aura of the Gods"] = 30,
             ["Creator's Cape"] = 25,
@@ -210,7 +570,7 @@ Config.Boxes = {
     },
     ["EtherealCrate"] = {
         Name = "Ethereal Crate",
-        Price = 5000000, -- 5M
+        Price = 5000000,
         Rewards = {
             ["Rift Walker's Scythe"] = 30,
             ["Chronomancer's Crown"] = 25,
@@ -226,7 +586,7 @@ Config.Boxes = {
     },
     ["QuantumCrate"] = {
         Name = "Quantum Crate",
-        Price = 30000000, -- 30M
+        Price = 30000000,
         Rewards = {
             ["The First Omen"] = 30,
             ["Crown of the Silent King"] = 25,
@@ -243,7 +603,7 @@ Config.Boxes = {
     ["FreeCrate"] = {
         Name = "Free Crate",
         Price = 0,
-        Cooldown = 60, -- 1 minute
+        Cooldown = 60,
         Rewards = {
             ["Basic Cap"] = 30,
             ["Plain T-Shirt"] = 25,
@@ -261,4 +621,4 @@ Config.Currency = {
     StartingAmount = 500,
 }
 
-return Config 
+return Config
