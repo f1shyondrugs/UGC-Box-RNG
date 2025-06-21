@@ -12,30 +12,28 @@ function BuyButtonUI.Create(parent)
 	if not screenGui or not screenGui:IsA("ScreenGui") then
 		screenGui = Instance.new("ScreenGui")
 		screenGui.Name = "BuyButtonGui"
+		screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 		screenGui.Parent = parent
 	end
 	components.ScreenGui = screenGui
 
-	-- Main container for all action buttons
-	local actionButtonsFrame = Instance.new("Frame")
-	actionButtonsFrame.Name = "ActionButtonsFrame"
-	actionButtonsFrame.Size = UDim2.new(1, 0, 0, 120)
-	actionButtonsFrame.Position = UDim2.new(0.5, 0, 1, -20)
-	actionButtonsFrame.AnchorPoint = Vector2.new(0.5, 1)
-	actionButtonsFrame.BackgroundTransparency = 1
-	actionButtonsFrame.Parent = screenGui
-
 	-- Free Crate Button
 	local freeCrateButton = Instance.new("TextButton")
 	freeCrateButton.Name = "FreeCrateButton"
-	freeCrateButton.Size = UDim2.new(0, 150, 0, 50)
-	freeCrateButton.Position = UDim2.new(0, 20, 0.5, 75)
-	freeCrateButton.AnchorPoint = Vector2.new(0, 0.5)
+	freeCrateButton.Size = UDim2.new(0.15, 0, 0.1, 0) -- Responsive size
+	freeCrateButton.Position = UDim2.new(0.02, 0, 0.55, 0) -- Reverted margin
+	freeCrateButton.AnchorPoint = Vector2.new(0, 0)
 	freeCrateButton.BackgroundColor3 = Color3.fromRGB(76, 175, 80)
 	freeCrateButton.Font = Enum.Font.SourceSansBold
 	freeCrateButton.Text = ""
+	freeCrateButton.ZIndex = 1 -- Lower ZIndex
 	freeCrateButton.Parent = screenGui -- Parent to ScreenGui directly
 	components.FreeCrateButton = freeCrateButton
+
+	local freeCrateAspect = Instance.new("UIAspectRatioConstraint")
+	freeCrateAspect.AspectRatio = 2.0
+	freeCrateAspect.DominantAxis = Enum.DominantAxis.Width
+	freeCrateAspect.Parent = freeCrateButton
 
 	local freeCorner = Instance.new("UICorner")
 	freeCorner.CornerRadius = UDim.new(0, 12)
@@ -46,10 +44,18 @@ function BuyButtonUI.Create(parent)
 	freeTitleLabel.Size = UDim2.new(1, 0, 0.6, 0)
 	freeTitleLabel.Text = "Free Crate"
 	freeTitleLabel.Font = Enum.Font.SourceSansBold
-	freeTitleLabel.TextSize = 20
+	freeTitleLabel.TextScaled = true
 	freeTitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	freeTitleLabel.BackgroundTransparency = 1
+	freeTitleLabel.ZIndex = 1 -- Lower ZIndex
 	freeTitleLabel.Parent = freeCrateButton
+	
+	local freeTitlePadding = Instance.new("UIPadding")
+	freeTitlePadding.PaddingLeft = UDim.new(0.1, 0)
+	freeTitlePadding.PaddingRight = UDim.new(0.1, 0)
+	freeTitlePadding.PaddingTop = UDim.new(0.1, 0)
+	freeTitlePadding.PaddingBottom = UDim.new(0.1, 0)
+	freeTitlePadding.Parent = freeTitleLabel
 	
 	local freeTimerLabel = Instance.new("TextLabel")
 	freeTimerLabel.Name = "TimerLabel"
@@ -57,34 +63,127 @@ function BuyButtonUI.Create(parent)
 	freeTimerLabel.Position = UDim2.new(0, 0, 0.6, 0)
 	freeTimerLabel.Text = "Ready!"
 	freeTimerLabel.Font = Enum.Font.SourceSans
-	freeTimerLabel.TextSize = 16
+	freeTimerLabel.TextScaled = true
 	freeTimerLabel.TextColor3 = Color3.fromRGB(200, 255, 200)
 	freeTimerLabel.BackgroundTransparency = 1
+	freeTimerLabel.ZIndex = 1 -- Lower ZIndex
 	freeTimerLabel.Parent = freeCrateButton
 	components.FreeCrateTimer = freeTimerLabel
+
+	local freeTimerPadding = Instance.new("UIPadding")
+	freeTimerPadding.PaddingLeft = UDim.new(0.15, 0)
+	freeTimerPadding.PaddingRight = UDim.new(0.15, 0)
+	freeTimerPadding.PaddingTop = UDim.new(0.15, 0)
+	freeTimerPadding.PaddingBottom = UDim.new(0.15, 0)
+	freeTimerPadding.Parent = freeTimerLabel
 
 	-- Main Container Frame for paid crates
 	local mainFrame = Instance.new("Frame")
 	mainFrame.Name = "BuyContainer"
-	mainFrame.Size = UDim2.new(0, 220, 0, 120)
-	mainFrame.Position = UDim2.new(0.5, 0, 1, -80)
+	mainFrame.Size = UDim2.new(0.3, 0, 0.16, 0) -- Made container smaller
+	mainFrame.Position = UDim2.new(0.5, 0, 0.93, 0)
 	mainFrame.AnchorPoint = Vector2.new(0.5, 1)
 	mainFrame.BackgroundTransparency = 1
+	mainFrame.ZIndex = 1 -- Lower ZIndex
 	mainFrame.Parent = screenGui
 	components.MainFrame = mainFrame
 
+	local listLayout = Instance.new("UIListLayout")
+	listLayout.FillDirection = Enum.FillDirection.Horizontal
+	listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	listLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	listLayout.Padding = UDim.new(0.04, 0) -- 4% of container width as padding
+	listLayout.Parent = mainFrame
+	
+	-- Main Buy Button
+	local buyButton = Instance.new("TextButton")
+	buyButton.Name = "BuyBoxButton"
+	buyButton.Size = UDim2.new(0.48, 0, 0.9, 0) -- 48% of container width
+	buyButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+	buyButton.Font = Enum.Font.SourceSansBold
+	buyButton.Text = "" -- Text will be handled by children
+	buyButton.ZIndex = 1 -- Lower ZIndex
+	buyButton.Parent = mainFrame
+	components.BuyButton = buyButton
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 12)
+	corner.Parent = buyButton
+	
+	-- "Buy Crate" Text
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Name = "Title"
+	titleLabel.Size = UDim2.new(1, 0, 0.6, 0)
+	titleLabel.Position = UDim2.new(0,0,0,0)
+	titleLabel.Text = "Buy UGC Crate"
+	titleLabel.Font = Enum.Font.SourceSansBold
+	titleLabel.TextScaled = true
+	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.ZIndex = 1 -- Lower ZIndex
+	titleLabel.Parent = buyButton
+	
+	local titlePadding = Instance.new("UIPadding")
+	titlePadding.PaddingLeft = UDim.new(0.1, 0)
+	titlePadding.PaddingRight = UDim.new(0.1, 0)
+	titlePadding.PaddingTop = UDim.new(0.1, 0)
+	titlePadding.PaddingBottom = UDim.new(0.1, 0)
+	titlePadding.Parent = titleLabel
+
+	-- Cost Text
+	local costLabel = Instance.new("TextLabel")
+	costLabel.Name = "CostLabel"
+	costLabel.Size = UDim2.new(1, 0, 0.4, 0)
+	costLabel.Position = UDim2.new(0, 0, 0.6, 0)
+	costLabel.Text = "Select a crate"
+	costLabel.Font = Enum.Font.SourceSans
+	costLabel.TextScaled = true
+	costLabel.TextColor3 = Color3.fromRGB(200, 205, 255)
+	costLabel.BackgroundTransparency = 1
+	costLabel.ZIndex = 1 -- Lower ZIndex
+	costLabel.Parent = buyButton
+	components.CostLabel = costLabel
+	
+	local costPadding = Instance.new("UIPadding")
+	costPadding.PaddingLeft = UDim.new(0.1, 0)
+	costPadding.PaddingRight = UDim.new(0.1, 0)
+	costPadding.PaddingTop = UDim.new(0.1, 0)
+	costPadding.PaddingBottom = UDim.new(0.1, 0)
+	costPadding.Parent = costLabel
+
+	-- Cooldown Bar
+	local cooldownBar = Instance.new("Frame")
+	cooldownBar.Name = "CooldownBar"
+	cooldownBar.Size = UDim2.new(0, 0, 1, 0) -- Starts with 0 width
+	cooldownBar.Position = UDim2.new(0,0,0,0)
+	cooldownBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	cooldownBar.BackgroundTransparency = 0.5
+	cooldownBar.ZIndex = 1 -- Lower ZIndex
+	cooldownBar.Parent = buyButton
+	
+	local barCorner = Instance.new("UICorner")
+	barCorner.CornerRadius = UDim.new(0, 12)
+	barCorner.Parent = cooldownBar
+
+	components.CooldownBar = cooldownBar
+	
 	-- Crate Selection Dropdown
 	local crateDropdown = Instance.new("TextButton")
 	crateDropdown.Name = "CrateDropdown"
-	crateDropdown.Size = UDim2.new(1, 0, 0, 35)
-	crateDropdown.Position = UDim2.new(0, 0, 0, 0)
+	crateDropdown.Size = UDim2.new(0.48, 0, 0.9, 0) -- 48% of container width
 	crateDropdown.BackgroundColor3 = Color3.fromRGB(60, 65, 75)
 	crateDropdown.Font = Enum.Font.SourceSans
 	crateDropdown.Text = "Select Crate ▼"
-	crateDropdown.TextSize = 16
+	crateDropdown.TextScaled = true
 	crateDropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
+	crateDropdown.ZIndex = 1 -- Lower ZIndex
 	crateDropdown.Parent = mainFrame
 	components.CrateDropdown = crateDropdown
+	
+	local dropdownPadding = Instance.new("UIPadding")
+	dropdownPadding.PaddingLeft = UDim.new(0.05, 0)
+	dropdownPadding.PaddingRight = UDim.new(0.05, 0)
+	dropdownPadding.Parent = crateDropdown
 
 	local dropdownCorner = Instance.new("UICorner")
 	dropdownCorner.CornerRadius = UDim.new(0, 8)
@@ -93,14 +192,14 @@ function BuyButtonUI.Create(parent)
 	-- Dropdown Options Frame (initially hidden)
 	local optionsFrame = Instance.new("Frame")
 	optionsFrame.Name = "OptionsFrame"
-	optionsFrame.AnchorPoint = Vector2.new(0, 1) -- Anchor to the bottom edge
+	optionsFrame.AnchorPoint = Vector2.new(0.5, 1) -- Anchor to middle bottom
 	optionsFrame.Size = UDim2.new(1, 0, 0, 0) -- Will be resized based on options
-	optionsFrame.Position = UDim2.new(0, 0, 0, -5) -- Position it above the main button
+	optionsFrame.Position = UDim2.new(0.5, 0, 0, -5) -- Position above the dropdown
 	optionsFrame.BackgroundColor3 = Color3.fromRGB(50, 55, 65)
 	optionsFrame.BorderSizePixel = 1
 	optionsFrame.BorderColor3 = Color3.fromRGB(70, 75, 85)
 	optionsFrame.Visible = false
-	optionsFrame.ZIndex = 15 -- Higher z-index to appear above other elements
+	optionsFrame.ZIndex = 2 -- Keep this higher than buttons but still low
 	optionsFrame.Parent = crateDropdown
 	components.OptionsFrame = optionsFrame
 
@@ -133,16 +232,21 @@ function BuyButtonUI.Create(parent)
 		
 		local optionButton = Instance.new("TextButton")
 		optionButton.Name = crateType
-		optionButton.Size = UDim2.new(1, 0, 0, 30)
+		optionButton.Size = UDim2.new(1, 0, 0, 30) -- Keep fixed height for options
 		optionButton.BackgroundColor3 = Color3.fromRGB(50, 55, 65)
 		optionButton.BorderSizePixel = 0
 		optionButton.Font = Enum.Font.SourceSans
 		optionButton.Text = crateConfig.Name .. " - " .. crateConfig.Price .. " R$"
-		optionButton.TextSize = 14
+		optionButton.TextScaled = true
 		optionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-		optionButton.ZIndex = 16 -- Higher than the frame
+		optionButton.ZIndex = 3 -- Higher than the frame but still low
 		optionButton.Parent = optionsFrame
 		components.OptionButtons[crateType] = optionButton
+		
+		local optionPadding = Instance.new("UIPadding")
+		optionPadding.PaddingLeft = UDim.new(0.05, 0)
+		optionPadding.PaddingRight = UDim.new(0.05, 0)
+		optionPadding.Parent = optionButton
 		
 		-- Add hover effect
 		optionButton.MouseEnter:Connect(function()
@@ -155,62 +259,6 @@ function BuyButtonUI.Create(parent)
 	
 	-- Resize options frame based on number of options
 	optionsFrame.Size = UDim2.new(1, 0, 0, #sortedCrates * 30)
-
-	-- Main Buy Button
-	local buyButton = Instance.new("TextButton")
-	buyButton.Name = "BuyBoxButton"
-	buyButton.Size = UDim2.new(1, 0, 0, 60)
-	buyButton.Position = UDim2.new(0, 0, 0, 45)
-	buyButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-	buyButton.Font = Enum.Font.SourceSansBold
-	buyButton.Text = "" -- Text will be handled by children
-	buyButton.Parent = mainFrame
-	components.BuyButton = buyButton
-
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 12)
-	corner.Parent = buyButton
-	
-	-- "Buy Crate" Text
-	local titleLabel = Instance.new("TextLabel")
-	titleLabel.Name = "Title"
-	titleLabel.Size = UDim2.new(1, 0, 0.6, 0)
-	titleLabel.Position = UDim2.new(0,0,0,0)
-	titleLabel.Text = "Buy UGC Crate"
-	titleLabel.Font = Enum.Font.SourceSansBold
-	titleLabel.TextSize = 20
-	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	titleLabel.BackgroundTransparency = 1
-	titleLabel.Parent = buyButton
-
-	-- Cost Text
-	local costLabel = Instance.new("TextLabel")
-	costLabel.Name = "CostLabel"
-	costLabel.Size = UDim2.new(1, 0, 0.4, 0)
-	costLabel.Position = UDim2.new(0, 0, 0.6, 0)
-	costLabel.Text = "Select a crate"
-	costLabel.Font = Enum.Font.SourceSans
-	costLabel.TextSize = 16
-	costLabel.TextColor3 = Color3.fromRGB(200, 205, 255)
-	costLabel.BackgroundTransparency = 1
-	costLabel.Parent = buyButton
-	components.CostLabel = costLabel
-
-	-- Cooldown Bar
-	local cooldownBar = Instance.new("Frame")
-	cooldownBar.Name = "CooldownBar"
-	cooldownBar.Size = UDim2.new(0, 0, 1, 0) -- Starts with 0 width
-	cooldownBar.Position = UDim2.new(0,0,0,0)
-	cooldownBar.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	cooldownBar.BackgroundTransparency = 0.5
-	cooldownBar.ZIndex = buyButton.ZIndex + 1
-	cooldownBar.Parent = buyButton
-	
-	local barCorner = Instance.new("UICorner")
-	barCorner.CornerRadius = UDim.new(0, 12)
-	barCorner.Parent = cooldownBar
-
-	components.CooldownBar = cooldownBar
 
 	-- Store selected crate type
 	components.SelectedCrateType = "StarterCrate" -- Default

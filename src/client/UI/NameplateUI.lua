@@ -12,7 +12,7 @@ function NameplateUI.Create(targetPlayer)
 	local billboardGui = Instance.new("BillboardGui")
 	billboardGui.Name = "Nameplate"
 	billboardGui.AlwaysOnTop = true
-	billboardGui.Size = UDim2.new(0, 200, 0, 60)
+	billboardGui.Size = UDim2.new(7, 0, 2, 0) -- Use scale for consistent world-size
 	billboardGui.StudsOffset = Vector3.new(0, 2.5, 0) -- Position it above the player's head
 	components.BillboardGui = billboardGui
 
@@ -21,17 +21,12 @@ function NameplateUI.Create(targetPlayer)
 	backgroundFrame.Name = "Background"
 	backgroundFrame.Size = UDim2.new(1, 0, 1, 0)
 	backgroundFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-	backgroundFrame.BackgroundTransparency = 0.4
+	backgroundFrame.BackgroundTransparency = 1 -- Removed background
 	backgroundFrame.Parent = billboardGui
 	
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 12)
 	corner.Parent = backgroundFrame
-
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(0, 0, 0)
-	stroke.Transparency = 0.5
-	stroke.Parent = backgroundFrame
 
 	-- Username Label
 	local usernameLabel = Instance.new("TextLabel")
@@ -43,7 +38,8 @@ function NameplateUI.Create(targetPlayer)
 	usernameLabel.Font = Enum.Font.SourceSansBold
 	usernameLabel.Text = targetPlayer.Name
 	usernameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	usernameLabel.TextSize = 20
+	usernameLabel.TextSize = 18 -- Adjusted size
+	usernameLabel.TextScaled = true -- Scale text to fit
 	usernameLabel.Parent = backgroundFrame
 	components.UsernameLabel = usernameLabel
 	
@@ -57,7 +53,8 @@ function NameplateUI.Create(targetPlayer)
 	rapLabel.Font = Enum.Font.SourceSans
 	rapLabel.Text = "RAP: R$0"
 	rapLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-	rapLabel.TextSize = 16
+	rapLabel.TextSize = 14 -- Adjusted size
+	rapLabel.TextScaled = true -- Scale text to fit
 	rapLabel.Parent = backgroundFrame
 	components.RAPLabel = rapLabel
 	

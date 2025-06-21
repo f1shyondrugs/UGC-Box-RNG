@@ -2,7 +2,7 @@
 -- This controller manages creating, updating, and cleaning up player nameplates.
 
 local Players = game:GetService("Players")
-local NameplateUI = require(script.Parent.UI.NameplateUI)
+local NameplateUI = require(script.Parent.Parent.UI.NameplateUI)
 
 local NameplateController = {}
 

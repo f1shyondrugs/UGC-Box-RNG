@@ -16,17 +16,21 @@ function InventoryUI.Create(parent)
 	-- Toggle Button
 	local toggleButton = Instance.new("TextButton")
 	toggleButton.Name = "InventoryToggleButton"
-	toggleButton.Size = UDim2.new(0, 60, 0, 60)
-	toggleButton.Position = UDim2.new(0, 20, 0.5, 0)
+	toggleButton.Size = UDim2.new(0.08, 0, 0.08, 0) -- Use scale
+	toggleButton.Position = UDim2.new(0.02, 0, 0.5, 0) -- Use scale
 	toggleButton.AnchorPoint = Vector2.new(0, 0.5)
 	toggleButton.BackgroundColor3 = Color3.fromRGB(41, 43, 48)
 	toggleButton.BorderColor3 = Color3.fromRGB(50, 52, 58)
 	toggleButton.Text = "📦"
 	toggleButton.Font = Enum.Font.SourceSansBold
-	toggleButton.TextSize = 30
+	toggleButton.TextScaled = true
 	toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	toggleButton.Parent = screenGui
 	components.ToggleButton = toggleButton
+	
+	local toggleAspect = Instance.new("UIAspectRatioConstraint")
+	toggleAspect.AspectRatio = 1
+	toggleAspect.Parent = toggleButton
 	
 	local toggleCorner = Instance.new("UICorner")
 	toggleCorner.CornerRadius = UDim.new(0, 8)
@@ -34,12 +38,12 @@ function InventoryUI.Create(parent)
 
 	local warningIcon = Instance.new("TextLabel")
 	warningIcon.Name = "WarningIcon"
-	warningIcon.Size = UDim2.new(0, 30, 0, 30)
+	warningIcon.Size = UDim2.new(0.5, 0, 0.5, 0)
 	warningIcon.AnchorPoint = Vector2.new(1, 0)
-	warningIcon.Position = UDim2.new(1, 5, 0, -5)
+	warningIcon.Position = UDim2.new(1.1, 0, -0.1, 0)
 	warningIcon.Text = "!"
 	warningIcon.Font = Enum.Font.SourceSansBold
-	warningIcon.TextSize = 28
+	warningIcon.TextScaled = true
 	warningIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
 	warningIcon.BackgroundColor3 = Color3.fromRGB(237, 66, 69) -- Bright Red
 	warningIcon.Visible = false -- Hidden by default
@@ -90,7 +94,7 @@ function InventoryUI.Create(parent)
 	titleLabel.Size = UDim2.new(0.6, 0, 0.6, 0)
 	titleLabel.Text = "UGC Collection"
 	titleLabel.Font = Enum.Font.SourceSansBold
-	titleLabel.TextSize = 22
+	titleLabel.TextScaled = true
 	titleLabel.TextColor3 = Color3.fromRGB(220, 221, 222)
 	titleLabel.BackgroundColor3 = titleBar.BackgroundColor3
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -104,7 +108,7 @@ function InventoryUI.Create(parent)
 	rapLabel.Position = UDim2.new(0, 15, 0.6, 0)
 	rapLabel.Text = "Total RAP: R$0"
 	rapLabel.Font = Enum.Font.SourceSans
-	rapLabel.TextSize = 16
+	rapLabel.TextScaled = true
 	rapLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Green color for RAP
 	rapLabel.BackgroundTransparency = 1
 	rapLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -113,16 +117,20 @@ function InventoryUI.Create(parent)
 
 	local closeButton = Instance.new("TextButton")
 	closeButton.Name = "CloseButton"
-	closeButton.Size = UDim2.new(0, 30, 0, 30)
+	closeButton.Size = UDim2.new(0.1, 0, 0.6, 0)
 	closeButton.AnchorPoint = Vector2.new(1, 0.5)
 	closeButton.Position = UDim2.new(1, -10, 0.5, 0)
 	closeButton.Text = "X"
 	closeButton.Font = Enum.Font.SourceSansBold
-	closeButton.TextSize = 20
+	closeButton.TextScaled = true
 	closeButton.TextColor3 = Color3.fromRGB(220, 221, 222)
 	closeButton.BackgroundTransparency = 1
 	closeButton.Parent = titleBar
 	components.CloseButton = closeButton
+
+	local closeButtonAspect = Instance.new("UIAspectRatioConstraint")
+	closeButtonAspect.AspectRatio = 1
+	closeButtonAspect.Parent = closeButton
 
 	-- Main Content Area
 	local contentFrame = Instance.new("Frame")
@@ -145,38 +153,63 @@ function InventoryUI.Create(parent)
 	detailsCorner.CornerRadius = UDim.new(0, 8)
 	detailsCorner.Parent = detailsPanel
 
+	-- Create a frame for the action buttons at the bottom
+	local buttonContainer = Instance.new("Frame")
+	buttonContainer.Name = "ButtonContainer"
+	buttonContainer.Size = UDim2.new(1, 0, 0, 140) -- Fixed height for 3 buttons
+	buttonContainer.AnchorPoint = Vector2.new(0.5, 1)
+	buttonContainer.Position = UDim2.new(0.5, 0, 1, -10)
+	buttonContainer.BackgroundTransparency = 1
+	buttonContainer.Parent = detailsPanel
+	
+	local buttonLayout = Instance.new("UIListLayout")
+	buttonLayout.Padding = UDim.new(0, 5)
+	buttonLayout.Parent = buttonContainer
+
+	-- Create a scrolling frame for the details
+	local detailsScroll = Instance.new("ScrollingFrame")
+	detailsScroll.Name = "DetailsScroll"
+	detailsScroll.Size = UDim2.new(1, 0, 1, -150) -- Fill space above buttons
+	detailsScroll.BackgroundTransparency = 1
+	detailsScroll.BorderSizePixel = 0
+	detailsScroll.CanvasSize = UDim2.new(0,0,0,0)
+	detailsScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	detailsScroll.Parent = detailsPanel
+	
 	local detailsLayout = Instance.new("UIListLayout")
 	detailsLayout.Padding = UDim.new(0, 10)
-	detailsLayout.Parent = detailsPanel
+	detailsLayout.Parent = detailsScroll
 	
 	local detailsPadding = Instance.new("UIPadding")
 	detailsPadding.PaddingTop = UDim.new(0, 10)
 	detailsPadding.PaddingLeft = UDim.new(0, 10)
 	detailsPadding.PaddingRight = UDim.new(0, 10)
-	detailsPadding.Parent = detailsPanel
+	detailsPadding.Parent = detailsScroll
 
 	local function createDetailLabel(name, text)
 		local label = Instance.new("TextLabel")
 		label.Name = name
-		label.Size = UDim2.new(1, 0, 0, 25)
+		label.Size = UDim2.new(1, 0, 0, 25) -- Fixed height for labels in scroll
 		label.Font = Enum.Font.SourceSans
+		label.TextScaled = false -- Use fixed text size for scrolling content
 		label.TextSize = 16
 		label.TextColor3 = Color3.fromRGB(220, 221, 222)
 		label.Text = text
 		label.TextXAlignment = Enum.TextXAlignment.Left
 		label.BackgroundTransparency = 1
 		label.TextWrapped = true
-		label.Parent = detailsPanel
+		label.Parent = detailsScroll -- Parent to the scrolling frame
 		return label
 	end
 	
 	components.DetailItemName = createDetailLabel("ItemName", "Select a UGC Item")
 	components.DetailItemName.Font = Enum.Font.SourceSansBold
 	components.DetailItemName.TextSize = 20
+	components.DetailItemName.Size = UDim2.new(1, 0, 0, 30)
 	
 	components.DetailItemType = createDetailLabel("ItemType", "")
 	components.DetailItemDescription = createDetailLabel("ItemDescription", "")
-	components.DetailItemDescription.Size = UDim2.new(1, 0, 0, 40) -- Taller for descriptions
+	components.DetailItemDescription.Size = UDim2.new(1, 0, 0, 60) -- Taller for descriptions
 	components.DetailItemRarity = createDetailLabel("ItemRarity", "")
 	components.DetailItemMutation = createDetailLabel("ItemMutation", "")
 	components.DetailItemSize = createDetailLabel("ItemSize", "")
@@ -195,7 +228,7 @@ function InventoryUI.Create(parent)
 	sellButton.TextSize = 18
 	sellButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	sellButton.Visible = false -- Hide until an item is selected
-	sellButton.Parent = detailsPanel
+	sellButton.Parent = buttonContainer -- Parent to the button container
 	components.SellButton = sellButton
 	
 	local sellCorner = Instance.new("UICorner")
@@ -211,7 +244,7 @@ function InventoryUI.Create(parent)
 	lockButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	lockButton.LayoutOrder = 2 -- Place it after the sell buttons
 	lockButton.Visible = false -- Hide until item is selected
-	lockButton.Parent = detailsPanel
+	lockButton.Parent = buttonContainer -- Parent to the button container
 	components.LockButton = lockButton
 	
 	local lockCorner = Instance.new("UICorner")
@@ -226,7 +259,7 @@ function InventoryUI.Create(parent)
 	sellAllButton.TextSize = 18
 	sellAllButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	sellAllButton.LayoutOrder = 1 -- Place it after the single sell button
-	sellAllButton.Parent = detailsPanel
+	sellAllButton.Parent = buttonContainer -- Parent to the button container
 	components.SellAllButton = sellAllButton
 
 	local sellAllCorner = Instance.new("UICorner")

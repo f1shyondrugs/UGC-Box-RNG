@@ -40,13 +40,19 @@ function ItemValueCalculator.CalculateRAP(inventory)
 end
 
 function ItemValueCalculator.GetFormattedRAP(totalValue)
-    if totalValue >= 1000000 then
-        return string.format("R$%.1fM", totalValue / 1000000)
-    elseif totalValue >= 1000 then
-        return string.format("R$%.1fK", totalValue / 1000)
-    else
-        return string.format("R$%d", totalValue)
-    end
+	if totalValue >= 1e15 then
+		return string.format("R$%.1fQ", totalValue / 1e15)
+	elseif totalValue >= 1e12 then
+		return string.format("R$%.1fT", totalValue / 1e12)
+	elseif totalValue >= 1e9 then
+		return string.format("R$%.1fB", totalValue / 1e9)
+	elseif totalValue >= 1e6 then
+		return string.format("R$%.1fM", totalValue / 1e6)
+	elseif totalValue >= 1e3 then
+		return string.format("R$%.1fK", totalValue / 1e3)
+	else
+		return string.format("R$%d", totalValue)
+	end
 end
 
 return ItemValueCalculator 

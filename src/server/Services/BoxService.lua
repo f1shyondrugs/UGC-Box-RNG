@@ -234,9 +234,46 @@ local function openBox(player: Player, boxPart: Part)
 				end
 			end
 			
-			-- Generate Size
-			size = 0.5 + math.floor(math.pow(math.random(), 225) * 499950) / 100
+			-- Generate Size with a weighted distribution for better control
+			local sizeRanges = {
+				-- Common Tiers
+				{min = 0.8, max = 1.2, weight = 50},   -- ~50% chance
+				{min = 1.2, max = 2.0, weight = 30},   -- ~30% chance
+				{min = 2.0, max = 3.0, weight = 12},   -- ~12% chance
+				-- Rare Tiers
+				{min = 3.0, max = 5.0, weight = 5},    -- ~5% chance
+				{min = 5.0, max = 10.0, weight = 2},   -- ~2% chance
+				-- Epic & Legendary Tiers
+				{min = 10.0, max = 25.0, weight = 0.7},  -- ~0.7% chance
+				{min = 25.0, max = 75.0, weight = 0.2},  -- ~0.2% chance
+				-- Mythical & Godly Tiers
+				{min = 75.0, max = 200.0, weight = 0.07}, -- ~0.07% chance
+				{min = 200.0, max = 1000.0, weight = 0.03} -- ~0.03% chance
+			}
 			
+			local totalWeight = 0
+			for _, range in ipairs(sizeRanges) do
+				totalWeight = totalWeight + range.weight
+			end
+			
+			local roll = math.random() * totalWeight
+			local selectedRange
+			
+			local cumulativeWeight = 0
+			for _, range in ipairs(sizeRanges) do
+				cumulativeWeight = cumulativeWeight + range.weight
+				if roll <= cumulativeWeight then
+					selectedRange = range
+					break
+				end
+			end
+			
+			if selectedRange then
+				-- Generate a random float within the selected range
+				size = selectedRange.min + (math.random() * (selectedRange.max - selectedRange.min))
+				size = math.floor(size * 100) / 100 -- Round to 2 decimal places
+			end
+
 			-- Store the reward on the box part instead of awarding it immediately
 			boxPart:SetAttribute("RewardItem", rewardItemName)
 			boxPart:SetAttribute("RewardSize", size)
