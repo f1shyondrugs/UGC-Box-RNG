@@ -88,7 +88,18 @@ local function onPlayerAdded(player: Player)
 		if data.inventory then
 			for _, itemData in ipairs(data.inventory) do
 				local item = Instance.new("StringValue")
-				item.Name = itemData.name
+				-- Use UUID if available, otherwise fall back to legacy name-based system
+				if itemData.uuid then
+					item.Name = itemData.uuid
+					item:SetAttribute("ItemName", itemData.name)
+				else
+					-- Legacy support: generate UUID for old items
+					local HttpService = game:GetService("HttpService")
+					local uuid = HttpService:GenerateGUID(false)
+					item.Name = uuid
+					item:SetAttribute("ItemName", itemData.name)
+				end
+				
 				item:SetAttribute("Size", itemData.size)
 				if itemData.mutation then
 					item:SetAttribute("Mutation", itemData.mutation)
@@ -110,14 +121,16 @@ local function onPlayerAdded(player: Player)
 					AvatarService = require(script.Parent.AvatarService)
 				end
 				
-				for itemType, assetId in pairs(data.equippedItems) do
-					-- Find the item name by asset ID
-					for itemName, itemConfig in pairs(GameConfig.Items) do
-						if itemConfig.AssetId == assetId and itemConfig.Type == itemType then
+				for itemType, itemUUID in pairs(data.equippedItems) do
+					-- Find the item instance by UUID in player's inventory
+					local inventory = player:FindFirstChild("Inventory")
+					if inventory then
+						local itemInstance = inventory:FindFirstChild(itemUUID)
+						if itemInstance then
+							local itemName = itemInstance:GetAttribute("ItemName") or itemInstance.Name
 							-- Use the shared service directly to avoid circular dependency
 							local SharedAvatarService = require(game.ReplicatedStorage.Shared.Services.AvatarService)
-							SharedAvatarService.EquipItem(player, itemName)
-							break
+							SharedAvatarService.EquipItem(player, itemName, itemUUID)
 						end
 					end
 				end
@@ -178,7 +191,8 @@ local function saveData(player: Player)
 	if inventory then
 		for _, item in ipairs(inventory:GetChildren()) do
 			table.insert(dataToSave.inventory, {
-				name = item.Name,
+				uuid = item.Name, -- Save the UUID as the unique identifier
+				name = item:GetAttribute("ItemName") or item.Name, -- ItemName attribute or legacy fallback
 				size = item:GetAttribute("Size"),
 				mutation = item:GetAttribute("Mutation"),
 				locked = item:GetAttribute("Locked")
@@ -190,9 +204,9 @@ local function saveData(player: Player)
 	if not AvatarService then
 		AvatarService = require(script.Parent.AvatarService)
 	end
-	-- Use the shared service to get equipped items
+	-- Use the shared service to get a clean, savable table of equipped items
 	local SharedAvatarService = require(game.ReplicatedStorage.Shared.Services.AvatarService)
-	dataToSave.equippedItems = SharedAvatarService.GetEquippedItems(player)
+	dataToSave.equippedItems = SharedAvatarService.GetSerializableEquippedItems(player)
 
 	-- Retry logic for DataStore operations
 	local attempts = 0

@@ -13,7 +13,11 @@ local SharedAvatarService = require(ReplicatedStorage.Shared.Services.AvatarServ
 -- Import PlayerDataService for saving equipped items
 local PlayerDataService = require(script.Parent.PlayerDataService)
 
-local function equipItem(player, itemName)
+local function equipItem(player, itemName, itemInstanceId)
+    -- The client now sends both the item's display name and its unique instance name (ID)
+    -- If itemInstanceId is missing for older calls, fallback to itemName.
+    local instanceId = itemInstanceId or itemName
+    
     -- Check if player owns the item
     local inventory = player:FindFirstChild("Inventory")
     if not inventory then
@@ -21,20 +25,16 @@ local function equipItem(player, itemName)
         return
     end
     
-    local itemInstance = inventory:FindFirstChild(itemName)
+    local itemInstance = inventory:FindFirstChild(instanceId)
     if not itemInstance then
         Remotes.Notify:FireClient(player, "You don't own this item.", "Error")
         return
     end
     
-    -- Check if item is locked
-    if itemInstance:GetAttribute("Locked") then
-        Remotes.Notify:FireClient(player, "Cannot equip a locked item.", "Error")
-        return
-    end
+    -- Note: Removed locked item check - players can now equip locked items
     
     -- Equip the item
-    local success = SharedAvatarService.EquipItem(player, itemName)
+    local success = SharedAvatarService.EquipItem(player, itemName, instanceId)
     if success then
         Remotes.Notify:FireClient(player, "Equipped " .. itemName, "Success")
         -- PlayerDataService.Save(player) -- REMOVED: Saving on every equip is too frequent

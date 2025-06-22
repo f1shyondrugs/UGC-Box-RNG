@@ -97,69 +97,127 @@ function InventoryController.Start(parentGui, openingBoxes)
 		rotationTween:Play()
 	end
 
+	local function createMannequin()
+		local mannequin = Instance.new("Model")
+		mannequin.Name = "ClothingMannequin"
+
+		local torso = Instance.new("Part")
+		torso.Name = "Torso"
+		torso.Size = Vector3.new(2, 2, 1)
+		torso.Color = Color3.fromRGB(180, 180, 180)
+		torso.Anchored = true
+		torso.CFrame = CFrame.new(0, 2, 0)
+		torso.Parent = mannequin
+		mannequin.PrimaryPart = torso
+
+		local head = Instance.new("Part")
+		head.Name = "Head"
+		head.Shape = Enum.PartType.Ball
+		head.Size = Vector3.new(1.2, 1.2, 1.2)
+		head.Color = Color3.fromRGB(200, 200, 200)
+		head.Anchored = true
+		head.CFrame = torso.CFrame * CFrame.new(0, 1.6, 0)
+		head.Parent = mannequin
+
+		local leftLeg = Instance.new("Part")
+		leftLeg.Name = "LeftLeg"
+		leftLeg.Size = Vector3.new(0.9, 2, 0.9)
+		leftLeg.Color = Color3.fromRGB(180, 180, 180)
+		leftLeg.Anchored = true
+		leftLeg.CFrame = torso.CFrame * CFrame.new(-0.5, -2, 0)
+		leftLeg.Parent = mannequin
+
+		local rightLeg = Instance.new("Part")
+		rightLeg.Name = "RightLeg"
+		rightLeg.Size = Vector3.new(0.9, 2, 0.9)
+		rightLeg.Color = Color3.fromRGB(180, 180, 180)
+		rightLeg.Anchored = true
+		rightLeg.CFrame = torso.CFrame * CFrame.new(0.5, -2, 0)
+		rightLeg.Parent = mannequin
+		
+		return mannequin
+	end
+
 	local function setup3DItemPreview(viewport, itemConfig)
 		if not itemConfig or not itemConfig.AssetId then return end
-		
-		-- Clear viewport
+
 		viewport:ClearAllChildren()
-		
-		-- Create camera
+
 		local camera = Instance.new("Camera")
 		camera.Parent = viewport
 		viewport.CurrentCamera = camera
-		
-		-- Try to load the asset as an accessory
-		local success, asset = pcall(function()
-			return game:GetService("InsertService"):LoadAsset(itemConfig.AssetId)
-		end)
-		
-		if success and asset then
-			local accessory = asset:FindFirstChildOfClass("Accessory")
-			if accessory then
-				-- Position the accessory in the viewport
-				accessory.Parent = viewport
+
+		local light = Instance.new("PointLight")
+		light.Brightness = 2
+		light.Color = Color3.new(1, 1, 1)
+		light.Range = 40
+		light.Parent = camera
+
+		task.spawn(function()
+			local assetPreviewContainer = ReplicatedStorage:WaitForChild("AssetPreviews")
+			local asset = assetPreviewContainer:FindFirstChild(tostring(itemConfig.AssetId))
+
+			if not asset then
+				local success, err = pcall(function()
+					Remotes.LoadAssetForPreview:InvokeServer(itemConfig.AssetId)
+				end)
+
+				if not success then
+					warn("Error invoking LoadAssetForPreview on server:", err)
+					return
+				end
 				
-				-- Get the handle part
-				local handle = accessory:FindFirstChild("Handle")
-				if handle then
-					-- Position camera to show the item nicely
-					local itemSize = handle.Size
-					local maxSize = math.max(itemSize.X, itemSize.Y, itemSize.Z)
-					local distance = maxSize * 2
-					
-					camera.CFrame = CFrame.lookAt(
-						handle.Position + Vector3.new(distance, distance * 0.5, distance),
-						handle.Position
-					)
-					
-					-- Add rotation animation
-					local rotationTween = TweenService:Create(
-						handle,
-						TweenInfo.new(3, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
-						{CFrame = handle.CFrame * CFrame.Angles(0, math.rad(360), 0)}
-					)
-					rotationTween:Play()
+				asset = assetPreviewContainer:WaitForChild(tostring(itemConfig.AssetId), 10)
+			end
+
+			local modelToDisplay
+			local isLegacyClothing = false
+
+			if asset then
+				local assetClone = asset:Clone()
+				if assetClone:IsA("Model") or assetClone:IsA("Accessory") then
+					modelToDisplay = assetClone
+				elseif assetClone:IsA("Shirt") or assetClone:IsA("Pants") or assetClone:IsA("TShirt") then
+					isLegacyClothing = true
+					modelToDisplay = createMannequin()
+					assetClone.Parent = modelToDisplay
 				end
 			end
-		else
-			-- Fallback: Create a simple preview mesh
-			local part = Instance.new("Part")
-			part.Size = Vector3.new(1, 1, 1)
-			part.Material = Enum.Material.Neon
-			part.BrickColor = BrickColor.new("Bright blue")
-			part.Anchored = true
-			part.Parent = viewport
-			
-			camera.CFrame = CFrame.lookAt(Vector3.new(3, 2, 3), Vector3.new(0, 0, 0))
-			
-			-- Add rotation
-			local rotationTween = TweenService:Create(
-				part,
-				TweenInfo.new(2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
-				{CFrame = part.CFrame * CFrame.Angles(0, math.rad(360), 0)}
-			)
-			rotationTween:Play()
-		end
+
+			if modelToDisplay then
+				modelToDisplay.Parent = viewport
+				
+				local modelCFrame, modelSize = modelToDisplay:GetBoundingBox()
+				local modelCenter = modelCFrame.Position
+				
+				local maxDimension = math.max(modelSize.X, modelSize.Y, modelSize.Z)
+				local distance = maxDimension * 1.5 + (isLegacyClothing and 4 or 2)
+				
+				local angle = 0
+				local connection
+				connection = RunService.RenderStepped:Connect(function(dt)
+					if not modelToDisplay.Parent then
+						connection:Disconnect()
+						return
+					end
+					
+					angle = angle + dt * 45
+					local rotation = CFrame.Angles(math.rad(10), math.rad(angle), 0)
+					local cameraPosition = modelCenter + rotation:VectorToWorldSpace(Vector3.new(0, 0, distance))
+					camera.CFrame = CFrame.lookAt(cameraPosition, modelCenter)
+				end)
+			else
+				warn("Asset could not be displayed:", itemConfig.AssetId)
+				local part = Instance.new("Part")
+				part.Name = "PlaceholderPreview"
+				part.Size = Vector3.new(2, 2, 2)
+				part.Material = Enum.Material.ForceField
+				part.Anchored = true
+				part.Color = Color3.fromRGB(255, 0, 0)
+				part.Parent = viewport
+				camera.CFrame = CFrame.lookAt(Vector3.new(4, 2, 4), part.Position)
+			end
+		end)
 	end
 
 	local function hideOtherUIs(show)
@@ -202,7 +260,6 @@ function InventoryController.Start(parentGui, openingBoxes)
 		local totalRAP = rapStat.Value
 		local formattedRAP = ItemValueCalculator.GetFormattedRAP(totalRAP)
 		ui.RAPLabel.Text = "Total RAP: " .. formattedRAP
-		ui.InventoryRAPLabel.Text = "Total RAP: " .. formattedRAP
 	end
 
 	local function updateBoxPrompts(isFull)
@@ -271,7 +328,8 @@ function InventoryController.Start(parentGui, openingBoxes)
 			highlight.Visible = true
 		end
 		
-		local itemName = itemInstance.Name
+		-- Get the actual item name from attribute (UUID system)
+		local itemName = itemInstance:GetAttribute("ItemName") or itemInstance.Name
 		local itemConfig = GameConfig.Items[itemName]
 		if not itemConfig then return end
 		
@@ -311,13 +369,13 @@ function InventoryController.Start(parentGui, openingBoxes)
 		-- Check if item is currently equipped
 		local equippedItems = Remotes.GetEquippedItems:InvokeServer()
 		local isEquipped = false
-		if itemConfig.Type and equippedItems[itemConfig.Type] == itemConfig.AssetId then
+		if itemConfig.Type and equippedItems[itemConfig.Type] == itemInstance then
 			isEquipped = true
 		end
 		
-		-- Update button visibility and state based on lock status and equipped status
+		-- Update button visibility and state - locked items can now be equipped
 		ui.LockButton.Visible = true
-		ui.EquipButton.Visible = not isEquipped and not isLocked
+		ui.EquipButton.Visible = not isEquipped
 		ui.UnequipButton.Visible = isEquipped
 		
 		if isLocked then
@@ -335,7 +393,8 @@ function InventoryController.Start(parentGui, openingBoxes)
 	end
 	
 	local function addItemEntry(itemInstance)
-		local itemName = itemInstance.Name
+		-- Get the actual item name from attribute (UUID system)
+		local itemName = itemInstance:GetAttribute("ItemName") or itemInstance.Name
 		local itemConfig = GameConfig.Items[itemName]
 		if not itemConfig then return end
 
@@ -365,12 +424,41 @@ function InventoryController.Start(parentGui, openingBoxes)
 				return Remotes.GetEquippedItems:InvokeServer()
 			end)
 			local isEquipped = false
-			if success and itemConfig and itemConfig.Type and equippedItems[itemConfig.Type] == itemConfig.AssetId then
+			if success and itemConfig and itemConfig.Type and equippedItems[itemConfig.Type] == itemInstance then
 				isEquipped = true
 			end
 			
 			if equippedIcon then
 				equippedIcon.Visible = isEquipped
+			end
+			
+			-- Add visual indication for equipped items - only equipped gets background change
+			local gradient = template:FindFirstChild("UIGradient")
+			local stroke = template:FindFirstChild("UIStroke")
+			
+			if isEquipped then
+				-- Bright green glow for equipped items
+				if stroke then
+					stroke.Color = Color3.fromRGB(100, 255, 100)
+					stroke.Thickness = 3
+					stroke.Transparency = 0.3
+				end
+				if gradient then
+					gradient.Color = ColorSequence.new{
+						ColorSequenceKeypoint.new(0.0, Color3.fromRGB(100, 255, 100)),
+						ColorSequenceKeypoint.new(0.5, Color3.fromRGB(76, 175, 80)),
+						ColorSequenceKeypoint.new(1.0, Color3.fromRGB(50, 150, 50))
+					}
+				end
+			else
+				-- Reset to default rarity-based appearance for all non-equipped items
+				if stroke then
+					local rarityConfig = GameConfig.Rarities[itemConfig.Rarity]
+					stroke.Color = rarityConfig and rarityConfig.Color or Color3.fromRGB(100, 100, 100)
+					stroke.Thickness = 1
+					stroke.Transparency = 0.7
+				end
+				-- Reset gradient to original rarity colors (this is handled in the template creation)
 			end
 			
 			if selectedItem == itemInstance then
@@ -497,8 +585,12 @@ function InventoryController.Start(parentGui, openingBoxes)
 		end
 	end)
 
-	ui.SellAllButton.MouseButton1Click:Connect(function()
-		Remotes.SellAllItems:FireServer()
+	-- ui.SellAllButton.MouseButton1Click:Connect(function()
+	--  	Remotes.SellAllItems:FireServer()
+	-- end)
+
+	ui.SellUnlockedButton.MouseButton1Click:Connect(function()
+		Remotes.SellUnlockedItems:FireServer()
 	end)
 
 	ui.LockButton.MouseButton1Click:Connect(function()
@@ -518,7 +610,10 @@ function InventoryController.Start(parentGui, openingBoxes)
 
 	ui.EquipButton.MouseButton1Click:Connect(function()
 		if selectedItem then
-			Remotes.EquipItem:FireServer(selectedItem.Name)
+			-- Get the actual item name from attribute (UUID system)
+			local itemName = selectedItem:GetAttribute("ItemName") or selectedItem.Name
+			-- Send item name and UUID to server
+			Remotes.EquipItem:FireServer(itemName, selectedItem.Name)
 			-- Refresh all item statuses to update equipped icons
 			task.wait(0.1) -- Small delay to let server process
 			refreshAllItemStatuses()
@@ -529,7 +624,9 @@ function InventoryController.Start(parentGui, openingBoxes)
 
 	ui.UnequipButton.MouseButton1Click:Connect(function()
 		if selectedItem then
-			local itemConfig = GameConfig.Items[selectedItem.Name]
+			-- Get the actual item name from attribute (UUID system)
+			local itemName = selectedItem:GetAttribute("ItemName") or selectedItem.Name
+			local itemConfig = GameConfig.Items[itemName]
 			if itemConfig and itemConfig.Type then
 				Remotes.UnequipItem:FireServer(itemConfig.Type)
 				-- Refresh all item statuses to update equipped icons
@@ -548,6 +645,11 @@ function InventoryController.Start(parentGui, openingBoxes)
 	resetDetailsPanel()
 	updateInventoryCount()
 	updateRAP()
+	
+	-- Make global action buttons visible
+	-- ui.SellAllButton.Visible = true
+	ui.SellUnlockedButton.Visible = true
+	
 	for _, itemInstance in ipairs(inventory:GetChildren()) do
 		addItemEntry(itemInstance)
 	end

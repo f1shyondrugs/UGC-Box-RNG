@@ -1,141 +1,320 @@
 local AvatarService = {}
 
 local Players = game:GetService("Players")
+local InsertService = game:GetService("InsertService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameConfig = require(script.Parent.Parent.Modules.GameConfig)
 
--- Maps asset types to HumanoidDescription properties
-local ASSET_TYPE_MAP = {
-    ["Hat"] = "HatAccessory",
-    ["Hair"] = "HairAccessory", 
-    ["Face"] = "FaceAccessory",
-    ["Neck"] = "NeckAccessory",
-    ["Shoulders"] = "ShouldersAccessory",
-    ["Front"] = "FrontAccessory",
-    ["Back"] = "BackAccessory",
-    ["Waist"] = "WaistAccessory",
-    ["Shirt"] = "Shirt",
-    ["Pants"] = "Pants",
-    ["Shoes"] = "ShoesAccessory",
-    ["TShirt"] = "TShirt"
-}
+local equippedAccessories = {} -- [userId] = { [itemType] = { instance, assetId, itemInstance, effectsThread } }
 
--- Store each player's state
-local equippedItems = {} -- [userId] = { [assetType] = assetId }
-local baseDescriptions = {} -- [userId] = HumanoidDescription
+local function applyMutationEffects(asset, itemInstance)
+	local mutationName = itemInstance:GetAttribute("Mutation")
+	if not mutationName then return end
+
+	local mutationConfig = GameConfig.Mutations[mutationName]
+	if not mutationConfig then return end
+
+	local handle = asset:IsA("Accessory") and asset.Handle or asset:FindFirstChild("Handle")
+	if not handle then return end
+
+	local effects = {}
+
+	if mutationName == "Glowing" then
+		local light = Instance.new("PointLight")
+		light.Color = mutationConfig.Color or Color3.fromRGB(255, 255, 0)
+		light.Brightness = 2
+		light.Range = 12
+		light.Parent = handle
+		table.insert(effects, light)
+
+	elseif mutationName == "Shiny" then
+		local sparkles = Instance.new("ParticleEmitter")
+		sparkles.Texture = "rbxassetid://137923497" -- Sparkle texture
+		sparkles.Color = ColorSequence.new(mutationConfig.Color or Color3.fromRGB(255, 255, 255))
+		sparkles.LightEmission = 1
+		sparkles.Size = NumberSequence.new(0.2, 0)
+		sparkles.Lifetime = NumberRange.new(0.5, 1)
+		sparkles.Rate = 5
+		sparkles.Speed = NumberRange.new(0.5)
+		sparkles.Parent = handle
+		table.insert(effects, sparkles)
+
+	elseif mutationName == "Rainbow" then
+		local thread = coroutine.create(function()
+			while task.wait(0.1) do
+				local hue = tick() % 5 / 5
+				local color = Color3.fromHSV(hue, 1, 1)
+				for _, part in ipairs(asset:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.Color = color
+					end
+				end
+			end
+		end)
+		coroutine.resume(thread)
+		table.insert(effects, thread) -- Store thread to be stopped later
+
+	elseif mutationName == "Corrupted" then
+		local smoke = Instance.new("ParticleEmitter")
+		smoke.Texture = "rbxassetid://268257039" -- Smoke texture
+		smoke.Color = ColorSequence.new(Color3.fromRGB(85, 0, 255), Color3.fromRGB(20, 0, 60))
+		smoke.LightEmission = 0.1
+		smoke.Size = NumberSequence.new{ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 2) }
+		smoke.Transparency = NumberSequence.new{ NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(0.7, 0.8), NumberSequenceKeypoint.new(1, 1) }
+		smoke.Lifetime = NumberRange.new(1, 2)
+		smoke.Rate = 10
+		smoke.Speed = NumberRange.new(0.5, 1)
+		smoke.Parent = handle
+		table.insert(effects, smoke)
+        
+	elseif mutationName == "Stellar" then
+		local light = Instance.new("PointLight")
+		light.Color = Color3.fromRGB(200, 225, 255)
+		light.Brightness = 3
+		light.Range = 15
+		light.Parent = handle
+		table.insert(effects, light)
+        
+		local stars = Instance.new("ParticleEmitter")
+		stars.Texture = "rbxassetid://600529559" -- Star texture
+		stars.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 225, 255))
+		stars.LightEmission = 1
+		stars.Size = NumberSequence.new(0.1, 0.3)
+		stars.Lifetime = NumberRange.new(1, 2.5)
+		stars.Rate = 8
+		stars.Speed = NumberRange.new(0.1)
+		stars.Parent = handle
+		table.insert(effects, stars)
+        
+	elseif mutationName == "Quantum" then
+		local thread = coroutine.create(function()
+			local originalTransparencies = {}
+			local parts = {}
+			for _, part in ipairs(asset:GetDescendants()) do
+				if part:IsA("BasePart") then
+					table.insert(parts, part)
+					originalTransparencies[part] = part.Transparency
+				end
+			end
+			
+			while task.wait(math.random() * 0.2 + 0.1) do
+				local part = parts[math.random(#parts)]
+				if part then
+					part.Transparency = 0.7
+					task.wait(0.05)
+					part.Transparency = originalTransparencies[part]
+				end
+			end
+		end)
+		coroutine.resume(thread)
+		table.insert(effects, thread)
+
+	elseif mutationName == "Unknown" then
+		local swirl = Instance.new("ParticleEmitter")
+		swirl.Texture = "rbxassetid://248884259" -- Swirl texture
+		swirl.Color = ColorSequence.new(Color3.fromRGB(170, 0, 255), Color3.fromRGB(0, 0, 0))
+		swirl.Size = NumberSequence.new(0.5, 1.5)
+		swirl.Lifetime = NumberRange.new(1, 2)
+		swirl.Rate = 10
+		swirl.Speed = NumberRange.new(0)
+		swirl.Drag = 1
+		swirl.RotSpeed = NumberRange.new(-90, 90)
+		swirl.Parent = handle
+		table.insert(effects, swirl)
+	end
+
+	return effects
+end
+
+local function unequipItemOfType(player, itemType)
+	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+
+	local userId = player.UserId
+	if equippedAccessories[userId] and equippedAccessories[userId][itemType] then
+		local data = equippedAccessories[userId][itemType]
+		if data.instance then
+			data.instance:Destroy()
+		end
+		-- Stop any running coroutines for this item
+		if data.effectsThread then
+			for _, effect in ipairs(data.effectsThread) do
+				if type(effect) == "thread" then
+					coroutine.close(effect)
+				end
+			end
+		end
+		equippedAccessories[userId][itemType] = nil
+	end
+	
+	-- For legacy clothing, find the specific clothing type and remove it
+	for _, child in ipairs(humanoid:GetChildren()) do
+		if (itemType == "Shirt" and child:IsA("Shirt")) or
+		   (itemType == "Pants" and child:IsA("Pants")) or
+		   (itemType == "TShirt" and child:IsA("TShirt")) then
+			child:Destroy()
+		end
+	end
+end
 
 function AvatarService.GetEquippedItems(player)
-    return equippedItems[player.UserId] or {}
+    local equipped = {}
+	if equippedAccessories[player.UserId] then
+		for itemType, data in pairs(equippedAccessories[player.UserId]) do
+			if data and data.itemInstance then
+				equipped[itemType] = data.itemInstance
+			end
+		end
+	end
+	return equipped
 end
 
-function AvatarService.StoreBaseDescription(player)
-    if baseDescriptions[player.UserId] then return end -- Already stored
-
-    local success, desc = pcall(function()
-        return Players:GetHumanoidDescriptionFromUserId(player.UserId)
-    end)
-    if success and desc then
-        baseDescriptions[player.UserId] = desc
-    else
-        warn("Could not get base HumanoidDescription for " .. player.Name .. ". Error: " .. tostring(desc))
-    end
+function AvatarService.IsItemEquipped(player, itemInstance)
+	if equippedAccessories[player.UserId] then
+		for itemType, data in pairs(equippedAccessories[player.UserId]) do
+			if data and data.itemInstance == itemInstance then
+				return true
+			end
+		end
+	end
+	return false
 end
 
-function AvatarService.EquipItem(player, itemName)
+function AvatarService.GetSerializableEquippedItems(player)
+	local equippedData = {}
+	if equippedAccessories[player.UserId] then
+		for itemType, data in pairs(equippedAccessories[player.UserId]) do
+			if data and data.itemInstance then
+				-- Save the unique UUID instead of the instance itself
+				equippedData[itemType] = data.itemInstance.Name
+			end
+		end
+	end
+	return equippedData
+end
+
+function AvatarService.EquipItem(player, itemName, itemInstanceId)
+    -- Find the item config using the item name (not the UUID)
     local itemConfig = GameConfig.Items[itemName]
     if not itemConfig or not itemConfig.AssetId or not itemConfig.Type then
         warn("Invalid item config for:", itemName)
         return false
     end
     
-    local userId = player.UserId
-    if not equippedItems[userId] then
-        equippedItems[userId] = {}
+    -- Find the specific item instance by UUID
+    local inventory = player:FindFirstChild("Inventory")
+    local itemInstance = inventory and inventory:FindFirstChild(itemInstanceId)
+    if not itemInstance then
+        warn("Could not find item instance with UUID:", itemInstanceId)
+        return false
     end
     
-    -- Store the equipped item
-    equippedItems[userId][itemConfig.Type] = itemConfig.AssetId
+    -- Verify the item name matches (for safety)
+    local storedItemName = itemInstance:GetAttribute("ItemName") or itemInstance.Name
+    if storedItemName ~= itemName then
+        warn("Item name mismatch. Expected:", itemName, "Got:", storedItemName)
+        return false
+    end
     
-    -- Apply to character if it exists
-    if player.Character and player.Character:FindFirstChild("Humanoid") then
-        AvatarService.ApplyToCharacter(player)
+	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then 
+		warn("Cannot equip item, humanoid not found for " .. player.Name)
+		return false
+	end
+
+	-- Unequip any existing item of the same type
+	unequipItemOfType(player, itemConfig.Type)
+
+	local success, asset = pcall(function()
+		return InsertService:LoadAsset(itemConfig.AssetId)
+	end)
+
+	if not success or not asset then
+		warn("Failed to load assetId " .. tostring(itemConfig.AssetId) .. " for item " .. itemName)
+		return false
+	end
+
+	-- Apply size modification
+	local size = itemInstance:GetAttribute("Size") or 1
+	if asset:IsA("Accessory") and asset:FindFirstChild("Handle") then
+		asset.Handle.Size = asset.Handle.Size * size
+	else
+		-- For models or other types, we might need a more complex scaling logic
+		-- For now, we'll just log if we can't find a handle
+		warn("Could not apply size to item without a Handle:", itemName)
+	end
+	
+	local userId = player.UserId
+	if not equippedAccessories[userId] then
+		equippedAccessories[userId] = {}
+	end
+
+	if asset:IsA("Accessory") then
+		humanoid:AddAccessory(asset)
+		equippedAccessories[userId][itemConfig.Type] = {instance = asset, assetId = itemConfig.AssetId, itemInstance = itemInstance, effectsThread = applyMutationEffects(asset, itemInstance)}
+	elseif asset:IsA("Shirt") or asset:IsA("Pants") or asset:IsA("TShirt") then
+		asset.Parent = player.Character
+		equippedAccessories[userId][itemConfig.Type] = {instance = asset, assetId = itemConfig.AssetId, itemInstance = itemInstance, effectsThread = applyMutationEffects(asset, itemInstance)}
+	elseif asset:IsA("Model") then -- Handle cases where UGC is a model
+		local accessory = asset:FindFirstChildOfClass("Accessory")
+		if accessory then
+			humanoid:AddAccessory(accessory)
+			equippedAccessories[userId][itemConfig.Type] = {instance = accessory, assetId = itemConfig.AssetId, itemInstance = itemInstance, effectsThread = applyMutationEffects(accessory, itemInstance)}
+		else
+			warn("Model item '" .. itemName .. "' does not contain an Accessory.")
+			asset:Destroy() -- Clean up the loaded model
+			return false
+		end
+	else
+		warn("Unsupported asset type for item '" .. itemName .. "': " .. asset.ClassName)
+		asset:Destroy() -- Clean up
+		return false
     end
     
     return true
 end
 
 function AvatarService.UnequipItem(player, itemType)
-    local userId = player.UserId
-    if not equippedItems[userId] or not equippedItems[userId][itemType] then
-        return false
-    end
-    
-    -- Remove the equipped item
-    equippedItems[userId][itemType] = nil
-    
-    -- Apply to character if it exists
-    if player.Character and player.Character:FindFirstChild("Humanoid") then
-        AvatarService.ApplyToCharacter(player)
-    end
-    
+	unequipItemOfType(player, itemType)
     return true
 end
 
-function AvatarService.ApplyToCharacter(player)
-    local character = player.Character
-    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return end
-
-    local userId = player.UserId
-    local baseDesc = baseDescriptions[userId]
-
-    if not baseDesc then
-        AvatarService.StoreBaseDescription(player)
-        baseDesc = baseDescriptions[userId]
-        if not baseDesc then
-            warn("Cannot apply character items: No base description found for " .. player.Name)
-            return
-        end
-    end
-    
-    -- Clone the base description to create a new one to apply.
-    -- This preserves the player's original avatar from the website.
-    local newDesc = baseDesc:Clone()
-
-    local playerEquipped = equippedItems[userId] or {}
-    
-    -- Layer the in-game equipped items on top of the base avatar
-    for itemType, assetId in pairs(playerEquipped) do
-        local descProperty = ASSET_TYPE_MAP[itemType]
-        if descProperty and newDesc[descProperty] ~= nil then
-            -- This will overwrite any item from the website in the same slot
-            newDesc[descProperty] = assetId
-        end
-    end
-    
-    -- Apply the updated description
-    humanoid:ApplyDescription(newDesc)
-end
-
 function AvatarService.OnPlayerAdded(player)
-    -- Initialize equipped items for new player
-    equippedItems[player.UserId] = {}
+    equippedAccessories[player.UserId] = {}
     
-    -- Store the player's website avatar when they join
-    AvatarService.StoreBaseDescription(player)
-    
-    -- Apply items when character spawns
     player.CharacterAdded:Connect(function(character)
+		-- When a character respawns, re-apply any accessories they had
+		local humanoid = character:WaitForChild("Humanoid", 10)
+		if not humanoid then return end
+		
+		-- Wait a moment for character to be set up
         task.wait(1) 
-        AvatarService.ApplyToCharacter(player)
+
+		-- Re-equip any items from previous life
+		local playerEquipped = equippedAccessories[player.UserId]
+		if playerEquipped then
+			for itemType, data in pairs(playerEquipped) do
+				if data and data.itemInstance and data.itemInstance.Parent then
+					-- Get the actual item name and re-equip using UUID system
+					local itemName = data.itemInstance:GetAttribute("ItemName") or data.itemInstance.Name
+					local itemUUID = data.itemInstance.Name
+					AvatarService.EquipItem(player, itemName, itemUUID)
+				end
+			end
+		end
     end)
 end
 
 function AvatarService.OnPlayerRemoving(player)
-    -- Clean up player data
-    equippedItems[player.UserId] = nil
-    baseDescriptions[player.UserId] = nil
+    if equippedAccessories[player.UserId] then
+        for _, data in pairs(equippedAccessories[player.UserId]) do
+            if data.instance then
+                data.instance:Destroy()
+            end
+        end
+    end
+    equippedAccessories[player.UserId] = nil
 end
 
 -- Initialize for players already in game
@@ -143,7 +322,6 @@ for _, player in ipairs(Players:GetPlayers()) do
     task.spawn(AvatarService.OnPlayerAdded, player)
 end
 
--- Connect events
 Players.PlayerAdded:Connect(AvatarService.OnPlayerAdded)
 Players.PlayerRemoving:Connect(AvatarService.OnPlayerRemoving)
 

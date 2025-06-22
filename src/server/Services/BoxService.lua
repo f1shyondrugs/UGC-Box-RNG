@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
 local PlayerDataService = require(script.Parent.PlayerDataService)
 
 local Shared = ReplicatedStorage.Shared
@@ -17,6 +18,11 @@ local activeBoxes = {} -- boxPart -> Box object
 local playerBoxCount = {} -- player.UserId -> number
 local playerFreeCrateCooldowns = {} -- player.UserId -> last claim tick()
 
+-- Define UUID generator at the top to ensure it's available for functions below
+local function generateUUID()
+	return HttpService:GenerateGUID(false)
+end
+
 local function getBoxesFolder()
 	local boxesFolder = Workspace:FindFirstChild("Boxes")
 	if not boxesFolder then
@@ -26,6 +32,9 @@ local function getBoxesFolder()
 	end
 	return boxesFolder
 end
+
+-- Pre-create the folder on startup
+getBoxesFolder()
 
 local function requestBox(player: Player, boxType: string)
 	-- Default to StarterCrate if no type specified
@@ -329,14 +338,20 @@ local function onAnimationComplete(player: Player, boxPart: Part)
 		local inventory = player:FindFirstChild("Inventory")
 		if inventory and #inventory:GetChildren() < INVENTORY_LIMIT then
 			local item = Instance.new("StringValue")
-			item.Name = rewardItemName
-			item.Parent = inventory
+			-- Generate unique UUID for the item
+			local itemUUID = generateUUID()
+			item.Name = itemUUID
+			
+			-- Store the original item name as an attribute
+			item:SetAttribute("ItemName", rewardItemName)
 			item:SetAttribute("Size", boxPart:GetAttribute("RewardSize"))
 
 			local mutationName = boxPart:GetAttribute("RewardMutation")
 			if mutationName then
 				item:SetAttribute("Mutation", mutationName)
 			end
+
+			item.Parent = inventory
 
 			-- Save the player's data immediately after they receive an item
 			PlayerDataService.Save(player)
@@ -366,4 +381,4 @@ function BoxService.Start()
 	end)
 end
 
-return BoxService 
+return BoxService

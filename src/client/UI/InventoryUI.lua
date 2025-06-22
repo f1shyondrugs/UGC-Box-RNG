@@ -85,7 +85,7 @@ function InventoryUI.Create(parent)
 	leftPanel.Name = "LeftPanel"
 	leftPanel.Size = UDim2.new(0.25, -10, 0.9, 0)
 	leftPanel.Position = UDim2.new(0, 10, 0.05, 0)
-	leftPanel.BackgroundColor3 = Color3.fromRGB(25, 27, 31)
+	leftPanel.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
 	leftPanel.BorderSizePixel = 0
 	leftPanel.ZIndex = 52
 	leftPanel.Parent = mainFrame
@@ -98,8 +98,8 @@ function InventoryUI.Create(parent)
 	-- Left panel gradient
 	local leftGradient = Instance.new("UIGradient")
 	leftGradient.Color = ColorSequence.new{
-		ColorSequenceKeypoint.new(0.0, Color3.fromRGB(30, 32, 36)),
-		ColorSequenceKeypoint.new(1.0, Color3.fromRGB(20, 22, 26))
+		ColorSequenceKeypoint.new(0.0, Color3.fromRGB(35, 40, 50)),
+		ColorSequenceKeypoint.new(1.0, Color3.fromRGB(15, 20, 30))
 	}
 	leftGradient.Rotation = 90
 	leftGradient.Parent = leftPanel
@@ -109,7 +109,7 @@ function InventoryUI.Create(parent)
 	rightPanel.Name = "RightPanel"
 	rightPanel.Size = UDim2.new(0.25, -10, 0.9, 0)
 	rightPanel.Position = UDim2.new(0.75, 0, 0.05, 0)
-	rightPanel.BackgroundColor3 = Color3.fromRGB(25, 27, 31)
+	rightPanel.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
 	rightPanel.BorderSizePixel = 0
 	rightPanel.ZIndex = 52
 	rightPanel.Parent = mainFrame
@@ -122,8 +122,8 @@ function InventoryUI.Create(parent)
 	-- Right panel gradient
 	local rightGradient = Instance.new("UIGradient")
 	rightGradient.Color = ColorSequence.new{
-		ColorSequenceKeypoint.new(0.0, Color3.fromRGB(30, 32, 36)),
-		ColorSequenceKeypoint.new(1.0, Color3.fromRGB(20, 22, 26))
+		ColorSequenceKeypoint.new(0.0, Color3.fromRGB(35, 40, 50)),
+		ColorSequenceKeypoint.new(1.0, Color3.fromRGB(15, 20, 30))
 	}
 	rightGradient.Rotation = 90
 	rightGradient.Parent = rightPanel
@@ -135,7 +135,7 @@ function InventoryUI.Create(parent)
 	closeButton.Position = UDim2.new(0.95, 0, 0.02, 0)
 	closeButton.AnchorPoint = Vector2.new(0.5, 0)
 	closeButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
-	closeButton.Text = "✕"
+	closeButton.Text = "X"
 	closeButton.Font = Enum.Font.SourceSansBold
 	closeButton.TextScaled = true
 	closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -173,7 +173,7 @@ function InventoryUI.Create(parent)
 	itemViewport.Name = "ItemViewport"
 	itemViewport.Size = UDim2.new(1, -20, 0, 150)
 	itemViewport.Position = UDim2.new(0, 10, 0, 60)
-	itemViewport.BackgroundColor3 = Color3.fromRGB(15, 17, 20)
+	itemViewport.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
 	itemViewport.BorderSizePixel = 0
 	itemViewport.ZIndex = 53
 	itemViewport.Parent = leftPanel
@@ -196,7 +196,7 @@ function InventoryUI.Create(parent)
 	detailsScroll.ScrollBarThickness = 4
 	detailsScroll.ZIndex = 53
 	detailsScroll.Parent = leftPanel
-	
+
 	local detailsLayout = Instance.new("UIListLayout")
 	detailsLayout.Padding = UDim.new(0, 8)
 	detailsLayout.Parent = detailsScroll
@@ -301,7 +301,8 @@ function InventoryUI.Create(parent)
 	
 	components.SellButton = createActionButton("SellButton", "Sell for R$0", Color3.fromRGB(220, 76, 76), 3)
 	components.LockButton = createActionButton("LockButton", "Lock", Color3.fromRGB(88, 101, 242), 4)
-	components.SellAllButton = createActionButton("SellAllButton", "Sell All", Color3.fromRGB(100, 100, 100), 5)
+	-- components.SellAllButton = createActionButton("SellAllButton", "Sell All", Color3.fromRGB(100, 100, 100), 5)
+	components.SellUnlockedButton = createActionButton("SellUnlockedButton", "Sell All (Unlocked)", Color3.fromRGB(160, 60, 60), 6)
 
 	-- RIGHT PANEL CONTENT
 	
@@ -319,21 +320,6 @@ function InventoryUI.Create(parent)
 	inventoryTitle.ZIndex = 53
 	inventoryTitle.Parent = rightPanel
 	components.InventoryTitle = inventoryTitle
-
-	-- RAP Display for Inventory
-	local inventoryRapLabel = Instance.new("TextLabel")
-	inventoryRapLabel.Name = "InventoryRAPLabel"
-	inventoryRapLabel.Size = UDim2.new(1, -20, 0, 25)
-	inventoryRapLabel.Position = UDim2.new(0, 10, 1, -35)
-	inventoryRapLabel.Font = Enum.Font.SourceSansBold
-	inventoryRapLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-	inventoryRapLabel.TextSize = 18
-	inventoryRapLabel.Text = "Total RAP: R$0"
-	inventoryRapLabel.TextXAlignment = Enum.TextXAlignment.Left
-	inventoryRapLabel.BackgroundTransparency = 1
-	inventoryRapLabel.ZIndex = 53
-	inventoryRapLabel.Parent = rightPanel
-	components.InventoryRAPLabel = inventoryRapLabel
 
 	-- Item list scroll frame
 	local listPanel = Instance.new("ScrollingFrame")
@@ -364,44 +350,86 @@ end
 function InventoryUI.CreateItemTemplate(itemInstance, itemName, itemConfig, rarityConfig, mutationConfig)
 	local template = Instance.new("TextButton")
 	template.Name = itemInstance.Name
-	template.Size = UDim2.new(1, 0, 0, 80)
-	template.BackgroundColor3 = Color3.fromRGB(35, 37, 42)
+	template.Size = UDim2.new(1, 0, 0, 90)
+	template.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
 	template.BorderSizePixel = 0
 	template.Text = ""
 	template.ZIndex = 54
 	
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
+	corner.CornerRadius = UDim.new(0, 15)
 	corner.Parent = template
-
-	-- Gradient background
+	
+	-- Premium card gradient with enhanced colors
 	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new{
-		ColorSequenceKeypoint.new(0.0, Color3.fromRGB(40, 42, 47)),
-		ColorSequenceKeypoint.new(1.0, Color3.fromRGB(30, 32, 37))
+	local rarityColors = {
+		Common = {Color3.fromRGB(70, 80, 95), Color3.fromRGB(40, 50, 65), Color3.fromRGB(25, 30, 40)},
+		Uncommon = {Color3.fromRGB(85, 140, 85), Color3.fromRGB(60, 110, 60), Color3.fromRGB(35, 80, 35)},
+		Rare = {Color3.fromRGB(110, 110, 200), Color3.fromRGB(80, 80, 170), Color3.fromRGB(50, 50, 130)},
+		Epic = {Color3.fromRGB(180, 110, 200), Color3.fromRGB(140, 80, 160), Color3.fromRGB(100, 50, 120)},
+		Legendary = {Color3.fromRGB(255, 190, 110), Color3.fromRGB(220, 150, 70), Color3.fromRGB(180, 110, 30)},
+		Mythical = {Color3.fromRGB(255, 120, 120), Color3.fromRGB(220, 80, 80), Color3.fromRGB(180, 40, 40)},
+		Godly = {Color3.fromRGB(255, 230, 120), Color3.fromRGB(220, 190, 80), Color3.fromRGB(180, 150, 40)}
 	}
-	gradient.Rotation = 45
+	
+	local colors = rarityColors[itemConfig.Rarity] or rarityColors.Common
+	gradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0.0, colors[1]),
+		ColorSequenceKeypoint.new(0.4, colors[2]),
+		ColorSequenceKeypoint.new(0.8, colors[3]),
+		ColorSequenceKeypoint.new(1.0, Color3.fromRGB(15, 20, 25))
+	}
+	gradient.Rotation = 160 -- Steeper diagonal for more dramatic effect
 	gradient.Parent = template
+	
+	-- Enhanced rim lighting with glow effect
+	local rimStroke = Instance.new("UIStroke")
+	rimStroke.Color = rarityConfig and rarityConfig.Color or Color3.fromRGB(120, 120, 120)
+	rimStroke.Thickness = 2
+	rimStroke.Transparency = 0.5
+	rimStroke.Parent = template
+	
+	-- Add shadow effect
+	local shadow = Instance.new("Frame")
+	shadow.Name = "Shadow"
+	shadow.Size = UDim2.new(1, 6, 1, 6)
+	shadow.Position = UDim2.new(0, 3, 0, 3)
+	shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	shadow.BackgroundTransparency = 0.8
+	shadow.BorderSizePixel = 0
+	shadow.ZIndex = 53
+	shadow.Parent = template
+	
+	local shadowCorner = Instance.new("UICorner")
+	shadowCorner.CornerRadius = UDim.new(0, 15)
+	shadowCorner.Parent = shadow
 
 	-- 3D Item Preview (left side)
 	local itemViewport = Instance.new("ViewportFrame")
 	itemViewport.Name = "ItemViewport3D"
-	itemViewport.Size = UDim2.new(0, 60, 0, 60)
-	itemViewport.Position = UDim2.new(0, 10, 0.5, -30)
-	itemViewport.BackgroundColor3 = Color3.fromRGB(20, 22, 25)
+	itemViewport.Size = UDim2.new(0, 70, 0, 70)
+	itemViewport.Position = UDim2.new(0, 10, 0.5, -35)
+	itemViewport.BackgroundColor3 = Color3.fromRGB(15, 20, 30)
 	itemViewport.BorderSizePixel = 0
 	itemViewport.ZIndex = 55
 	itemViewport.Parent = template
 
 	local viewportCorner = Instance.new("UICorner")
-	viewportCorner.CornerRadius = UDim.new(0, 6)
+	viewportCorner.CornerRadius = UDim.new(0, 10)
 	viewportCorner.Parent = itemViewport
+	
+	-- Enhanced glow to viewport
+	local viewportStroke = Instance.new("UIStroke")
+	viewportStroke.Color = rarityConfig and rarityConfig.Color or Color3.fromRGB(120, 120, 120)
+	viewportStroke.Thickness = 1.5
+	viewportStroke.Transparency = 0.6
+	viewportStroke.Parent = itemViewport
 
 	-- Item Info Container (right side)
 	local infoContainer = Instance.new("Frame")
 	infoContainer.Name = "InfoContainer"
-	infoContainer.Size = UDim2.new(1, -85, 1, -20)
-	infoContainer.Position = UDim2.new(0, 80, 0, 10)
+	infoContainer.Size = UDim2.new(1, -105, 1, -20)
+	infoContainer.Position = UDim2.new(0, 90, 0, 10)
 	infoContainer.BackgroundTransparency = 1
 	infoContainer.ZIndex = 55
 	infoContainer.Parent = template
@@ -460,24 +488,24 @@ function InventoryUI.CreateItemTemplate(itemInstance, itemName, itemConfig, rari
 	-- Status Icons Container
 	local iconsContainer = Instance.new("Frame")
 	iconsContainer.Name = "IconsContainer"
-	iconsContainer.Size = UDim2.new(0, 60, 0, 25)
-	iconsContainer.Position = UDim2.new(1, -70, 0, 5)
+	iconsContainer.Size = UDim2.new(0, 75, 0, 35)
+	iconsContainer.Position = UDim2.new(1, -85, 0, 5)
 	iconsContainer.BackgroundTransparency = 1
 	iconsContainer.ZIndex = 55
 	iconsContainer.Parent = template
 
 	local iconsLayout = Instance.new("UIListLayout")
 	iconsLayout.FillDirection = Enum.FillDirection.Horizontal
-	iconsLayout.Padding = UDim.new(0, 5)
+	iconsLayout.Padding = UDim.new(0, 6)
 	iconsLayout.Parent = iconsContainer
 
-	-- Lock Icon
+	-- Lock Icon - bigger and more prominent
 	local lockIcon = Instance.new("TextLabel")
 	lockIcon.Name = "LockIcon"
-	lockIcon.Size = UDim2.new(0, 25, 0, 25)
+	lockIcon.Size = UDim2.new(0, 32, 0, 32)
 	lockIcon.Text = "🔒"
-	lockIcon.Font = Enum.Font.SourceSans
-	lockIcon.TextSize = 16
+	lockIcon.Font = Enum.Font.SourceSansBold
+	lockIcon.TextSize = 20
 	lockIcon.BackgroundColor3 = Color3.fromRGB(255, 200, 50)
 	lockIcon.TextColor3 = Color3.fromRGB(0, 0, 0)
 	lockIcon.Visible = false
@@ -487,14 +515,21 @@ function InventoryUI.CreateItemTemplate(itemInstance, itemName, itemConfig, rari
 	local lockCorner = Instance.new("UICorner")
 	lockCorner.CornerRadius = UDim.new(1, 0)
 	lockCorner.Parent = lockIcon
+	
+	-- Enhanced glow effect to lock icon
+	local lockStroke = Instance.new("UIStroke")
+	lockStroke.Color = Color3.fromRGB(255, 220, 100)
+	lockStroke.Thickness = 3
+	lockStroke.Transparency = 0.2
+	lockStroke.Parent = lockIcon
 
 	-- Equipped Icon
 	local equippedIcon = Instance.new("TextLabel")
 	equippedIcon.Name = "EquippedIcon"
-	equippedIcon.Size = UDim2.new(0, 25, 0, 25)
+	equippedIcon.Size = UDim2.new(0, 32, 0, 32)
 	equippedIcon.Text = "⚡"
-	equippedIcon.Font = Enum.Font.SourceSans
-	equippedIcon.TextSize = 16
+	equippedIcon.Font = Enum.Font.SourceSansBold
+	equippedIcon.TextSize = 20
 	equippedIcon.BackgroundColor3 = Color3.fromRGB(76, 175, 80)
 	equippedIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
 	equippedIcon.Visible = false
@@ -504,6 +539,13 @@ function InventoryUI.CreateItemTemplate(itemInstance, itemName, itemConfig, rari
 	local equippedCorner = Instance.new("UICorner")
 	equippedCorner.CornerRadius = UDim.new(1, 0)
 	equippedCorner.Parent = equippedIcon
+	
+	-- Enhanced glow effect to equipped icon
+	local equippedStroke = Instance.new("UIStroke")
+	equippedStroke.Color = Color3.fromRGB(120, 255, 120)
+	equippedStroke.Thickness = 3
+	equippedStroke.Transparency = 0.2
+	equippedStroke.Parent = equippedIcon
 
 	-- Selection highlight
 	local selectionHighlight = Instance.new("Frame")

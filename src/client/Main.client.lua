@@ -180,12 +180,27 @@ local function onBoxAdded(boxPart)
 	end)
 end
 
-local boxesFolder = Workspace:WaitForChild("Boxes")
--- Handle existing boxes that might have been created before the script ran
-for _, boxPart in ipairs(boxesFolder:GetChildren()) do
-	task.spawn(onBoxAdded, boxPart)
+-- More robust handling for the Boxes folder
+local boxesFolder = Workspace:FindFirstChild("Boxes")
+if boxesFolder then
+	-- Handle existing boxes that might have been created before the script ran
+	for _, boxPart in ipairs(boxesFolder:GetChildren()) do
+		task.spawn(onBoxAdded, boxPart)
+	end
+	boxesFolder.ChildAdded:Connect(onBoxAdded)
+else
+	-- If the folder doesn't exist yet, wait for it
+	Workspace.ChildAdded:Connect(function(child)
+		if child.Name == "Boxes" then
+			boxesFolder = child
+			-- Handle existing boxes that might have been created before the script ran
+			for _, boxPart in ipairs(boxesFolder:GetChildren()) do
+				task.spawn(onBoxAdded, boxPart)
+			end
+			boxesFolder.ChildAdded:Connect(onBoxAdded)
+		end
+	end)
 end
-boxesFolder.ChildAdded:Connect(onBoxAdded)
 
 Remotes.PlayAnimation.OnClientEvent:Connect(function(boxPart, itemName, mutationName, size)
 	openingBoxes[boxPart] = true

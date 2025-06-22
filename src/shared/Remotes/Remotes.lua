@@ -22,6 +22,7 @@ return {
 	BoxLanded = createRemote("RemoteEvent", "BoxLanded"),
 	UpdateBoxCount = createRemote("RemoteEvent", "UpdateBoxCount"),
 	SellAllItems = createRemote("RemoteEvent", "SellAllItems"),
+	SellUnlockedItems = createRemote("RemoteEvent", "SellUnlockedItems"),
 	ToggleItemLock = createRemote("RemoteEvent", "ToggleItemLock"),
 	StartFreeCrateCooldown = createRemote("RemoteEvent", "StartFreeCrateCooldown"),
 	
@@ -29,4 +30,7 @@ return {
 	EquipItem = createRemote("RemoteEvent", "EquipItem"),
 	UnequipItem = createRemote("RemoteEvent", "UnequipItem"),
 	GetEquippedItems = createRemote("RemoteFunction", "GetEquippedItems"),
+	
+	-- Asset Loading Remotes
+	LoadAssetForPreview = createRemote("RemoteFunction", "LoadAssetForPreview"),
 } 
