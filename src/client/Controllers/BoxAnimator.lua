@@ -8,7 +8,7 @@ local CameraShaker = require(script.Parent.CameraShaker)
 
 local BoxAnimator = {}
 
-function BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationName, mutationConfig, size)
+function BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationName, mutationConfig, size, soundController)
 	local isShiny = mutationName == "Shiny"
 	size = size or 1 -- Default size to 1 if nil
 
@@ -100,10 +100,12 @@ function BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationName, m
 			if size >= 2.5 then
 				CameraShaker.Shake(pulseDuration + 0.2, 0.05 + (size / 250) * (i / pulses))
 			end
+			soundController:playGrowingBox() -- Play growing sound
 			tweenUp:Play()
 			task.wait(pulseDuration)
 		end
 		
+		soundController:stopGrowingBox() -- Stop growing sound
 		task.wait(actualScaleDuration) 
 		task.wait(0.2) -- Short pause after animation
 
@@ -208,7 +210,7 @@ function BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationName, m
 	return duration
 end
 
-function BoxAnimator.AnimateFloatingText(position, itemName, itemConfig, mutationName, mutationConfig, size)
+function BoxAnimator.AnimateFloatingText(position, itemName, itemConfig, mutationName, mutationConfig, size, soundController)
 	size = size or 1 -- Default size to 1 if nil
 	local rarityName = itemConfig.Rarity
 	local rarityConfig = GameConfig.Rarities[rarityName]
@@ -287,6 +289,11 @@ function BoxAnimator.AnimateFloatingText(position, itemName, itemConfig, mutatio
 	textLabel.Font = Enum.Font.FredokaOne
 	textLabel.TextTransparency = 1 -- Start invisible
 	textLabel.Parent = billboardGui
+	
+	-- Play the reward sound when the text appears
+	if soundController then
+		soundController:playRewardSound(rarityName)
+	end
 	
 	-- Punch-in animation
 	textLabel.Size = UDim2.fromScale(0.1, 0.1)

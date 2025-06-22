@@ -15,6 +15,7 @@ local CameraShaker = require(script.Parent.Controllers.CameraShaker)
 local Notifier = require(script.Parent.Controllers.Notifier)
 local InventoryController = require(script.Parent.Controllers.InventoryController)
 local NameplateController = require(script.Parent.Controllers.NameplateController)
+local SoundController = require(script.Parent.Controllers.SoundController)
 local BuyButtonUI = require(script.Parent.UI.BuyButtonUI)
 local StatsUI = require(script.Parent.UI.StatsUI)
 
@@ -29,9 +30,12 @@ local isFreeCrateOnCooldown = false
 local openingBoxes = {} -- A set of box parts that are currently being opened
 
 -- Initialize Services
+local soundController = SoundController.new()
+soundController:playMusic()
+
 CameraShaker.Start()
 Notifier.Start(PlayerGui)
-InventoryController.Start(PlayerGui, openingBoxes)
+InventoryController.Start(PlayerGui, openingBoxes, soundController)
 NameplateController.Start()
 
 -- Create Stats UI at the top
@@ -77,12 +81,14 @@ end
 
 -- Handle dropdown interactions
 buyButtonGui.CrateDropdown.MouseButton1Click:Connect(function()
+	soundController:playUIClick()
 	BuyButtonUI.ToggleDropdown(buyButtonGui)
 end)
 
 -- Handle crate selection
 for crateType, optionButton in pairs(buyButtonGui.OptionButtons) do
 	optionButton.MouseButton1Click:Connect(function()
+		soundController:playUIClick()
 		BuyButtonUI.SetSelectedCrate(buyButtonGui, crateType)
 		BuyButtonUI.UpdateAffordability(buyButtonGui, robuxStat.Value)
 		BuyButtonUI.HideDropdown(buyButtonGui)
@@ -91,6 +97,7 @@ end
 
 -- Handle buy button click
 buyButtonGui.BuyButton.MouseButton1Click:Connect(function()
+	soundController:playUIClick()
 	if currentBoxCount < MAX_BOXES and not isOnCooldown then
 		local selectedCrateType = buyButtonGui.SelectedCrateType
 		Remotes.RequestBox:FireServer(selectedCrateType)
@@ -107,6 +114,7 @@ end)
 
 -- Handle Free Crate button click
 buyButtonGui.FreeCrateButton.MouseButton1Click:Connect(function()
+	soundController:playUIClick()
 	if currentBoxCount < MAX_BOXES and not isFreeCrateOnCooldown then
 		Remotes.RequestBox:FireServer("FreeCrate")
 	end
@@ -158,6 +166,7 @@ end)
 
 -- Listen for the box landing event
 Remotes.BoxLanded.OnClientEvent:Connect(function()
+	soundController:playBoxLand()
 	-- CameraShaker.Shake(0.2, 0.3) -- Short, sharp shake
 end)
 
@@ -176,6 +185,7 @@ local function onBoxAdded(boxPart)
 
 	prompt.Triggered:Connect(function()
 		prompt.Enabled = false -- Prevent double clicks
+		soundController:playBoxOpen()
 		Remotes.RequestOpen:FireServer(boxPart)
 	end)
 end
@@ -210,12 +220,15 @@ Remotes.PlayAnimation.OnClientEvent:Connect(function(boxPart, itemName, mutation
 	if not itemConfig then return end -- Safety check
 	local mutationConfig = mutationName and GameConfig.Mutations[mutationName]
 
-	local duration = BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationName, mutationConfig, size)
+	local duration = BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationName, mutationConfig, size, soundController)
+
+	-- Remove early reward sound - it will now play when text appears
+	-- soundController:playRewardSound(itemConfig.Rarity)
 
 	task.delay(duration, function()
 		if boxPart then
 			openingBoxes[boxPart] = nil
-			BoxAnimator.AnimateFloatingText(boxPart.Position, itemName, itemConfig, mutationName, mutationConfig, size)
+			BoxAnimator.AnimateFloatingText(boxPart.Position, itemName, itemConfig, mutationName, mutationConfig, size, soundController)
 			Remotes.AnimationComplete:FireServer(boxPart)
 		end
 	end)

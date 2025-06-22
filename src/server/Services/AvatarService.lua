@@ -37,6 +37,7 @@ local function equipItem(player, itemName, itemInstanceId)
     local success = SharedAvatarService.EquipItem(player, itemName, instanceId)
     if success then
         Remotes.Notify:FireClient(player, "Equipped " .. itemName, "Success")
+        Remotes.EquipStatusChanged:FireClient(player)
         -- PlayerDataService.Save(player) -- REMOVED: Saving on every equip is too frequent
     else
         Remotes.Notify:FireClient(player, "Failed to equip item.", "Error")
@@ -47,6 +48,7 @@ local function unequipItem(player, itemType)
     local success = SharedAvatarService.UnequipItem(player, itemType)
     if success then
         Remotes.Notify:FireClient(player, "Unequipped " .. itemType .. " item", "Success")
+        Remotes.EquipStatusChanged:FireClient(player)
         -- PlayerDataService.Save(player) -- REMOVED: Saving on every unequip is too frequent
     else
         Remotes.Notify:FireClient(player, "Failed to unequip item.", "Error")

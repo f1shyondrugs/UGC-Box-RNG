@@ -27,7 +27,7 @@ local ANIMATION_TIME = 0.3
 local ANIMATION_STYLE = Enum.EasingStyle.Quint
 local ANIMATION_DIRECTION = Enum.EasingDirection.Out
 
-function InventoryController.Start(parentGui, openingBoxes)
+function InventoryController.Start(parentGui, openingBoxes, soundController)
 	local inventory = LocalPlayer:WaitForChild("Inventory")
 	local leaderstats = LocalPlayer:WaitForChild("leaderstats")
 	local rapStat = leaderstats:WaitForChild("RAP")
@@ -471,15 +471,24 @@ function InventoryController.Start(parentGui, openingBoxes)
 		itemEntries[itemInstance] = { Template = template, Connection = connection, UpdateStatus = updateItemStatus }
 
 		template.MouseButton1Click:Connect(function()
-			-- Clear previous selection
-			if selectedItemTemplate then
-				local highlight = selectedItemTemplate:FindFirstChild("SelectionHighlight")
-				if highlight then
-					highlight.Visible = false
+			if isAnimating then return end
+
+			soundController:playUIClick() -- Play click sound
+
+			-- If the same item is clicked again, deselect it
+			if selectedItem == itemInstance then
+				resetDetailsPanel()
+			else
+				-- Clear previous selection
+				if selectedItemTemplate then
+					local highlight = selectedItemTemplate:FindFirstChild("SelectionHighlight")
+					if highlight then
+						highlight.Visible = false
+					end
 				end
+				
+				updateDetails(itemInstance, template)
 			end
-			
-			updateDetails(itemInstance, template)
 		end)
 		
 		updateInventoryCount()
@@ -567,6 +576,8 @@ function InventoryController.Start(parentGui, openingBoxes)
 	end)
 	
 	ui.CloseButton.MouseButton1Click:Connect(function()
+		if isAnimating then return end
+		soundController:playUIClick()
 		toggleInventory(false)
 	end)
 
@@ -580,16 +591,34 @@ function InventoryController.Start(parentGui, openingBoxes)
 	end)
 
 	ui.SellButton.MouseButton1Click:Connect(function()
-		if selectedItem then
+		if selectedItem and not isAnimating then
+			soundController:playSellItem()
 			Remotes.SellItem:FireServer(selectedItem)
+			resetDetailsPanel()
 		end
 	end)
 
-	-- ui.SellAllButton.MouseButton1Click:Connect(function()
-	--  	Remotes.SellAllItems:FireServer()
-	-- end)
+	ui.EquipButton.MouseButton1Click:Connect(function()
+		if selectedItem and not isAnimating then
+			soundController:playUIClick()
+			local itemName = selectedItem:GetAttribute("ItemName") or selectedItem.Name
+			Remotes.EquipItem:FireServer(itemName, selectedItem.Name)
+		end
+	end)
+
+	ui.UnequipButton.MouseButton1Click:Connect(function()
+		if selectedItem and not isAnimating then
+			soundController:playUIClick()
+			local itemName = selectedItem:GetAttribute("ItemName") or selectedItem.Name
+			local itemConfig = GameConfig.Items[itemName]
+			if itemConfig and itemConfig.Type then
+				Remotes.UnequipItem:FireServer(itemConfig.Type)
+			end
+		end
+	end)
 
 	ui.SellUnlockedButton.MouseButton1Click:Connect(function()
+		soundController:playSellItem()
 		Remotes.SellUnlockedItems:FireServer()
 	end)
 
@@ -608,46 +637,23 @@ function InventoryController.Start(parentGui, openingBoxes)
 		end
 	end
 
-	ui.EquipButton.MouseButton1Click:Connect(function()
-		if selectedItem then
-			-- Get the actual item name from attribute (UUID system)
-			local itemName = selectedItem:GetAttribute("ItemName") or selectedItem.Name
-			-- Send item name and UUID to server
-			Remotes.EquipItem:FireServer(itemName, selectedItem.Name)
-			-- Refresh all item statuses to update equipped icons
-			task.wait(0.1) -- Small delay to let server process
-			refreshAllItemStatuses()
-			-- Refresh the details panel to update button visibility
+	-- Listen for server-side equip status changes
+	Remotes.EquipStatusChanged.OnClientEvent:Connect(function()
+		refreshAllItemStatuses()
+		if selectedItem and selectedItemTemplate then
 			updateDetails(selectedItem, selectedItemTemplate)
 		end
 	end)
-
-	ui.UnequipButton.MouseButton1Click:Connect(function()
-		if selectedItem then
-			-- Get the actual item name from attribute (UUID system)
-			local itemName = selectedItem:GetAttribute("ItemName") or selectedItem.Name
-			local itemConfig = GameConfig.Items[itemName]
-			if itemConfig and itemConfig.Type then
-				Remotes.UnequipItem:FireServer(itemConfig.Type)
-				-- Refresh all item statuses to update equipped icons
-				task.wait(0.1) -- Small delay to let server process
-				refreshAllItemStatuses()
-				-- Refresh the details panel to update button visibility
-				updateDetails(selectedItem, selectedItemTemplate)
-			end
-		end
-	end)
-
-	-- Connect RAP updates
-	rapStat:GetPropertyChangedSignal("Value"):Connect(updateRAP)
 
 	-- Initial population
 	resetDetailsPanel()
 	updateInventoryCount()
 	updateRAP()
 	
+	-- Connect to RAP changes
+	rapStat:GetPropertyChangedSignal("Value"):Connect(updateRAP)
+	
 	-- Make global action buttons visible
-	-- ui.SellAllButton.Visible = true
 	ui.SellUnlockedButton.Visible = true
 	
 	for _, itemInstance in ipairs(inventory:GetChildren()) do

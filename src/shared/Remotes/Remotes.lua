@@ -30,6 +30,7 @@ return {
 	EquipItem = createRemote("RemoteEvent", "EquipItem"),
 	UnequipItem = createRemote("RemoteEvent", "UnequipItem"),
 	GetEquippedItems = createRemote("RemoteFunction", "GetEquippedItems"),
+	EquipStatusChanged = createRemote("RemoteEvent", "EquipStatusChanged"),
 	
 	-- Asset Loading Remotes
 	LoadAssetForPreview = createRemote("RemoteFunction", "LoadAssetForPreview"),

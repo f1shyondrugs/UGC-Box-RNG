@@ -22,14 +22,16 @@ local function calculatePlayerRAP(player)
 	
 	local inventoryData = {}
 	for _, item in ipairs(inventory:GetChildren()) do
-		local itemConfig = GameConfig.Items[item.Name]
+		-- Get the actual item name from attribute (UUID system)
+		local itemName = item:GetAttribute("ItemName") or item.Name
+		local itemConfig = GameConfig.Items[itemName]
 		if itemConfig then
 			local mutationName = item:GetAttribute("Mutation")
 			local mutationConfig = mutationName and GameConfig.Mutations[mutationName] or nil
 			local size = item:GetAttribute("Size") or 1
 			
 			table.insert(inventoryData, {
-				ItemName = item.Name,
+				ItemName = itemName,
 				ItemConfig = itemConfig,
 				MutationConfig = mutationConfig,
 				Size = size

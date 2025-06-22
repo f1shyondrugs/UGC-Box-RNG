@@ -30,7 +30,8 @@ local function sellItem(player: Player, itemToSell: Instance)
 		return
 	end
 
-	local itemName = itemToSell.Name
+	-- Get the actual item name from attribute (UUID system)
+	local itemName = itemToSell:GetAttribute("ItemName") or itemToSell.Name
 	local itemConfig = GameConfig.Items[itemName]
 	if not itemConfig then
 		warn("Player " .. player.Name .. " tried to sell an item with no config: " .. itemName)
@@ -64,7 +65,8 @@ local function sellAllItems(player: Player)
 	for _, itemToSell in ipairs(inventory:GetChildren()) do
 		-- Don't sell locked or equipped items
 		if not itemToSell:GetAttribute("Locked") and not AvatarService.IsItemEquipped(player, itemToSell) then
-			local itemName = itemToSell.Name
+			-- Get the actual item name from attribute (UUID system)
+			local itemName = itemToSell:GetAttribute("ItemName") or itemToSell.Name
 			local itemConfig = GameConfig.Items[itemName]
 			
 			if itemConfig then
@@ -106,7 +108,8 @@ local function sellUnlockedItems(player: Player)
 	for _, itemToSell in ipairs(inventory:GetChildren()) do
 		-- Only sell unlocked and unequipped items
 		if not itemToSell:GetAttribute("Locked") and not AvatarService.IsItemEquipped(player, itemToSell) then
-			local itemName = itemToSell.Name
+			-- Get the actual item name from attribute (UUID system)
+			local itemName = itemToSell:GetAttribute("ItemName") or itemToSell.Name
 			local itemConfig = GameConfig.Items[itemName]
 			
 			if itemConfig then
