@@ -10,6 +10,7 @@ local ItemValueCalculator = require(Shared.Modules.ItemValueCalculator)
 -- It's good practice to have a unique key for your datastore
 -- and to version it in case you change the data structure later.
 local playerDataStore = DataStoreService:GetDataStore("PlayerData_UGC_V1")
+local rapLeaderboardStore = DataStoreService:GetOrderedDataStore("RAPLeaderboard_V1")
 
 local DataService = {}
 
@@ -50,6 +51,15 @@ local function updatePlayerRAP(player)
 	if rapStat then
 		local totalRAP = calculatePlayerRAP(player)
 		rapStat.Value = totalRAP
+		
+		-- Update the OrderedDataStore for the global leaderboard
+		local success, err = pcall(function()
+			rapLeaderboardStore:SetAsync(tostring(player.UserId), totalRAP)
+		end)
+		
+		if not success then
+			warn("Failed to update RAP for " .. player.Name .. " in leaderboard: " .. tostring(err))
+		end
 	end
 end
 
@@ -237,6 +247,7 @@ end
 
 local function onPlayerRemoving(player: Player)
 	print("PlayerRemoving event fired for: " .. player.Name)
+	-- No need to save here, as data is saved on item changes, but we'll keep it as a fallback.
 	saveData(player)
 end
 
