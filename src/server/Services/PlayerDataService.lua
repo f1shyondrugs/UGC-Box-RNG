@@ -483,4 +483,35 @@ function DataService.GetPlayerCollection(player)
 	end
 end
 
+-- Function to give a specific item to a player (for admin commands)
+function DataService.GiveItem(player, itemName, mutations, size)
+	local inventory = player:FindFirstChild("Inventory")
+	if not inventory then
+		warn("Could not find inventory for " .. player.Name)
+		return nil
+	end
+
+	local itemConfig = GameConfig.Items[itemName]
+	if not itemConfig then
+		warn("Attempted to give invalid item: " .. itemName)
+		return nil
+	end
+
+	local HttpService = game:GetService("HttpService")
+
+	local item = Instance.new("StringValue")
+	item.Name = HttpService:GenerateGUID(false) -- Unique ID for the item instance
+	item:SetAttribute("ItemName", itemName)
+	item:SetAttribute("Size", size or 1.0) -- Use provided size or default to 1.0
+	
+	if mutations and #mutations > 0 then
+		item:SetAttribute("Mutations", HttpService:JSONEncode(mutations))
+		item:SetAttribute("Mutation", mutations[1]) -- For backward compatibility
+	end
+	
+	item.Parent = inventory
+	
+	return item
+end
+
 return DataService 
