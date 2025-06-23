@@ -34,4 +34,7 @@ return {
 	
 	-- Asset Loading Remotes
 	LoadAssetForPreview = createRemote("RemoteFunction", "LoadAssetForPreview"),
+	
+	-- Collection Remotes
+	GetPlayerCollection = createRemote("RemoteFunction", "GetPlayerCollection"),
 } 

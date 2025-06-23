@@ -9,119 +9,264 @@ local GameConfig = require(script.Parent.Parent.Modules.GameConfig)
 local equippedAccessories = {} -- [userId] = { [itemType] = { instance, assetId, itemInstance, effectsThread } }
 
 local function applyMutationEffects(asset, itemInstance)
-	local mutationName = itemInstance:GetAttribute("Mutation")
-	if not mutationName then return end
+	-- Check for new multiple mutations format first
+	local mutationsJson = itemInstance:GetAttribute("Mutations")
+	local mutations = {}
+	
+	if mutationsJson then
+		local HttpService = game:GetService("HttpService")
+		local success, decodedMutations = pcall(function()
+			return HttpService:JSONDecode(mutationsJson)
+		end)
+		if success and decodedMutations then
+			mutations = decodedMutations
+		end
+	else
+		-- Fallback to single mutation for backward compatibility
+		local singleMutation = itemInstance:GetAttribute("Mutation")
+		if singleMutation then
+			mutations = {singleMutation}
+		end
+	end
+	
+	if #mutations == 0 then return nil end
 
-	local mutationConfig = GameConfig.Mutations[mutationName]
-	if not mutationConfig then return end
+	local allParts = {}
+	for _, descendant in ipairs(asset:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			table.insert(allParts, descendant)
+		end
+	end
 
-	local handle = asset:IsA("Accessory") and asset.Handle or asset:FindFirstChild("Handle")
-	if not handle then return end
-
+	if #allParts == 0 then return nil end
+	
+	-- Get the item size for scaling effects
+	local itemSize = itemInstance:GetAttribute("Size") or 1
+	local sizeMultiplier = math.max(0.5, math.min(itemSize, 10)) -- Clamp between 0.5 and 10 for reasonable scaling
+	
 	local effects = {}
+	local primaryPart = allParts[1] -- Use the first part found for emitters
+	
+	-- Apply effects for each mutation
+	for _, mutationName in ipairs(mutations) do
+		local mutationConfig = GameConfig.Mutations[mutationName]
+		if mutationConfig then
+			if mutationName == "Glowing" then
+				local light = Instance.new("PointLight")
+				light.Color = mutationConfig.Color or Color3.fromRGB(255, 255, 0)
+				light.Brightness = 2 * sizeMultiplier
+				light.Range = 12 * sizeMultiplier
+				light.Parent = primaryPart
+				table.insert(effects, light)
 
-	if mutationName == "Glowing" then
-		local light = Instance.new("PointLight")
-		light.Color = mutationConfig.Color or Color3.fromRGB(255, 255, 0)
-		light.Brightness = 2
-		light.Range = 12
-		light.Parent = handle
-		table.insert(effects, light)
+			elseif mutationName == "Shiny" then
+				-- Create a bright sparkle effect with attachment
+				local attachment = Instance.new("Attachment")
+				attachment.Parent = primaryPart
+				
+				local sparkles = Instance.new("ParticleEmitter")
+				sparkles.Parent = attachment
+				sparkles.Texture = "http://www.roblox.com/asset/?id=241650934" -- More reliable sparkle texture
+				sparkles.Color = ColorSequence.new(mutationConfig.Color or Color3.fromRGB(255, 255, 255))
+				sparkles.LightEmission = 1
+				sparkles.Size = NumberSequence.new{
+					NumberSequenceKeypoint.new(0, 0.1 * sizeMultiplier),
+					NumberSequenceKeypoint.new(0.5, 0.3 * sizeMultiplier),
+					NumberSequenceKeypoint.new(1, 0)
+				}
+				sparkles.Transparency = NumberSequence.new{
+					NumberSequenceKeypoint.new(0, 0),
+					NumberSequenceKeypoint.new(1, 1)
+				}
+				sparkles.Lifetime = NumberRange.new(0.8, 1.5)
+				sparkles.Rate = math.floor(20 * sizeMultiplier)
+				sparkles.Speed = NumberRange.new(2 * sizeMultiplier, 5 * sizeMultiplier)
+				sparkles.SpreadAngle = Vector2.new(45, 45)
+				sparkles.Enabled = true
+				table.insert(effects, sparkles)
+				table.insert(effects, attachment)
 
-	elseif mutationName == "Shiny" then
-		local sparkles = Instance.new("ParticleEmitter")
-		sparkles.Texture = "rbxassetid://137923497" -- Sparkle texture
-		sparkles.Color = ColorSequence.new(mutationConfig.Color or Color3.fromRGB(255, 255, 255))
-		sparkles.LightEmission = 1
-		sparkles.Size = NumberSequence.new(0.2, 0)
-		sparkles.Lifetime = NumberRange.new(0.5, 1)
-		sparkles.Rate = 5
-		sparkles.Speed = NumberRange.new(0.5)
-		sparkles.Parent = handle
-		table.insert(effects, sparkles)
-
-	elseif mutationName == "Rainbow" then
-		local thread = coroutine.create(function()
-			while task.wait(0.1) do
-				local hue = tick() % 5 / 5
-				local color = Color3.fromHSV(hue, 1, 1)
-				for _, part in ipairs(asset:GetDescendants()) do
-					if part:IsA("BasePart") then
-						part.Color = color
+			elseif mutationName == "Rainbow" then
+				local thread = coroutine.create(function()
+					while task.wait(0.1) do
+						local hue = tick() % 5 / 5
+						local color = Color3.fromHSV(hue, 1, 1)
+						for _, part in ipairs(allParts) do
+							part.Color = color
+							local specialMesh = part:FindFirstChildOfClass("SpecialMesh")
+							if specialMesh then
+								specialMesh.VertexColor = Vector3.new(color.r, color.g, color.b)
+							end
+						end
 					end
-				end
-			end
-		end)
-		coroutine.resume(thread)
-		table.insert(effects, thread) -- Store thread to be stopped later
+				end)
+				coroutine.resume(thread)
+				table.insert(effects, thread) -- Store thread to be stopped later
 
-	elseif mutationName == "Corrupted" then
-		local smoke = Instance.new("ParticleEmitter")
-		smoke.Texture = "rbxassetid://268257039" -- Smoke texture
-		smoke.Color = ColorSequence.new(Color3.fromRGB(85, 0, 255), Color3.fromRGB(20, 0, 60))
-		smoke.LightEmission = 0.1
-		smoke.Size = NumberSequence.new{ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 2) }
-		smoke.Transparency = NumberSequence.new{ NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(0.7, 0.8), NumberSequenceKeypoint.new(1, 1) }
-		smoke.Lifetime = NumberRange.new(1, 2)
-		smoke.Rate = 10
-		smoke.Speed = NumberRange.new(0.5, 1)
-		smoke.Parent = handle
-		table.insert(effects, smoke)
-        
-	elseif mutationName == "Stellar" then
-		local light = Instance.new("PointLight")
-		light.Color = Color3.fromRGB(200, 225, 255)
-		light.Brightness = 3
-		light.Range = 15
-		light.Parent = handle
-		table.insert(effects, light)
-        
-		local stars = Instance.new("ParticleEmitter")
-		stars.Texture = "rbxassetid://600529559" -- Star texture
-		stars.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 225, 255))
-		stars.LightEmission = 1
-		stars.Size = NumberSequence.new(0.1, 0.3)
-		stars.Lifetime = NumberRange.new(1, 2.5)
-		stars.Rate = 8
-		stars.Speed = NumberRange.new(0.1)
-		stars.Parent = handle
-		table.insert(effects, stars)
-        
-	elseif mutationName == "Quantum" then
-		local thread = coroutine.create(function()
-			local originalTransparencies = {}
-			local parts = {}
-			for _, part in ipairs(asset:GetDescendants()) do
-				if part:IsA("BasePart") then
-					table.insert(parts, part)
-					originalTransparencies[part] = part.Transparency
-				end
-			end
-			
-			while task.wait(math.random() * 0.2 + 0.1) do
-				local part = parts[math.random(#parts)]
-				if part then
-					part.Transparency = 0.7
-					task.wait(0.05)
-					part.Transparency = originalTransparencies[part]
-				end
-			end
-		end)
-		coroutine.resume(thread)
-		table.insert(effects, thread)
+			elseif mutationName == "Corrupted" then
+				-- Create dark purple smoke effect
+				local attachment = Instance.new("Attachment")
+				attachment.Parent = primaryPart
+				
+				local smoke = Instance.new("ParticleEmitter")
+				smoke.Parent = attachment
+				smoke.Texture = "rbxasset://textures/particles/smoke_main.dds" -- Built-in smoke texture
+				smoke.Color = ColorSequence.new{
+					ColorSequenceKeypoint.new(0, Color3.fromRGB(85, 0, 255)),
+					ColorSequenceKeypoint.new(0.5, Color3.fromRGB(50, 0, 150)),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 0, 60))
+				}
+				smoke.LightEmission = 0.2
+				smoke.Size = NumberSequence.new{
+					NumberSequenceKeypoint.new(0, 0.3 * sizeMultiplier),
+					NumberSequenceKeypoint.new(0.5, 1.0 * sizeMultiplier),
+					NumberSequenceKeypoint.new(1, 1.5 * sizeMultiplier)
+				}
+				smoke.Transparency = NumberSequence.new{
+					NumberSequenceKeypoint.new(0, 0.3),
+					NumberSequenceKeypoint.new(0.7, 0.8),
+					NumberSequenceKeypoint.new(1, 1)
+				}
+				smoke.Lifetime = NumberRange.new(1.5, 3)
+				smoke.Rate = math.floor(15 * sizeMultiplier)
+				smoke.Speed = NumberRange.new(1 * sizeMultiplier, 3 * sizeMultiplier)
+				smoke.SpreadAngle = Vector2.new(30, 30)
+				smoke.Drag = 2
+				smoke.Enabled = true
+				table.insert(effects, smoke)
+				table.insert(effects, attachment)
+				
+			elseif mutationName == "Stellar" then
+				local light = Instance.new("PointLight")
+				light.Color = Color3.fromRGB(200, 225, 255)
+				light.Brightness = 3 * sizeMultiplier
+				light.Range = 15 * sizeMultiplier
+				light.Parent = primaryPart
+				table.insert(effects, light)
+				
+				-- Create twinkling star effect
+				local attachment = Instance.new("Attachment")
+				attachment.Parent = primaryPart
+				
+				local stars = Instance.new("ParticleEmitter")
+				stars.Parent = attachment
+				stars.Texture = "http://www.roblox.com/asset/?id=241650934" -- Sparkle texture works as stars
+				stars.Color = ColorSequence.new{
+					ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+					ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 225, 255)),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 200, 255))
+				}
+				stars.LightEmission = 1
+				stars.Size = NumberSequence.new{
+					NumberSequenceKeypoint.new(0, 0.05 * sizeMultiplier),
+					NumberSequenceKeypoint.new(0.5, 0.2 * sizeMultiplier),
+					NumberSequenceKeypoint.new(1, 0)
+				}
+				stars.Transparency = NumberSequence.new{
+					NumberSequenceKeypoint.new(0, 0),
+					NumberSequenceKeypoint.new(0.8, 0.5),
+					NumberSequenceKeypoint.new(1, 1)
+				}
+				stars.Lifetime = NumberRange.new(2, 4)
+				stars.Rate = math.floor(12 * sizeMultiplier)
+				stars.Speed = NumberRange.new(0.5 * sizeMultiplier, 2 * sizeMultiplier)
+				stars.SpreadAngle = Vector2.new(60, 60)
+				stars.Enabled = true
+				table.insert(effects, stars)
+				table.insert(effects, attachment)
+				
+			elseif mutationName == "Quantum" then
+				-- Add a quantum glow effect along with the flickering
+				local light = Instance.new("PointLight")
+				light.Color = Color3.fromRGB(50, 20, 80)
+				light.Brightness = 2 * sizeMultiplier
+				light.Range = 10 * sizeMultiplier
+				light.Parent = primaryPart
+				table.insert(effects, light)
+				
+				-- Create quantum energy particles
+				local attachment = Instance.new("Attachment")
+				attachment.Parent = primaryPart
+				
+				local quantum = Instance.new("ParticleEmitter")
+				quantum.Parent = attachment
+				quantum.Texture = "http://www.roblox.com/asset/?id=241650934"
+				quantum.Color = ColorSequence.new{
+					ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 50, 150)),
+					ColorSequenceKeypoint.new(0.5, Color3.fromRGB(50, 20, 80)),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 10, 40))
+				}
+				quantum.LightEmission = 0.8
+				quantum.Size = NumberSequence.new{
+					NumberSequenceKeypoint.new(0, 0.1 * sizeMultiplier),
+					NumberSequenceKeypoint.new(0.5, 0.15 * sizeMultiplier),
+					NumberSequenceKeypoint.new(1, 0)
+				}
+				quantum.Transparency = NumberSequence.new{
+					NumberSequenceKeypoint.new(0, 0.2),
+					NumberSequenceKeypoint.new(1, 1)
+				}
+				quantum.Lifetime = NumberRange.new(0.5, 1.5)
+				quantum.Rate = math.floor(25 * sizeMultiplier)
+				quantum.Speed = NumberRange.new(1 * sizeMultiplier, 4 * sizeMultiplier)
+				quantum.SpreadAngle = Vector2.new(90, 90)
+				quantum.Enabled = true
+				table.insert(effects, quantum)
+				table.insert(effects, attachment)
+				
+				local thread = coroutine.create(function()
+					local originalTransparencies = {}
+					for _, part in ipairs(allParts) do
+						originalTransparencies[part] = part.Transparency
+					end
+					
+					while task.wait(math.random() * 0.2 + 0.1) do
+						local part = allParts[math.random(#allParts)]
+						if part then
+							part.Transparency = 0.7
+							task.wait(0.05)
+							part.Transparency = originalTransparencies[part]
+						end
+					end
+				end)
+				coroutine.resume(thread)
+				table.insert(effects, thread)
 
-	elseif mutationName == "Unknown" then
-		local swirl = Instance.new("ParticleEmitter")
-		swirl.Texture = "rbxassetid://248884259" -- Swirl texture
-		swirl.Color = ColorSequence.new(Color3.fromRGB(170, 0, 255), Color3.fromRGB(0, 0, 0))
-		swirl.Size = NumberSequence.new(0.5, 1.5)
-		swirl.Lifetime = NumberRange.new(1, 2)
-		swirl.Rate = 10
-		swirl.Speed = NumberRange.new(0)
-		swirl.Drag = 1
-		swirl.RotSpeed = NumberRange.new(-90, 90)
-		swirl.Parent = handle
-		table.insert(effects, swirl)
+			elseif mutationName == "Unknown" then
+				-- Create mysterious dark energy swirls
+				local attachment = Instance.new("Attachment")
+				attachment.Parent = primaryPart
+				
+				local swirl = Instance.new("ParticleEmitter")
+				swirl.Parent = attachment
+				swirl.Texture = "rbxasset://textures/particles/smoke_main.dds"
+				swirl.Color = ColorSequence.new{
+					ColorSequenceKeypoint.new(0, Color3.fromRGB(170, 0, 255)),
+					ColorSequenceKeypoint.new(0.5, Color3.fromRGB(85, 0, 127)),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))
+				}
+				swirl.LightEmission = 0.3
+				swirl.Size = NumberSequence.new{
+					NumberSequenceKeypoint.new(0, 0.2 * sizeMultiplier),
+					NumberSequenceKeypoint.new(0.5, 0.8 * sizeMultiplier),
+					NumberSequenceKeypoint.new(1, 1.2 * sizeMultiplier)
+				}
+				swirl.Transparency = NumberSequence.new{
+					NumberSequenceKeypoint.new(0, 0.2),
+					NumberSequenceKeypoint.new(0.5, 0.6),
+					NumberSequenceKeypoint.new(1, 1)
+				}
+				swirl.Lifetime = NumberRange.new(2, 4)
+				swirl.Rate = math.floor(8 * sizeMultiplier)
+				swirl.Speed = NumberRange.new(0.5 * sizeMultiplier, 2 * sizeMultiplier)
+				swirl.SpreadAngle = Vector2.new(20, 20)
+				swirl.Drag = 3
+				swirl.RotSpeed = NumberRange.new(-180, 180)
+				swirl.Enabled = true
+				table.insert(effects, swirl)
+				table.insert(effects, attachment)
+			end
+		end
 	end
 
 	return effects

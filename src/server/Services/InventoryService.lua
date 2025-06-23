@@ -38,10 +38,9 @@ local function sellItem(player: Player, itemToSell: Instance)
 		return
 	end
 
-	local mutationName = itemToSell:GetAttribute("Mutation")
-	local mutationConfig = mutationName and GameConfig.Mutations[mutationName]
+	local mutationConfigs = ItemValueCalculator.GetMutationConfigs(itemToSell)
 	local size = itemToSell:GetAttribute("Size") or 1
-	local sellPrice = ItemValueCalculator.GetValue(itemConfig, mutationConfig, size)
+	local sellPrice = ItemValueCalculator.GetValue(itemConfig, mutationConfigs, size)
 
 	itemToSell:Destroy()
 
@@ -70,10 +69,9 @@ local function sellAllItems(player: Player)
 			local itemConfig = GameConfig.Items[itemName]
 			
 			if itemConfig then
-				local mutationName = itemToSell:GetAttribute("Mutation")
-				local mutationConfig = mutationName and GameConfig.Mutations[mutationName]
+				local mutationConfigs = ItemValueCalculator.GetMutationConfigs(itemToSell)
 				local size = itemToSell:GetAttribute("Size") or 1
-				totalSellPrice = totalSellPrice + ItemValueCalculator.GetValue(itemConfig, mutationConfig, size)
+				totalSellPrice = totalSellPrice + ItemValueCalculator.GetValue(itemConfig, mutationConfigs, size)
 				itemsSold = itemsSold + 1
 				itemToSell:Destroy()
 			end
@@ -113,10 +111,9 @@ local function sellUnlockedItems(player: Player)
 			local itemConfig = GameConfig.Items[itemName]
 			
 			if itemConfig then
-				local mutationName = itemToSell:GetAttribute("Mutation")
-				local mutationConfig = mutationName and GameConfig.Mutations[mutationName]
+				local mutationConfigs = ItemValueCalculator.GetMutationConfigs(itemToSell)
 				local size = itemToSell:GetAttribute("Size") or 1
-				totalSellPrice = totalSellPrice + ItemValueCalculator.GetValue(itemConfig, mutationConfig, size)
+				totalSellPrice = totalSellPrice + ItemValueCalculator.GetValue(itemConfig, mutationConfigs, size)
 				itemsSold = itemsSold + 1
 				itemToSell:Destroy()
 			end

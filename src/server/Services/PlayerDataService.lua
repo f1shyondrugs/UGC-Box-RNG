@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage.Shared
 local GameConfig = require(Shared.Modules.GameConfig)
 local ItemValueCalculator = require(Shared.Modules.ItemValueCalculator)
+local Remotes = require(Shared.Remotes.Remotes)
 
 -- It's good practice to have a unique key for your datastore
 -- and to version it in case you change the data structure later.
@@ -70,14 +71,13 @@ local function calculatePlayerRAP(player)
 		local itemName = item:GetAttribute("ItemName") or item.Name
 		local itemConfig = GameConfig.Items[itemName]
 		if itemConfig then
-			local mutationName = item:GetAttribute("Mutation")
-			local mutationConfig = mutationName and GameConfig.Mutations[mutationName] or nil
+			local mutationConfigs = ItemValueCalculator.GetMutationConfigs(item)
 			local size = item:GetAttribute("Size") or 1
 			
 			table.insert(inventoryData, {
 				ItemName = itemName,
 				ItemConfig = itemConfig,
-				MutationConfig = mutationConfig,
+				MutationConfigs = mutationConfigs,
 				Size = size
 			})
 		end
@@ -150,8 +150,18 @@ local function onPlayerAdded(player: Player)
 				end
 				
 				item:SetAttribute("Size", itemData.size)
-				if itemData.mutation then
+				if itemData.mutations then
+					-- New multiple mutations format
+					local HttpService = game:GetService("HttpService")
+					item:SetAttribute("Mutations", HttpService:JSONEncode(itemData.mutations))
+					-- Keep backward compatibility with single Mutation attribute
+					item:SetAttribute("Mutation", itemData.mutations[1])
+				elseif itemData.mutation then
+					-- Legacy single mutation format
 					item:SetAttribute("Mutation", itemData.mutation)
+					-- Also store in new format for consistency
+					local HttpService = game:GetService("HttpService")
+					item:SetAttribute("Mutations", HttpService:JSONEncode({itemData.mutation}))
 				end
 				if itemData.locked then
 					item:SetAttribute("Locked", itemData.locked)
@@ -195,6 +205,9 @@ local function onPlayerAdded(player: Player)
 		-- Calculate and set RAP
 		updatePlayerRAP(player)
 		
+		-- Update collection with existing inventory items
+		DataService.UpdatePlayerCollection(player)
+		
 		print("Player data loaded for " .. player.Name)
 	else
 		-- New player or data load failed
@@ -211,10 +224,12 @@ local function onPlayerAdded(player: Player)
 	inventory.ChildAdded:Connect(function()
 		task.wait(0.1) -- Small delay to ensure attributes are set
 		updatePlayerRAP(player)
+		DataService.UpdatePlayerCollection(player) -- Update collection when new items are added
 	end)
 	
 	inventory.ChildRemoved:Connect(function()
 		updatePlayerRAP(player)
+		-- Don't remove from collection when items are sold/removed - keep discovery history
 	end)
 end
 
@@ -239,13 +254,34 @@ local function saveData(player: Player)
 
 	if inventory then
 		for _, item in ipairs(inventory:GetChildren()) do
-			table.insert(dataToSave.inventory, {
+			local itemData = {
 				uuid = item.Name, -- Save the UUID as the unique identifier
 				name = item:GetAttribute("ItemName") or item.Name, -- ItemName attribute or legacy fallback
 				size = item:GetAttribute("Size"),
-				mutation = item:GetAttribute("Mutation"),
 				locked = item:GetAttribute("Locked")
-			})
+			}
+			
+			-- Save mutations in new format if available, fall back to old format
+			local mutationsJson = item:GetAttribute("Mutations")
+			if mutationsJson then
+				local HttpService = game:GetService("HttpService")
+				local success, mutations = pcall(function()
+					return HttpService:JSONDecode(mutationsJson)
+				end)
+				if success and mutations then
+					itemData.mutations = mutations
+					-- Also save first mutation for backward compatibility
+					itemData.mutation = mutations[1]
+				end
+			else
+				-- Legacy single mutation format
+				local singleMutation = item:GetAttribute("Mutation")
+				if singleMutation then
+					itemData.mutation = singleMutation
+				end
+			end
+			
+			table.insert(dataToSave.inventory, itemData)
 		end
 	end
 	
@@ -297,6 +333,11 @@ function DataService.Start()
 		task.spawn(onPlayerAdded, player)
 	end
 
+	-- Connect remote functions
+	Remotes.GetPlayerCollection.OnServerInvoke = function(player)
+		return DataService.GetPlayerCollection(player)
+	end
+
 	-- Save data on server shutdown
 	game:BindToClose(function()
 		print("BindToClose triggered. Saving data for all players.")
@@ -328,6 +369,118 @@ end
 -- Expose function for other services to trigger a save
 function DataService.Save(player)
 	task.spawn(saveData, player)
+end
+
+-- Collection datastore for tracking discovered items
+local collectionDataStore = DataStoreService:GetDataStore("PlayerCollections_V1")
+
+-- Function to update player's collection based on current inventory
+function DataService.UpdatePlayerCollection(player)
+	local inventory = player:FindFirstChild("Inventory")
+	if not inventory then return end
+	
+	task.spawn(function()
+		local userId = player.UserId
+		local collectionKey = "collection_" .. userId
+		
+		-- Load existing collection
+		local existingCollection = {}
+		local success, data = pcall(function()
+			return collectionDataStore:GetAsync(collectionKey)
+		end)
+		
+		if success and data then
+			existingCollection = data
+		end
+		
+		-- Update collection with current inventory
+		local hasUpdates = false
+		for _, item in ipairs(inventory:GetChildren()) do
+			local itemName = item:GetAttribute("ItemName")
+			local itemConfig = GameConfig.Items[itemName]
+			
+			if itemConfig then
+				local size = item:GetAttribute("Size") or 1
+				local mutations = {}
+				
+				-- Get mutations
+				local mutationsJson = item:GetAttribute("Mutations")
+				if mutationsJson then
+					local HttpService = game:GetService("HttpService")
+					local decodeSuccess, decodedMutations = pcall(function()
+						return HttpService:JSONDecode(mutationsJson)
+					end)
+					if decodeSuccess and decodedMutations then
+						mutations = decodedMutations
+					end
+				else
+					local singleMutation = item:GetAttribute("Mutation")
+					if singleMutation then
+						mutations = {singleMutation}
+					end
+				end
+				
+				-- Initialize item collection if not exists
+				if not existingCollection[itemName] then
+					existingCollection[itemName] = {
+						Discovered = true,
+						MaxSize = size,
+						Mutations = {}
+					}
+					hasUpdates = true
+				else
+					-- Update max size if current item is larger
+					if size > existingCollection[itemName].MaxSize then
+						existingCollection[itemName].MaxSize = size
+						hasUpdates = true
+					end
+				end
+				
+				-- Track mutations discovered
+				for _, mutationName in ipairs(mutations) do
+					if not existingCollection[itemName].Mutations[mutationName] then
+						existingCollection[itemName].Mutations[mutationName] = true
+						hasUpdates = true
+					end
+				end
+				
+				-- Track if item was found without mutations
+				if #mutations == 0 then
+					if not existingCollection[itemName].Mutations["None"] then
+						existingCollection[itemName].Mutations["None"] = true
+						hasUpdates = true
+					end
+				end
+			end
+		end
+		
+		-- Save updated collection if there are changes
+		if hasUpdates then
+			local saveSuccess, err = pcall(function()
+				collectionDataStore:SetAsync(collectionKey, existingCollection)
+			end)
+			
+			if not saveSuccess then
+				warn("Failed to save collection data for " .. player.Name .. ": " .. tostring(err))
+			end
+		end
+	end)
+end
+
+-- Function to get player's collection data
+function DataService.GetPlayerCollection(player)
+	local userId = player.UserId
+	local collectionKey = "collection_" .. userId
+	
+	local success, data = pcall(function()
+		return collectionDataStore:GetAsync(collectionKey)
+	end)
+	
+	if success and data then
+		return data
+	else
+		return {}
+	end
 end
 
 return DataService 

@@ -12,7 +12,7 @@ local Box = require(Shared.Modules.Box)
 
 local BoxService = {}
 
-local MAX_BOXES = 4
+local MAX_BOXES = 16
 local INVENTORY_LIMIT = 50
 local activeBoxes = {} -- boxPart -> Box object
 local playerBoxCount = {} -- player.UserId -> number
@@ -218,12 +218,12 @@ local function openBox(player: Player, boxPart: Part)
 	end
 
 	if rewardItemName then
-		local mutationName = nil
 		local size = 1 -- Default to 1
+		local mutations = {}
 
 		local inventory = player:FindFirstChild("Inventory")
 		if inventory then
-			-- New, corrected mutation roll logic
+			-- New, corrected mutation roll logic - now supports multiple mutations
 			
 			-- 1. Create a sorted list of mutations, rarest first
 			local sortedMutations = {}
@@ -234,12 +234,12 @@ local function openBox(player: Player, boxPart: Part)
 				return a.chance < b.chance
 			end)
 	
-			-- 2. Roll for each mutation, starting with the rarest
+			-- 2. Roll for each mutation independently - items can now get multiple mutations
 			for _, mutationInfo in ipairs(sortedMutations) do
-				local roll = math.random(1, 100)
+				-- Roll a decimal between 0 and 100 to support fractional chances
+				local roll = math.random() * 100
 				if roll <= mutationInfo.chance then
-					mutationName = mutationInfo.name
-					break -- Award the first successful roll and stop
+					table.insert(mutations, mutationInfo.name)
 				end
 			end
 			
@@ -286,8 +286,9 @@ local function openBox(player: Player, boxPart: Part)
 			-- Store the reward on the box part instead of awarding it immediately
 			boxPart:SetAttribute("RewardItem", rewardItemName)
 			boxPart:SetAttribute("RewardSize", size)
-			if mutationName then
-				boxPart:SetAttribute("RewardMutation", mutationName)
+			if #mutations > 0 then
+				-- Store mutations as a JSON string to support multiple mutations
+				boxPart:SetAttribute("RewardMutations", HttpService:JSONEncode(mutations))
 			end
 
 			-- Save the player's data immediately after they receive an item
@@ -297,7 +298,7 @@ local function openBox(player: Player, boxPart: Part)
 			Remotes.Notify:FireClient(player, "Inventory is full! Reward was lost.", "Error")
 		end
 
-		Remotes.PlayAnimation:FireClient(player, boxPart, rewardItemName, mutationName, size)
+		Remotes.PlayAnimation:FireClient(player, boxPart, rewardItemName, mutations, size)
 	else
 		-- This should not happen if chances are configured correctly, but as a fallback,
 		-- we MUST clean up the box properly to prevent ghost boxes.
@@ -346,12 +347,29 @@ local function onAnimationComplete(player: Player, boxPart: Part)
 			item:SetAttribute("ItemName", rewardItemName)
 			item:SetAttribute("Size", boxPart:GetAttribute("RewardSize"))
 
-			local mutationName = boxPart:GetAttribute("RewardMutation")
-			if mutationName then
-				item:SetAttribute("Mutation", mutationName)
+			local mutationsJson = boxPart:GetAttribute("RewardMutations")
+			local mutations = {}
+			if mutationsJson then
+				local HttpService = game:GetService("HttpService")
+				local success, decodedMutations = pcall(function()
+					return HttpService:JSONDecode(mutationsJson)
+				end)
+				if success and decodedMutations then
+					mutations = decodedMutations
+				end
+			end
+			
+			if #mutations > 0 then
+				-- Store mutations as a JSON string to support multiple mutations
+				item:SetAttribute("Mutations", HttpService:JSONEncode(mutations))
+				-- Keep backward compatibility with single Mutation attribute for existing code
+				item:SetAttribute("Mutation", mutations[1])
 			end
 
 			item.Parent = inventory
+
+			-- Update the player's collection with the new item
+			PlayerDataService.UpdatePlayerCollection(player)
 
 			-- Save the player's data immediately after they receive an item
 			PlayerDataService.Save(player)

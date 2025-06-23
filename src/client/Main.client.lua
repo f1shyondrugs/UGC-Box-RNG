@@ -14,13 +14,14 @@ local BoxAnimator = require(script.Parent.Controllers.BoxAnimator)
 local CameraShaker = require(script.Parent.Controllers.CameraShaker)
 local Notifier = require(script.Parent.Controllers.Notifier)
 local InventoryController = require(script.Parent.Controllers.InventoryController)
+local CollectionController = require(script.Parent.Controllers.CollectionController)
 local NameplateController = require(script.Parent.Controllers.NameplateController)
 local SoundController = require(script.Parent.Controllers.SoundController)
 local BuyButtonUI = require(script.Parent.UI.BuyButtonUI)
 local StatsUI = require(script.Parent.UI.StatsUI)
 
 -- Constants
-local MAX_BOXES = 4
+local MAX_BOXES = 16
 local BUY_COOLDOWN = 0.5 -- seconds
 
 -- State
@@ -36,6 +37,7 @@ soundController:playMusic()
 CameraShaker.Start()
 Notifier.Start(PlayerGui)
 InventoryController.Start(PlayerGui, openingBoxes, soundController)
+CollectionController.Start(PlayerGui, soundController)
 NameplateController.Start()
 
 -- Create Stats UI at the top
@@ -212,15 +214,23 @@ else
 	end)
 end
 
-Remotes.PlayAnimation.OnClientEvent:Connect(function(boxPart, itemName, mutationName, size)
+Remotes.PlayAnimation.OnClientEvent:Connect(function(boxPart, itemName, mutations, size)
 	openingBoxes[boxPart] = true
 
 	-- Get the full config tables before calling the animators
 	local itemConfig = GameConfig.Items[itemName]
 	if not itemConfig then return end -- Safety check
-	local mutationConfig = mutationName and GameConfig.Mutations[mutationName]
+	
+	local mutationConfigs = {}
+	local mutationNames = mutations or {}
+	for _, mutationName in ipairs(mutationNames) do
+		local mutationConfig = GameConfig.Mutations[mutationName]
+		if mutationConfig then
+			table.insert(mutationConfigs, mutationConfig)
+		end
+	end
 
-	local duration = BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationName, mutationConfig, size, soundController)
+	local duration = BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationNames, mutationConfigs, size, soundController)
 
 	-- Remove early reward sound - it will now play when text appears
 	-- soundController:playRewardSound(itemConfig.Rarity)
@@ -228,7 +238,7 @@ Remotes.PlayAnimation.OnClientEvent:Connect(function(boxPart, itemName, mutation
 	task.delay(duration, function()
 		if boxPart then
 			openingBoxes[boxPart] = nil
-			BoxAnimator.AnimateFloatingText(boxPart.Position, itemName, itemConfig, mutationName, mutationConfig, size, soundController)
+			BoxAnimator.AnimateFloatingText(boxPart.Position, itemName, itemConfig, mutationNames, mutationConfigs, size, soundController)
 			Remotes.AnimationComplete:FireServer(boxPart)
 		end
 	end)

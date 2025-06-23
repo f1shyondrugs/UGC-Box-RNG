@@ -21,11 +21,77 @@ local originalCamera = nil
 local inventoryCamera = nil
 local cameraConnection = nil
 local hiddenUIs = {}
+local selectedItem = nil
 local selectedItemTemplate = nil
+local currentRainbowThread = nil -- Track current rainbow animation
 local isAnimating = false
 local ANIMATION_TIME = 0.3
 local ANIMATION_STYLE = Enum.EasingStyle.Quint
 local ANIMATION_DIRECTION = Enum.EasingDirection.Out
+
+local function setupCharacterViewport(ui)
+	local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+	if not character then return end
+	
+	local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 5)
+	if not humanoidRootPart then
+		warn("Could not find HumanoidRootPart for character viewport.")
+		return
+	end
+
+	-- Clear existing character from viewport
+	if ui and ui.CharacterViewport then
+		ui.CharacterViewport:ClearAllChildren()
+	else
+		return -- Can't continue if UI isn't ready
+	end
+
+	-- Clone the character for the viewport
+	local success, characterClone = pcall(function()
+		return character:Clone()
+	end)
+
+	if not success or not characterClone then
+		warn("Failed to clone character for viewport. It may have been destroyed.")
+		return
+	end
+	
+	-- Remove scripts and other unnecessary parts
+	for _, child in pairs(characterClone:GetDescendants()) do
+		if child:IsA("Script") or child:IsA("LocalScript") or child:IsA("ModuleScript") then
+			child:Destroy()
+		elseif child:IsA("Sound") then
+			child:Destroy()
+		end
+	end
+
+	-- Add the character to the viewport
+	characterClone.Parent = ui.CharacterViewport
+
+	-- Create camera for character viewport
+	local camera = Instance.new("Camera")
+	camera.Parent = ui.CharacterViewport
+	ui.CharacterViewport.CurrentCamera = camera
+
+	-- Position camera to face character from front
+	local characterPosition = humanoidRootPart.Position
+	local characterSize = characterClone:GetExtentsSize()
+	
+	-- Position camera in front and above character
+	local cameraDistance = math.max(characterSize.X, characterSize.Y, characterSize.Z) * 1.2
+	camera.CFrame = CFrame.lookAt(
+		characterPosition + Vector3.new(0, characterSize.Y * 0.1, cameraDistance),
+		characterPosition + Vector3.new(0, characterSize.Y * 0.3, 0)
+	)
+
+	-- Add subtle camera rotation animation
+	local rotationTween = TweenService:Create(
+		camera,
+		TweenInfo.new(8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+		{CFrame = camera.CFrame * CFrame.Angles(0, math.rad(10), 0)}
+	)
+	rotationTween:Play()
+end
 
 function InventoryController.Start(parentGui, openingBoxes, soundController)
 	local inventory = LocalPlayer:WaitForChild("Inventory")
@@ -35,67 +101,75 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	local ui = InventoryUI.Create(parentGui)
 	
 	local itemEntries = {} -- itemInstance -> { Template, LockIcon, Connection }
-	local selectedItem = nil
+	local searchText = ""
 
-	local function setupCharacterViewport()
-		local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-		if not character then return end
-		
-		local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 5)
-		if not humanoidRootPart then
-			warn("Could not find HumanoidRootPart for character viewport.")
-			return
-		end
-
-		-- Clear existing character from viewport
-		ui.CharacterViewport:ClearAllChildren()
-
-		-- Clone the character for the viewport
-		local success, characterClone = pcall(function()
-			return character:Clone()
-		end)
-
-		if not success or not characterClone then
-			warn("Failed to clone character for viewport. It may have been destroyed.")
-			return
+	local function matchesSearch(itemInstance, searchQuery)
+		if not searchQuery or searchQuery == "" then
+			return true
 		end
 		
-		-- Remove scripts and other unnecessary parts
-		for _, child in pairs(characterClone:GetDescendants()) do
-			if child:IsA("Script") or child:IsA("LocalScript") or child:IsA("ModuleScript") then
-				child:Destroy()
-			elseif child:IsA("Sound") then
-				child:Destroy()
+		searchQuery = string.lower(searchQuery)
+		
+		-- Get item name
+		local itemName = itemInstance:GetAttribute("ItemName") or itemInstance.Name
+		if string.find(string.lower(itemName), searchQuery) then
+			return true
+		end
+		
+		-- Check item config properties
+		local itemConfig = GameConfig.Items[itemName]
+		if itemConfig then
+			-- Check rarity
+			if itemConfig.Rarity and string.find(string.lower(itemConfig.Rarity), searchQuery) then
+				return true
+			end
+			
+			-- Check type
+			if itemConfig.Type and string.find(string.lower(itemConfig.Type), searchQuery) then
+				return true
 			end
 		end
-
-		-- Add the character to the viewport
-		characterClone.Parent = ui.CharacterViewport
-
-		-- Create camera for character viewport
-		local camera = Instance.new("Camera")
-		camera.Parent = ui.CharacterViewport
-		ui.CharacterViewport.CurrentCamera = camera
-
-		-- Position camera to face character from front
-		local characterPosition = humanoidRootPart.Position
-		local characterSize = characterClone:GetExtentsSize()
 		
-		-- Position camera in front and above character
-		local cameraDistance = math.max(characterSize.X, characterSize.Y, characterSize.Z) * 1.2
-		camera.CFrame = CFrame.lookAt(
-			characterPosition + Vector3.new(0, characterSize.Y * 0.1, cameraDistance),
-			characterPosition + Vector3.new(0, characterSize.Y * 0.3, 0)
-		)
-
-		-- Add subtle camera rotation animation
-		local rotationTween = TweenService:Create(
-			camera,
-			TweenInfo.new(8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-			{CFrame = camera.CFrame * CFrame.Angles(0, math.rad(10), 0)}
-		)
-		rotationTween:Play()
+		-- Check mutations
+		local mutationNames = ItemValueCalculator.GetMutationNames(itemInstance)
+		for _, mutationName in ipairs(mutationNames) do
+			if string.find(string.lower(mutationName), searchQuery) then
+				return true
+			end
+		end
+		
+		-- Check size (convert to string for search)
+		local size = itemInstance:GetAttribute("Size")
+		if size and string.find(tostring(size), searchQuery) then
+			return true
+		end
+		
+		return false
 	end
+
+	local function filterInventory()
+		for itemInstance, entry in pairs(itemEntries) do
+			if entry.Template then
+				local visible = matchesSearch(itemInstance, searchText)
+				entry.Template.Visible = visible
+			end
+		end
+	end
+
+	local function onSearchChanged()
+		searchText = ui.SearchBox.Text
+		ui.ClearButton.Visible = searchText ~= ""
+		filterInventory()
+	end
+
+	-- Connect search functionality
+	ui.SearchBox:GetPropertyChangedSignal("Text"):Connect(onSearchChanged)
+	ui.ClearButton.MouseButton1Click:Connect(function()
+		ui.SearchBox.Text = ""
+		ui.SearchBox:CaptureFocus()
+	end)
+
+	
 
 	local function createMannequin()
 		local mannequin = Instance.new("Model")
@@ -290,35 +364,50 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	end
 
 	local function resetDetailsPanel()
-		ui.DetailTitle.Text = "ITEM DETAILS"
-		ui.DetailTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+		-- Clean up any existing rainbow animation
+		if currentRainbowThread then
+			coroutine.close(currentRainbowThread)
+			currentRainbowThread = nil
+		end
+		
+		selectedItem = nil
+		if selectedItemTemplate then
+			local highlight = selectedItemTemplate:FindFirstChild("SelectionHighlight")
+			if highlight then
+				highlight.Visible = false
+			end
+		end
+		selectedItemTemplate = nil
+		
+		ui.DetailTitle.Text = "Select an item to view details"
+		ui.DetailTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
 		ui.DetailItemType.Text = ""
 		ui.DetailItemDescription.Text = ""
 		ui.DetailItemRarity.Text = ""
 		ui.DetailItemMutation.Text = ""
 		ui.DetailItemSize.Text = ""
 		ui.DetailItemValue.Text = ""
+		
 		ui.SellButton.Visible = false
 		ui.LockButton.Visible = false
 		ui.EquipButton.Visible = false
 		ui.UnequipButton.Visible = false
 		
-		-- Clear item viewport
-		ui.ItemViewport:ClearAllChildren()
-		
-		-- Clear selection highlight
-		if selectedItemTemplate then
-			local highlight = selectedItemTemplate:FindFirstChild("SelectionHighlight")
-			if highlight then
-				highlight.Visible = false
+		-- Clear the 3D preview
+		for _, child in ipairs(ui.ItemViewport:GetChildren()) do
+			if child:IsA("Model") or child:IsA("Camera") then
+				child:Destroy()
 			end
-			selectedItemTemplate = nil
 		end
-		
-		selectedItem = nil
 	end
 
 	local function updateDetails(itemInstance, itemTemplate)
+		-- Clean up any existing rainbow animation
+		if currentRainbowThread then
+			coroutine.close(currentRainbowThread)
+			currentRainbowThread = nil
+		end
+		
 		selectedItem = itemInstance
 		selectedItemTemplate = itemTemplate
 		
@@ -334,14 +423,45 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		if not itemConfig then return end
 		
 		local rarityConfig = GameConfig.Rarities[itemConfig.Rarity]
-		local mutationName = itemInstance:GetAttribute("Mutation")
-		local mutationConfig = mutationName and GameConfig.Mutations[mutationName]
+		local mutationNames = ItemValueCalculator.GetMutationNames(itemInstance)
+		local mutationConfigs = ItemValueCalculator.GetMutationConfigs(itemInstance)
 		local size = itemInstance:GetAttribute("Size") or 1
 		local isLocked = itemInstance:GetAttribute("Locked") or false
 
-		local displayName = mutationName and (mutationName .. " " .. itemName) or itemName
+		-- Create display name with all mutations
+		local displayName = itemName
+		local hasRainbow = false
+		if #mutationNames > 0 then
+			displayName = table.concat(mutationNames, " ") .. " " .. itemName
+			-- Check for Rainbow mutation
+			for _, mutationName in ipairs(mutationNames) do
+				if mutationName == "Rainbow" then
+					hasRainbow = true
+					break
+				end
+			end
+		end
 		ui.DetailTitle.Text = displayName
-		ui.DetailTitle.TextColor3 = mutationConfig and mutationConfig.Color or rarityConfig.Color
+		
+		-- Use the color of the first/rarest mutation or rarity color
+		local titleColor = rarityConfig.Color
+		if mutationConfigs and #mutationConfigs > 0 and not hasRainbow then
+			titleColor = mutationConfigs[1].Color or titleColor
+		end
+		ui.DetailTitle.TextColor3 = titleColor
+		
+		-- Start rainbow text animation for detail title if item has Rainbow mutation
+		if hasRainbow then
+			currentRainbowThread = coroutine.create(function()
+				while ui.DetailTitle.Parent do
+					local hue = (tick() * 1.5) % 5 / 5 -- Same speed as inventory
+					local rainbowColor = Color3.fromHSV(hue, 1, 1)
+					ui.DetailTitle.TextColor3 = rainbowColor
+					task.wait(0.1) -- Smooth rainbow animation
+				end
+			end)
+			coroutine.resume(currentRainbowThread)
+		end
 		
 		-- UGC specific details
 		ui.DetailItemType.Text = "Type: " .. (itemConfig.Type or "UGC Item")
@@ -350,17 +470,25 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		ui.DetailItemRarity.Text = "Rarity: " .. itemConfig.Rarity
 		ui.DetailItemRarity.TextColor3 = rarityConfig.Color
 		
-		if mutationName then
-			local mutationInfo = GameConfig.Mutations[mutationName]
-			ui.DetailItemMutation.Text = "Mutation: " .. mutationName .. " (" .. (mutationInfo.Description or "") .. ")"
+		if #mutationNames > 0 then
+			local mutationTexts = {}
+			for _, mutationName in ipairs(mutationNames) do
+				local mutationInfo = GameConfig.Mutations[mutationName]
+				local mutationText = mutationName
+				if mutationInfo and mutationInfo.Description then
+					mutationText = mutationText .. " (" .. mutationInfo.Description .. ")"
+				end
+				table.insert(mutationTexts, mutationText)
+			end
+			ui.DetailItemMutation.Text = "Mutations: " .. table.concat(mutationTexts, ", ")
 		else
-			ui.DetailItemMutation.Text = "Mutation: None"
+			ui.DetailItemMutation.Text = "Mutations: None"
 		end
 		
 		ui.DetailItemSize.Text = string.format("Size: %.2f", size)
 		
-		local value = ItemValueCalculator.GetValue(itemConfig, mutationConfig, size)
-		local formattedValue = ItemValueCalculator.GetFormattedValue(itemConfig, mutationConfig, size)
+		local value = ItemValueCalculator.GetValue(itemConfig, mutationConfigs, size)
+		local formattedValue = ItemValueCalculator.GetFormattedValue(itemConfig, mutationConfigs, size)
 		ui.DetailItemValue.Text = "Value: " .. formattedValue
 		
 		-- Update sell button text with value
@@ -399,9 +527,10 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		if not itemConfig then return end
 
 		local rarityConfig = GameConfig.Rarities[itemConfig.Rarity]
-		local mutationConfig = itemInstance:GetAttribute("Mutation") and GameConfig.Mutations[itemInstance:GetAttribute("Mutation")]
+		local mutationNames = ItemValueCalculator.GetMutationNames(itemInstance)
+		local mutationConfigs = ItemValueCalculator.GetMutationConfigs(itemInstance)
 
-		local template = InventoryUI.CreateItemTemplate(itemInstance, itemName, itemConfig, rarityConfig, mutationConfig)
+		local template = InventoryUI.CreateItemTemplate(itemInstance, itemName, itemConfig, rarityConfig, mutationConfigs)
 		template.Parent = ui.ListPanel
 		
 		-- Setup 3D preview for the item in its template
@@ -493,10 +622,22 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		
 		updateInventoryCount()
 		updateItemStatus() -- Set initial state
+		
+		-- Apply search filter to new item
+		filterInventory()
 	end
 
 	local function removeItemEntry(itemInstance)
 		if itemEntries[itemInstance] then
+			-- Clean up rainbow animation for this specific template
+			local template = itemEntries[itemInstance].Template
+			if template then
+				local rainbowThread = template:GetAttribute("RainbowThread")
+				if rainbowThread then
+					coroutine.close(rainbowThread)
+				end
+			end
+			
 			itemEntries[itemInstance].Connection:Disconnect()
 			itemEntries[itemInstance].Template:Destroy()
 			itemEntries[itemInstance] = nil
@@ -518,25 +659,26 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 			-- Show and animate in
 			hideOtherUIs(true)
 			ui.ToggleButton.Visible = false
-			setupCharacterViewport()
+			setupCharacterViewport(ui)
 			
 			ui.MainFrame.Visible = true
 			
-			-- Set initial positions off-screen
-			local leftPanelStartPos = UDim2.new(-0.25, 0, 0.05, 0)
-			local rightPanelStartPos = UDim2.new(1, 0, 0.05, 0)
-			ui.LeftPanel.Position = leftPanelStartPos
-			ui.RightPanel.Position = rightPanelStartPos
+			-- Set initial positions & transparency
+			ui.LeftPanel.Position = UDim2.new(-0.25, 0, 0.05, 0)
+			ui.RightPanel.Position = UDim2.new(1.25, 0, 0.05, 0)
+			ui.CharacterViewport.BackgroundTransparency = 1
 
 			-- Define target positions on-screen
 			local leftPanelEndPos = UDim2.new(0, 10, 0.05, 0)
-			local rightPanelEndPos = UDim2.new(0.75, 0, 0.05, 0)
+			local rightPanelEndPos = UDim2.new(1, -10, 0.05, 0)
 			
 			local leftTween = TweenService:Create(ui.LeftPanel, tweenInfo, {Position = leftPanelEndPos})
 			local rightTween = TweenService:Create(ui.RightPanel, tweenInfo, {Position = rightPanelEndPos})
+			local viewportTween = TweenService:Create(ui.CharacterViewport, tweenInfo, {BackgroundTransparency = 1})
 			
 			leftTween:Play()
 			rightTween:Play()
+			if viewportTween then viewportTween:Play() end
 
 			task.delay(ANIMATION_TIME, function()
 				isAnimating = false
@@ -544,13 +686,33 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		else
 			-- Animate out and hide
 			local leftPanelEndPos = UDim2.new(-0.25, 0, 0.05, 0)
-			local rightPanelEndPos = UDim2.new(1, 0, 0.05, 0)
+			local rightPanelEndPos = UDim2.new(1.25, 0, 0.05, 0)
 			
 			local leftTween = TweenService:Create(ui.LeftPanel, tweenInfo, {Position = leftPanelEndPos})
 			local rightTween = TweenService:Create(ui.RightPanel, tweenInfo, {Position = rightPanelEndPos})
+			local viewportTween = TweenService:Create(ui.CharacterViewport, tweenInfo, {BackgroundTransparency = 1})
 
 			leftTween:Play()
 			rightTween:Play()
+			if viewportTween then viewportTween:Play() end
+
+			-- Clean up rainbow animations when closing
+			if currentRainbowThread then
+				coroutine.close(currentRainbowThread)
+				currentRainbowThread = nil
+			end
+			
+			-- Clean up rainbow animations in item templates
+			for itemInstance, entry in pairs(itemEntries) do
+				local template = entry.Template
+				if template then
+					local rainbowThread = template:GetAttribute("RainbowThread")
+					if rainbowThread then
+						coroutine.close(rainbowThread)
+						template:SetAttribute("RainbowThread", nil)
+					end
+				end
+			end
 
 			task.delay(ANIMATION_TIME, function()
 				ui.MainFrame.Visible = false
@@ -561,14 +723,7 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		end
 	end
 
-	-- Connect character spawned event
-	LocalPlayer.CharacterAdded:Connect(function()
-		-- Wait a bit for character to fully load
-		task.wait(2)
-		if ui.MainFrame.Visible then
-			setupCharacterViewport()
-		end
-	end)
+	
 
 	-- Connect Buttons
 	ui.ToggleButton.MouseButton1Click:Connect(function()
@@ -645,7 +800,18 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		end
 	end)
 
-	-- Initial population
+	-- Initial population and search setup
+	for _, itemInstance in ipairs(inventory:GetChildren()) do
+		addItemEntry(itemInstance)
+	end
+	
+	-- Apply initial search filter
+	filterInventory()
+
+	inventory.ChildAdded:Connect(addItemEntry)
+	inventory.ChildRemoved:Connect(removeItemEntry)
+	
+	-- Initialize UI state
 	resetDetailsPanel()
 	updateInventoryCount()
 	updateRAP()
@@ -655,13 +821,14 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	
 	-- Make global action buttons visible
 	ui.SellUnlockedButton.Visible = true
-	
-	for _, itemInstance in ipairs(inventory:GetChildren()) do
-		addItemEntry(itemInstance)
-	end
 
-	inventory.ChildAdded:Connect(addItemEntry)
-	inventory.ChildRemoved:Connect(removeItemEntry)
+	LocalPlayer.CharacterAdded:Connect(function()
+		-- Wait a bit for character to fully load
+		task.wait(2)
+		if ui.MainFrame.Visible then
+			setupCharacterViewport(ui)
+		end
+	end)
 end
 
 return InventoryController 

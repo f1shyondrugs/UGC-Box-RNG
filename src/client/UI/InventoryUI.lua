@@ -3,6 +3,8 @@
 
 local InventoryUI = {}
 
+local ItemValueCalculator = require(game.ReplicatedStorage.Shared.Modules.ItemValueCalculator)
+
 function InventoryUI.Create(parent)
 	local components = {}
 
@@ -13,12 +15,15 @@ function InventoryUI.Create(parent)
 	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	components.ScreenGui = screenGui
 
+	-- Add a UIScale to manage UI scaling across different resolutions
+	local uiScale = Instance.new("UIScale")
+	uiScale.Parent = screenGui
+
 	-- Toggle Button (compact design)
 	local toggleButton = Instance.new("TextButton")
 	toggleButton.Name = "InventoryToggleButton"
-	toggleButton.Size = UDim2.new(0.06, 0, 0.06, 0)
-	toggleButton.Position = UDim2.new(0.02, 0, 0.5, 0)
-	toggleButton.AnchorPoint = Vector2.new(0, 0.5)
+	toggleButton.Size = UDim2.new(0, 50, 0, 50)
+	toggleButton.Position = UDim2.new(0, 15, 0.5, -25)
 	toggleButton.BackgroundColor3 = Color3.fromRGB(41, 43, 48)
 	toggleButton.BorderSizePixel = 0
 	toggleButton.Text = "📦"
@@ -40,9 +45,9 @@ function InventoryUI.Create(parent)
 	-- Warning icon for full inventory
 	local warningIcon = Instance.new("TextLabel")
 	warningIcon.Name = "WarningIcon"
-	warningIcon.Size = UDim2.new(0.4, 0, 0.4, 0)
+	warningIcon.Size = UDim2.new(0, 20, 0, 20)
+	warningIcon.Position = UDim2.new(1, -5, 0, -5)
 	warningIcon.AnchorPoint = Vector2.new(1, 0)
-	warningIcon.Position = UDim2.new(1.1, 0, -0.1, 0)
 	warningIcon.Text = "!"
 	warningIcon.Font = Enum.Font.SourceSansBold
 	warningIcon.TextScaled = true
@@ -69,21 +74,28 @@ function InventoryUI.Create(parent)
 	mainFrame.Parent = screenGui
 	components.MainFrame = mainFrame
 
-	-- Character Viewport (Center/Background) - Made invisible
+	-- Character Viewport (Center/Background)
 	local characterViewport = Instance.new("ViewportFrame")
 	characterViewport.Name = "CharacterViewport"
-	characterViewport.Size = UDim2.new(0.5, 0, 0.8, 0)
-	characterViewport.Position = UDim2.new(0.25, 0, 0.1, 0)
-	characterViewport.BackgroundTransparency = 1
-	characterViewport.Visible = false -- Made invisible as requested
+	characterViewport.Size = UDim2.new(0.5, -20, 0.9, 0)
+	characterViewport.Position = UDim2.new(0.5, 0, 0.05, 0)
+	characterViewport.AnchorPoint = Vector2.new(0.5, 0)
+	characterViewport.BackgroundColor3 = Color3.fromRGB(20, 22, 25)
+	characterViewport.BorderSizePixel = 0
+	characterViewport.Visible = true
 	characterViewport.ZIndex = 51
 	characterViewport.Parent = mainFrame
+	characterViewport.BackgroundTransparency = 1
 	components.CharacterViewport = characterViewport
+
+	local viewportCorner = Instance.new("UICorner")
+	viewportCorner.CornerRadius = UDim.new(0, 12)
+	viewportCorner.Parent = characterViewport
 
 	-- Left Panel - Item Information
 	local leftPanel = Instance.new("Frame")
 	leftPanel.Name = "LeftPanel"
-	leftPanel.Size = UDim2.new(0.25, -10, 0.9, 0)
+	leftPanel.Size = UDim2.new(0.25, -15, 0.9, 0)
 	leftPanel.Position = UDim2.new(0, 10, 0.05, 0)
 	leftPanel.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
 	leftPanel.BorderSizePixel = 0
@@ -107,8 +119,9 @@ function InventoryUI.Create(parent)
 	-- Right Panel - Item List with 3D Previews
 	local rightPanel = Instance.new("Frame")
 	rightPanel.Name = "RightPanel"
-	rightPanel.Size = UDim2.new(0.25, -10, 0.9, 0)
-	rightPanel.Position = UDim2.new(0.75, 0, 0.05, 0)
+	rightPanel.Size = UDim2.new(0.25, -15, 0.9, 0)
+	rightPanel.Position = UDim2.new(1, -10, 0.05, 0)
+	rightPanel.AnchorPoint = Vector2.new(1, 0)
 	rightPanel.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
 	rightPanel.BorderSizePixel = 0
 	rightPanel.ZIndex = 52
@@ -131,9 +144,8 @@ function InventoryUI.Create(parent)
 	-- Close Button (Top Right)
 	local closeButton = Instance.new("TextButton")
 	closeButton.Name = "CloseButton"
-	closeButton.Size = UDim2.new(0.04, 0, 0.04, 0)
-	closeButton.Position = UDim2.new(0.95, 0, 0.02, 0)
-	closeButton.AnchorPoint = Vector2.new(0.5, 0)
+	closeButton.Size = UDim2.new(0, 40, 0, 40)
+	closeButton.Position = UDim2.new(1, -50, 0, 15)
 	closeButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
 	closeButton.Text = "X"
 	closeButton.Font = Enum.Font.SourceSansBold
@@ -156,11 +168,11 @@ function InventoryUI.Create(parent)
 	-- Title for left panel
 	local detailTitle = Instance.new("TextLabel")
 	detailTitle.Name = "DetailTitle"
-	detailTitle.Size = UDim2.new(1, -20, 0, 40)
-	detailTitle.Position = UDim2.new(0, 10, 0, 10)
+	detailTitle.Size = UDim2.new(1, -20, 0, 35)
+	detailTitle.Position = UDim2.new(0, 10, 0, 8)
 	detailTitle.Text = "ITEM DETAILS"
 	detailTitle.Font = Enum.Font.SourceSansBold
-	detailTitle.TextSize = 24
+	detailTitle.TextSize = 22
 	detailTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 	detailTitle.BackgroundTransparency = 1
 	detailTitle.TextXAlignment = Enum.TextXAlignment.Left
@@ -171,12 +183,13 @@ function InventoryUI.Create(parent)
 	-- Item preview viewport (3D model)
 	local itemViewport = Instance.new("ViewportFrame")
 	itemViewport.Name = "ItemViewport"
-	itemViewport.Size = UDim2.new(1, -20, 0, 150)
-	itemViewport.Position = UDim2.new(0, 10, 0, 60)
+	itemViewport.Size = UDim2.new(1, -20, 0, 120)
+	itemViewport.Position = UDim2.new(0, 10, 0, 50)
 	itemViewport.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
 	itemViewport.BorderSizePixel = 0
 	itemViewport.ZIndex = 53
 	itemViewport.Parent = leftPanel
+	itemViewport.BackgroundTransparency = 1
 	components.ItemViewport = itemViewport
 
 	local itemViewportCorner = Instance.new("UICorner")
@@ -186,8 +199,8 @@ function InventoryUI.Create(parent)
 	-- Details scroll frame
 	local detailsScroll = Instance.new("ScrollingFrame")
 	detailsScroll.Name = "DetailsScroll"
-	detailsScroll.Size = UDim2.new(1, -20, 1, -410) -- Adjusted for RAP label and buttons
-	detailsScroll.Position = UDim2.new(0, 10, 0, 220)
+	detailsScroll.Size = UDim2.new(1, -20, 1, -350) -- More compact
+	detailsScroll.Position = UDim2.new(0, 10, 0, 180)
 	detailsScroll.BackgroundTransparency = 1
 	detailsScroll.BorderSizePixel = 0
 	detailsScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -198,15 +211,15 @@ function InventoryUI.Create(parent)
 	detailsScroll.Parent = leftPanel
 
 	local detailsLayout = Instance.new("UIListLayout")
-	detailsLayout.Padding = UDim.new(0, 8)
+	detailsLayout.Padding = UDim.new(0, 6)
 	detailsLayout.Parent = detailsScroll
 
 	local function createDetailLabel(name, text, textSize)
 		local label = Instance.new("TextLabel")
 		label.Name = name
-		label.Size = UDim2.new(1, 0, 0, textSize and (textSize + 10) or 30)
+		label.Size = UDim2.new(1, 0, 0, textSize and (textSize + 8) or 25)
 		label.Font = Enum.Font.SourceSans
-		label.TextSize = textSize or 16
+		label.TextSize = textSize or 15
 		label.TextColor3 = Color3.fromRGB(220, 221, 222)
 		label.Text = text
 		label.TextXAlignment = Enum.TextXAlignment.Left
@@ -240,11 +253,11 @@ function InventoryUI.Create(parent)
 	-- RAP Display (moved out of scroll)
 	local rapLabel = Instance.new("TextLabel")
 	rapLabel.Name = "RAPLabel"
-	rapLabel.Size = UDim2.new(1, -20, 0, 25)
-	rapLabel.Position = UDim2.new(0, 10, 1, -185)
+	rapLabel.Size = UDim2.new(1, -20, 0, 22)
+	rapLabel.Position = UDim2.new(0, 10, 1, -160)
 	rapLabel.Font = Enum.Font.SourceSansBold
 	rapLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-	rapLabel.TextSize = 18
+	rapLabel.TextSize = 16
 	rapLabel.Text = "Total RAP: R$0"
 	rapLabel.TextXAlignment = Enum.TextXAlignment.Left
 	rapLabel.BackgroundTransparency = 1
@@ -255,24 +268,24 @@ function InventoryUI.Create(parent)
 	-- Action buttons container
 	local buttonContainer = Instance.new("Frame")
 	buttonContainer.Name = "ButtonContainer"
-	buttonContainer.Size = UDim2.new(1, -20, 0, 150)
-	buttonContainer.Position = UDim2.new(0, 10, 1, -160)
+	buttonContainer.Size = UDim2.new(1, -20, 0, 130)
+	buttonContainer.Position = UDim2.new(0, 10, 1, -135)
 	buttonContainer.BackgroundTransparency = 1
 	buttonContainer.ZIndex = 53
 	buttonContainer.Parent = leftPanel
 	
 	local buttonLayout = Instance.new("UIListLayout")
-	buttonLayout.Padding = UDim.new(0, 6)
+	buttonLayout.Padding = UDim.new(0, 5)
 	buttonLayout.Parent = buttonContainer
 
 	local function createActionButton(name, text, color, layoutOrder)
 		local button = Instance.new("TextButton")
 		button.Name = name
-		button.Size = UDim2.new(1, 0, 0, 28)
+		button.Size = UDim2.new(1, 0, 0, 25)
 		button.BackgroundColor3 = color
 		button.Text = text
 		button.Font = Enum.Font.SourceSansBold
-		button.TextSize = 14
+		button.TextSize = 13
 		button.TextColor3 = Color3.fromRGB(255, 255, 255)
 		button.LayoutOrder = layoutOrder or 0
 		button.Visible = false
@@ -280,7 +293,7 @@ function InventoryUI.Create(parent)
 		button.Parent = buttonContainer
 		
 		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 6)
+		corner.CornerRadius = UDim.new(0, 5)
 		corner.Parent = button
 		
 		return button
@@ -289,7 +302,7 @@ function InventoryUI.Create(parent)
 	-- Create action buttons
 	local equipStateContainer = Instance.new("Frame")
 	equipStateContainer.Name = "EquipStateContainer"
-	equipStateContainer.Size = UDim2.new(1, 0, 0, 28)
+	equipStateContainer.Size = UDim2.new(1, 0, 0, 25)
 	equipStateContainer.BackgroundTransparency = 1
 	equipStateContainer.LayoutOrder = 1
 	equipStateContainer.Parent = buttonContainer
@@ -306,26 +319,102 @@ function InventoryUI.Create(parent)
 
 	-- RIGHT PANEL CONTENT
 	
+	-- Header container for title and search
+	local headerContainer = Instance.new("Frame")
+	headerContainer.Name = "HeaderContainer"
+	headerContainer.Size = UDim2.new(1, -20, 0, 80)
+	headerContainer.Position = UDim2.new(0, 10, 0, 8)
+	headerContainer.BackgroundTransparency = 1
+	headerContainer.ZIndex = 53
+	headerContainer.Parent = rightPanel
+	
 	-- Title for right panel
 	local inventoryTitle = Instance.new("TextLabel")
 	inventoryTitle.Name = "InventoryTitle"
-	inventoryTitle.Size = UDim2.new(1, -20, 0, 40)
-	inventoryTitle.Position = UDim2.new(0, 10, 0, 10)
+	inventoryTitle.Size = UDim2.new(1, 0, 0, 35)
+	inventoryTitle.Position = UDim2.new(0, 0, 0, 0)
 	inventoryTitle.Text = "INVENTORY"
 	inventoryTitle.Font = Enum.Font.SourceSansBold
-	inventoryTitle.TextSize = 24
+	inventoryTitle.TextSize = 22
 	inventoryTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 	inventoryTitle.BackgroundTransparency = 1
 	inventoryTitle.TextXAlignment = Enum.TextXAlignment.Left
 	inventoryTitle.ZIndex = 53
-	inventoryTitle.Parent = rightPanel
+	inventoryTitle.Parent = headerContainer
 	components.InventoryTitle = inventoryTitle
+
+	-- Search container
+	local searchContainer = Instance.new("Frame")
+	searchContainer.Name = "SearchContainer"
+	searchContainer.Size = UDim2.new(1, 0, 0, 35)
+	searchContainer.Position = UDim2.new(0, 0, 0, 40)
+	searchContainer.BackgroundColor3 = Color3.fromRGB(35, 40, 50)
+	searchContainer.BorderSizePixel = 0
+	searchContainer.ZIndex = 53
+	searchContainer.Parent = headerContainer
+	
+	local searchCorner = Instance.new("UICorner")
+	searchCorner.CornerRadius = UDim.new(0, 8)
+	searchCorner.Parent = searchContainer
+	
+	local searchStroke = Instance.new("UIStroke")
+	searchStroke.Color = Color3.fromRGB(80, 90, 110)
+	searchStroke.Thickness = 1
+	searchStroke.Transparency = 0.5
+	searchStroke.Parent = searchContainer
+
+	-- Search icon
+	local searchIcon = Instance.new("TextLabel")
+	searchIcon.Name = "SearchIcon"
+	searchIcon.Size = UDim2.new(0, 30, 1, 0)
+	searchIcon.Position = UDim2.new(0, 5, 0, 0)
+	searchIcon.Text = "🔍"
+	searchIcon.Font = Enum.Font.SourceSans
+	searchIcon.TextSize = 16
+	searchIcon.TextColor3 = Color3.fromRGB(150, 150, 150)
+	searchIcon.BackgroundTransparency = 1
+	searchIcon.ZIndex = 54
+	searchIcon.Parent = searchContainer
+	
+	-- Search text box
+	local searchBox = Instance.new("TextBox")
+	searchBox.Name = "SearchBox"
+	searchBox.Size = UDim2.new(1, -70, 1, -6)
+	searchBox.Position = UDim2.new(0, 35, 0, 3)
+	searchBox.PlaceholderText = "Search items..."
+	searchBox.Text = ""
+	searchBox.Font = Enum.Font.SourceSans
+	searchBox.TextSize = 14
+	searchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+	searchBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
+	searchBox.BackgroundTransparency = 1
+	searchBox.BorderSizePixel = 0
+	searchBox.TextXAlignment = Enum.TextXAlignment.Left
+	searchBox.ClearTextOnFocus = false
+	searchBox.ZIndex = 54
+	searchBox.Parent = searchContainer
+	components.SearchBox = searchBox
+	
+	-- Clear search button
+	local clearButton = Instance.new("TextButton")
+	clearButton.Name = "ClearButton"
+	clearButton.Size = UDim2.new(0, 25, 0, 25)
+	clearButton.Position = UDim2.new(1, -30, 0.5, -12.5)
+	clearButton.Text = "×"
+	clearButton.Font = Enum.Font.SourceSansBold
+	clearButton.TextSize = 18
+	clearButton.TextColor3 = Color3.fromRGB(180, 180, 180)
+	clearButton.BackgroundTransparency = 1
+	clearButton.Visible = false
+	clearButton.ZIndex = 54
+	clearButton.Parent = searchContainer
+	components.ClearButton = clearButton
 
 	-- Item list scroll frame
 	local listPanel = Instance.new("ScrollingFrame")
 	listPanel.Name = "ListPanel"
-	listPanel.Size = UDim2.new(1, -20, 1, -70) -- Adjusted for title and RAP label
-	listPanel.Position = UDim2.new(0, 10, 0, 50)
+	listPanel.Size = UDim2.new(1, -20, 1, -100)
+	listPanel.Position = UDim2.new(0, 10, 0, 95)
 	listPanel.BackgroundTransparency = 1
 	listPanel.BorderSizePixel = 0
 	listPanel.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -337,7 +426,7 @@ function InventoryUI.Create(parent)
 	components.ListPanel = listPanel
 
 	local listLayout = Instance.new("UIListLayout")
-	listLayout.Padding = UDim.new(0, 8)
+	listLayout.Padding = UDim.new(0, 6)
 	listLayout.Parent = listPanel
 
 	-- Parent the main GUI to the provided parent
@@ -347,10 +436,10 @@ function InventoryUI.Create(parent)
 end
 
 -- Create modern item template with 3D preview
-function InventoryUI.CreateItemTemplate(itemInstance, itemName, itemConfig, rarityConfig, mutationConfig)
+function InventoryUI.CreateItemTemplate(itemInstance, itemName, itemConfig, rarityConfig, mutationConfigs)
 	local template = Instance.new("TextButton")
 	template.Name = itemInstance.Name
-	template.Size = UDim2.new(1, 0, 0, 90)
+	template.Size = UDim2.new(1, 0, 0, 75) -- More compact
 	template.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
 	template.BorderSizePixel = 0
 	template.Text = ""
@@ -412,6 +501,7 @@ function InventoryUI.CreateItemTemplate(itemInstance, itemName, itemConfig, rari
 	itemViewport.BackgroundColor3 = Color3.fromRGB(15, 20, 30)
 	itemViewport.BorderSizePixel = 0
 	itemViewport.ZIndex = 55
+	itemViewport.BackgroundTransparency = 1
 	itemViewport.Parent = template
 
 	local viewportCorner = Instance.new("UICorner")
@@ -445,9 +535,22 @@ function InventoryUI.CreateItemTemplate(itemInstance, itemName, itemConfig, rari
 	nameLabel.Font = Enum.Font.SourceSansBold
 	nameLabel.Text = itemName
 	nameLabel.TextColor3 = rarityConfig and rarityConfig.Color or Color3.fromRGB(255, 255, 255)
-	if mutationConfig then
-		nameLabel.TextColor3 = mutationConfig.Color
-		nameLabel.Text = (itemInstance:GetAttribute("Mutation") or "") .. " " .. itemName
+	
+	-- Handle multiple mutations for display name and color
+	local mutationNames = ItemValueCalculator.GetMutationNames(itemInstance)
+	local hasRainbow = false
+	if mutationConfigs and #mutationConfigs > 0 then
+		nameLabel.TextColor3 = mutationConfigs[1].Color or nameLabel.TextColor3
+		if #mutationNames > 0 then
+			nameLabel.Text = table.concat(mutationNames, " ") .. " " .. itemName
+			-- Check for Rainbow mutation
+			for _, mutationName in ipairs(mutationNames) do
+				if mutationName == "Rainbow" then
+					hasRainbow = true
+					break
+				end
+			end
+		end
 	end
 	nameLabel.TextSize = 14
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -455,6 +558,22 @@ function InventoryUI.CreateItemTemplate(itemInstance, itemName, itemConfig, rari
 	nameLabel.ZIndex = 55
 	nameLabel.Parent = infoContainer
 	
+	-- Start rainbow text animation if item has Rainbow mutation
+	if hasRainbow then
+		local rainbowThread = coroutine.create(function()
+			while nameLabel.Parent do
+				local hue = (tick() * 1.5) % 5 / 5 -- Slightly slower than floating text
+				local rainbowColor = Color3.fromHSV(hue, 1, 1)
+				nameLabel.TextColor3 = rainbowColor
+				task.wait(0.1) -- Smooth rainbow animation
+			end
+		end)
+		coroutine.resume(rainbowThread)
+		
+		-- Store the thread in the template for cleanup
+		template:SetAttribute("RainbowThread", rainbowThread)
+	end
+
 	-- Item Type
 	local typeLabel = Instance.new("TextLabel")
 	typeLabel.Name = "TypeLabel"
@@ -469,9 +588,8 @@ function InventoryUI.CreateItemTemplate(itemInstance, itemName, itemConfig, rari
 	typeLabel.Parent = infoContainer
 
 	-- Value and Size
-	local ItemValueCalculator = require(game.ReplicatedStorage.Shared.Modules.ItemValueCalculator)
 	local size = itemInstance:GetAttribute("Size") or 1
-	local value = ItemValueCalculator.GetFormattedValue(itemConfig, mutationConfig, size)
+	local value = ItemValueCalculator.GetFormattedValue(itemConfig, mutationConfigs, size)
 	
 	local valueLabel = Instance.new("TextLabel")
 	valueLabel.Name = "ValueLabel"
