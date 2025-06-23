@@ -137,6 +137,10 @@ local function unequipItemOfType(player, itemType)
 		if data.instance then
 			data.instance:Destroy()
 		end
+		-- Disconnect size listener to prevent memory leaks
+		if data.sizeConnection then
+			data.sizeConnection:Disconnect()
+		end
 		-- Stop any running coroutines for this item
 		if data.effectsThread then
 			for _, effect in ipairs(data.effectsThread) do
@@ -194,6 +198,70 @@ function AvatarService.GetSerializableEquippedItems(player)
 	return equippedData
 end
 
+local function findFirstDescendantOfClass(instance, className)
+	for _, descendant in ipairs(instance:GetDescendants()) do
+		if descendant:IsA(className) then
+			return descendant
+		end
+	end
+	return nil
+end
+
+local function setupAccessoryAndEffects(humanoid, accessory, itemConfig, itemInstance)
+	local partsToScale = {}
+	for _, descendant in ipairs(accessory:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			local specialMesh = descendant:FindFirstChildOfClass("SpecialMesh")
+			if specialMesh then
+				table.insert(partsToScale, { part = specialMesh, originalValue = specialMesh.Scale, isMesh = true })
+			else
+				table.insert(partsToScale, { part = descendant, originalValue = descendant.Size, isMesh = false })
+			end
+		end
+	end
+
+	if #partsToScale == 0 then
+		warn("Cannot find any parts to scale in accessory:", accessory.Name)
+		humanoid:AddAccessory(accessory) -- Equip without scaling
+		return {
+			instance = accessory,
+			assetId = itemConfig.AssetId,
+			itemInstance = itemInstance,
+			effectsThread = applyMutationEffects(accessory, itemInstance),
+			sizeConnection = nil,
+		}
+	end
+
+	local function updateScale()
+		local currentSize = itemInstance:GetAttribute("Size") or 1
+		for _, data in ipairs(partsToScale) do
+			if data.isMesh then
+				data.part.Scale = data.originalValue * currentSize
+			else
+				data.part.Size = data.originalValue * currentSize
+			end
+		end
+	end
+
+	-- Apply initial scale before equipping
+	updateScale()
+	
+	-- Add the pre-scaled accessory to the character
+	humanoid:AddAccessory(accessory)
+
+	local sizeConnection = itemInstance:GetAttributeChangedSignal("Size"):Connect(updateScale)
+	
+	local equippedData = {
+		instance = accessory, 
+		assetId = itemConfig.AssetId, 
+		itemInstance = itemInstance, 
+		effectsThread = applyMutationEffects(accessory, itemInstance),
+		sizeConnection = sizeConnection
+	}
+	
+	return equippedData
+end
+
 function AvatarService.EquipItem(player, itemName, itemInstanceId)
     -- Find the item config using the item name (not the UUID)
     local itemConfig = GameConfig.Items[itemName]
@@ -235,32 +303,22 @@ function AvatarService.EquipItem(player, itemName, itemInstanceId)
 		return false
 	end
 
-	-- Apply size modification
-	local size = itemInstance:GetAttribute("Size") or 1
-	if asset:IsA("Accessory") and asset:FindFirstChild("Handle") then
-		asset.Handle.Size = asset.Handle.Size * size
-	else
-		-- For models or other types, we might need a more complex scaling logic
-		-- For now, we'll just log if we can't find a handle
-		warn("Could not apply size to item without a Handle:", itemName)
-	end
-	
 	local userId = player.UserId
 	if not equippedAccessories[userId] then
 		equippedAccessories[userId] = {}
 	end
 
 	if asset:IsA("Accessory") then
-		humanoid:AddAccessory(asset)
-		equippedAccessories[userId][itemConfig.Type] = {instance = asset, assetId = itemConfig.AssetId, itemInstance = itemInstance, effectsThread = applyMutationEffects(asset, itemInstance)}
+		equippedAccessories[userId][itemConfig.Type] = setupAccessoryAndEffects(humanoid, asset, itemConfig, itemInstance)
 	elseif asset:IsA("Shirt") or asset:IsA("Pants") or asset:IsA("TShirt") then
 		asset.Parent = player.Character
 		equippedAccessories[userId][itemConfig.Type] = {instance = asset, assetId = itemConfig.AssetId, itemInstance = itemInstance, effectsThread = applyMutationEffects(asset, itemInstance)}
 	elseif asset:IsA("Model") then -- Handle cases where UGC is a model
-		local accessory = asset:FindFirstChildOfClass("Accessory")
-		if accessory then
-			humanoid:AddAccessory(accessory)
-			equippedAccessories[userId][itemConfig.Type] = {instance = accessory, assetId = itemConfig.AssetId, itemInstance = itemInstance, effectsThread = applyMutationEffects(accessory, itemInstance)}
+		local accessoryInModel = asset:FindFirstChildOfClass("Accessory")
+		if accessoryInModel then
+			accessoryInModel.Parent = nil -- Unparent from the temporary model
+			equippedAccessories[userId][itemConfig.Type] = setupAccessoryAndEffects(humanoid, accessoryInModel, itemConfig, itemInstance)
+			asset:Destroy()
 		else
 			warn("Model item '" .. itemName .. "' does not contain an Accessory.")
 			asset:Destroy() -- Clean up the loaded model

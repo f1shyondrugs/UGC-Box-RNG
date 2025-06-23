@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DataStoreService = game:GetService("DataStoreService")
+local HttpService = game:GetService("HttpService")
 
 local ItemValueCalculator = require(ReplicatedStorage.Shared.Modules.ItemValueCalculator)
 local rapLeaderboardStore = DataStoreService:GetOrderedDataStore("RAPLeaderboard_V1")
@@ -15,6 +16,7 @@ local leaderboardPart = nil
 local surfaceGui = nil
 local listFrame = nil
 local statusLabel = nil
+local leaderboardData = nil
 
 local function createLeaderboardGUI()
 	local leaderboardsFolder = Workspace:FindFirstChild("leaderboards")
@@ -28,8 +30,8 @@ local function createLeaderboardGUI()
 	if not leaderboardPart then
 		leaderboardPart = Instance.new("Part")
 		leaderboardPart.Name = "RAPLeaderboard"
-		leaderboardPart.Size = Vector3.new(12, 20, 1)
-		leaderboardPart.Position = Vector3.new(0, 10, -20)
+		leaderboardPart.Size = Vector3.new(18, 30, 1)
+		leaderboardPart.Position = Vector3.new(0, 15, -20)
 		leaderboardPart.Anchored = true
 		leaderboardPart.Parent = leaderboardsFolder
 	end
@@ -51,19 +53,19 @@ local function createLeaderboardGUI()
 	backgroundFrame.Size = UDim2.new(1, 0, 1, 0)
 	backgroundFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
 	backgroundFrame.BorderColor3 = Color3.fromRGB(80, 80, 120)
-	backgroundFrame.BorderSizePixel = 2
+	backgroundFrame.BorderSizePixel = 3
 
 	local titleLabel = backgroundFrame:FindFirstChild("Title") or Instance.new("TextLabel")
 	titleLabel.Name = "Title"
 	titleLabel.Parent = backgroundFrame
 	titleLabel.Size = UDim2.new(1, 0, 0.1, 0)
 	titleLabel.Text = "TOP 100 RAP"
-	titleLabel.Font = Enum.Font.SourceSansBold
-	titleLabel.TextSize = 48
+	titleLabel.Font = Enum.Font.Highway
+	titleLabel.TextSize = 80
 	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	titleLabel.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
 	titleLabel.BorderColor3 = Color3.fromRGB(80, 80, 120)
-	titleLabel.BorderSizePixel = 2
+	titleLabel.BorderSizePixel = 3
 
 	listFrame = backgroundFrame:FindFirstChild("ListFrame") or Instance.new("ScrollingFrame")
 	listFrame.Name = "ListFrame"
@@ -73,19 +75,19 @@ local function createLeaderboardGUI()
 	listFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
 	listFrame.BorderSizePixel = 0
 	listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-	listFrame.ScrollBarThickness = 8
+	listFrame.ScrollBarThickness = 12
 
 	local uiListLayout = listFrame:FindFirstChildOfClass("UIListLayout") or Instance.new("UIListLayout")
 	uiListLayout.Parent = listFrame
 	uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	uiListLayout.Padding = UDim.new(0, 5)
+	uiListLayout.Padding = UDim.new(0, 8)
 
 	-- Header
 	local headerFrame = listFrame:FindFirstChild("Header") or Instance.new("Frame")
 	headerFrame.Name = "Header"
 	headerFrame.Parent = listFrame
 	headerFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
-	headerFrame.Size = UDim2.new(1, -8, 0, 35) -- Leave space for scrollbar
+	headerFrame.Size = UDim2.new(1, -12, 0, 50) -- Leave space for scrollbar
 	headerFrame.LayoutOrder = 0
 
 	local rankHeader = headerFrame:FindFirstChild("Rank") or Instance.new("TextLabel")
@@ -94,7 +96,7 @@ local function createLeaderboardGUI()
 	rankHeader.Size = UDim2.new(0.15, 0, 1, 0)
 	rankHeader.Text = "Rank"
 	rankHeader.Font = Enum.Font.SourceSansBold
-	rankHeader.TextSize = 28
+	rankHeader.TextSize = 36
 	rankHeader.TextColor3 = Color3.fromRGB(200, 200, 200)
 	rankHeader.BackgroundTransparency = 1
 
@@ -105,7 +107,7 @@ local function createLeaderboardGUI()
 	nameHeader.Size = UDim2.new(0.55, 0, 1, 0)
 	nameHeader.Text = "Player"
 	nameHeader.Font = Enum.Font.SourceSansBold
-	nameHeader.TextSize = 28
+	nameHeader.TextSize = 36
 	nameHeader.TextColor3 = Color3.fromRGB(200, 200, 200)
 	nameHeader.BackgroundTransparency = 1
 
@@ -116,17 +118,17 @@ local function createLeaderboardGUI()
 	rapHeader.Size = UDim2.new(0.3, 0, 1, 0)
 	rapHeader.Text = "RAP"
 	rapHeader.Font = Enum.Font.SourceSansBold
-	rapHeader.TextSize = 28
+	rapHeader.TextSize = 36
 	rapHeader.TextColor3 = Color3.fromRGB(200, 200, 200)
 	rapHeader.BackgroundTransparency = 1
 
 	statusLabel = listFrame:FindFirstChild("Status") or Instance.new("TextLabel")
 	statusLabel.Name = "Status"
 	statusLabel.Parent = listFrame
-	statusLabel.Size = UDim2.new(1, 0, 0, 50)
+	statusLabel.Size = UDim2.new(1, 0, 0, 70)
 	statusLabel.Text = "Loading..."
 	statusLabel.Font = Enum.Font.SourceSans
-	statusLabel.TextSize = 32
+	statusLabel.TextSize = 40
 	statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 	statusLabel.BackgroundTransparency = 1
 	statusLabel.LayoutOrder = 1
@@ -162,10 +164,20 @@ local function updateLeaderboard()
 		return
 	end
 	
+	leaderboardData = topPage
+	local leaderboardValue = ReplicatedStorage:FindFirstChild("LeaderboardData") or Instance.new("StringValue")
+	leaderboardValue.Name = "LeaderboardData"
+	leaderboardValue.Value = HttpService:JSONEncode(leaderboardData)
+	leaderboardValue.Parent = ReplicatedStorage
+	
 	statusLabel.Visible = false
 
 	-- 3. Populate the list with the top N players
 	local rank = 0
+	local listLayout = listFrame:FindFirstChildOfClass("UIListLayout")
+	local padding = listLayout.Padding.Offset
+	local totalContentHeight = 0
+
 	for _, entry in ipairs(topPage) do
 		rank = rank + 1
 		local userId = tonumber(entry.key)
@@ -177,14 +189,31 @@ local function updateLeaderboard()
 		if nameSuccess then playerName = nameResult end
 
 		local avatarUrl, isReady
-		local avatarSuccess, avatarResult = pcall(function() return Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48) end)
+		local avatarSuccess, avatarResult = pcall(function() return Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100) end)
 		if avatarSuccess then avatarUrl, isReady = avatarResult, true end
 		
+		-- Define sizes based on rank
+		local entryHeight, rankTextSize, avatarSize, nameTextSize, rapTextSize
+		if rank <= 3 then
+			entryHeight = 85
+			rankTextSize = 38
+			avatarSize = 72
+			nameTextSize = 34
+			rapTextSize = 34
+		else
+			entryHeight = 70
+			rankTextSize = 34
+			avatarSize = 60
+			nameTextSize = 30
+			rapTextSize = 30
+		end
+		totalContentHeight = totalContentHeight + entryHeight
+
 		-- Create GUI elements for the entry
 		local entryFrame = Instance.new("Frame")
 		entryFrame.Name = "Entry" .. rank
 		entryFrame.Parent = listFrame
-		entryFrame.Size = UDim2.new(1, -8, 0, 42)
+		entryFrame.Size = UDim2.new(1, -12, 0, entryHeight)
 		entryFrame.BackgroundColor3 = rank % 2 == 1 and Color3.fromRGB(35, 35, 55) or Color3.fromRGB(40, 40, 60)
 		entryFrame.BorderSizePixel = 0
 		entryFrame.LayoutOrder = rank
@@ -195,31 +224,40 @@ local function updateLeaderboard()
 		rankLabel.Size = UDim2.new(0.15, 0, 1, 0)
 		rankLabel.Text = "#" .. rank
 		rankLabel.Font = Enum.Font.SourceSansBold
-		rankLabel.TextSize = 26
-		rankLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		rankLabel.TextSize = rankTextSize
+		if rank == 1 then
+			rankLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold
+		elseif rank == 2 then
+			rankLabel.TextColor3 = Color3.fromRGB(192, 192, 192) -- Silver
+		elseif rank == 3 then
+			rankLabel.TextColor3 = Color3.fromRGB(205, 127, 50) -- Bronze
+		else
+			rankLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		end
 		rankLabel.TextXAlignment = Enum.TextXAlignment.Center
 		rankLabel.BackgroundTransparency = 1
 
 		local avatarImage = Instance.new("ImageLabel")
 		avatarImage.Name = "Avatar"
 		avatarImage.Parent = entryFrame
-		avatarImage.Position = UDim2.new(0.15, 5, 0.5, -18)
-		avatarImage.Size = UDim2.new(0, 36, 0, 36)
+		avatarImage.Position = UDim2.new(0.15, 10, 0.5, -(avatarSize / 2))
+		avatarImage.Size = UDim2.new(0, avatarSize, 0, avatarSize)
 		avatarImage.Image = avatarUrl or ""
 		avatarImage.BackgroundTransparency = 1
 		avatarImage.ClipsDescendants = true
 		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 8)
+		corner.CornerRadius = UDim.new(0, 12)
 		corner.Parent = avatarImage
 
 		local nameLabel = Instance.new("TextLabel")
 		nameLabel.Name = "Name"
 		nameLabel.Parent = entryFrame
-		nameLabel.Position = UDim2.new(0.15, 45, 0, 0)
-		nameLabel.Size = UDim2.new(0.55, -45, 1, 0)
+		local nameOffset = 10 + avatarSize + 10 -- avatar offset + avatar size + padding
+		nameLabel.Position = UDim2.new(0.15, nameOffset, 0, 0)
+		nameLabel.Size = UDim2.new(0.55, -nameOffset, 1, 0)
 		nameLabel.Text = playerName
 		nameLabel.Font = Enum.Font.SourceSans
-		nameLabel.TextSize = 24
+		nameLabel.TextSize = nameTextSize
 		nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 		nameLabel.BackgroundTransparency = 1
@@ -228,21 +266,21 @@ local function updateLeaderboard()
 		rapLabel.Name = "RAP"
 		rapLabel.Parent = entryFrame
 		rapLabel.Position = UDim2.new(0.7, 0, 0, 0)
-		rapLabel.Size = UDim2.new(0.3, -5, 1, 0)
+		rapLabel.Size = UDim2.new(0.3, -10, 1, 0)
 		rapLabel.Text = ItemValueCalculator.GetFormattedRAP(rapValue)
 		rapLabel.Font = Enum.Font.SourceSansSemibold
-		rapLabel.TextSize = 24
+		rapLabel.TextSize = rapTextSize
 		rapLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 		rapLabel.TextXAlignment = Enum.TextXAlignment.Right
 		rapLabel.BackgroundTransparency = 1
 	end
 	
 	-- Update canvas size
-	local listLayout = listFrame:FindFirstChildOfClass("UIListLayout")
 	local numEntries = #topPage
-	local entryHeight = 42
-	local padding = listLayout.Padding.Offset
-	listFrame.CanvasSize = UDim2.new(0, 0, 0, 35 + padding + (numEntries * (entryHeight + padding)))
+	if numEntries > 0 then
+		local headerHeight = listFrame:FindFirstChild("Header").Size.Y.Offset
+		listFrame.CanvasSize = UDim2.new(0, 0, 0, headerHeight + (numEntries * padding) + totalContentHeight)
+	end
 end
 
 

@@ -14,6 +14,49 @@ local rapLeaderboardStore = DataStoreService:GetOrderedDataStore("RAPLeaderboard
 
 local DataService = {}
 
+local updateQueue = {}
+local isUpdating = false
+local DEBOUNCE_INTERVAL = 5 -- seconds
+
+local function processUpdateQueue()
+	if isUpdating then return end
+	isUpdating = true
+
+	local playersToUpdate = {}
+	for userId, player in pairs(updateQueue) do
+		table.insert(playersToUpdate, player)
+	end
+	updateQueue = {} -- Clear the queue
+
+	if #playersToUpdate > 0 then
+		print("Processing leaderboard updates for " .. #playersToUpdate .. " players.")
+		for _, player in ipairs(playersToUpdate) do
+			local leaderstats = player:FindFirstChild("leaderstats")
+			if leaderstats then
+				local rapStat = leaderstats:FindFirstChild("RAP")
+				if rapStat then
+					local success, err = pcall(function()
+						rapLeaderboardStore:SetAsync(tostring(player.UserId), rapStat.Value)
+					end)
+					if not success then
+						warn("Failed to update RAP for " .. player.Name .. " in leaderboard: " .. tostring(err))
+					end
+				end
+			end
+		end
+	end
+
+	isUpdating = false
+end
+
+-- Start the debouncer loop
+task.spawn(function()
+	while true do
+		task.wait(DEBOUNCE_INTERVAL)
+		processUpdateQueue()
+	end
+end)
+
 -- Import AvatarService for equipped items (will be required after it's created)
 local AvatarService
 
@@ -52,14 +95,8 @@ local function updatePlayerRAP(player)
 		local totalRAP = calculatePlayerRAP(player)
 		rapStat.Value = totalRAP
 		
-		-- Update the OrderedDataStore for the global leaderboard
-		local success, err = pcall(function()
-			rapLeaderboardStore:SetAsync(tostring(player.UserId), totalRAP)
-		end)
-		
-		if not success then
-			warn("Failed to update RAP for " .. player.Name .. " in leaderboard: " .. tostring(err))
-		end
+		-- Queue the leaderboard update instead of calling directly
+		updateQueue[player.UserId] = player
 	end
 end
 

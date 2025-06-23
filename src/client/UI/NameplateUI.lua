@@ -2,6 +2,7 @@
 -- This module is responsible for creating the visual components of a player's overhead nameplate.
 
 local ItemValueCalculator = require(game:GetService("ReplicatedStorage").Shared.Modules.ItemValueCalculator)
+local RankProvider = require(game:GetService("ReplicatedStorage").Shared.Modules.RankProvider)
 
 local NameplateUI = {}
 
@@ -61,8 +62,33 @@ function NameplateUI.Create(targetPlayer)
 	return components
 end
 
-function NameplateUI.UpdateRAP(components, rapValue)
-	components.RAPLabel.Text = "RAP: " .. ItemValueCalculator.GetFormattedRAP(rapValue)
+function NameplateUI.UpdateRAP(components, rapValue, player)
+	local rapLabel = components.RAPLabel
+	local rank = RankProvider.GetPlayerRank(player)
+	local formattedRAP = ItemValueCalculator.GetFormattedRAP(rapValue)
+
+	if rank and rank <= 500 then
+		rapLabel.Font = Enum.Font.SourceSansBold
+		rapLabel.Text = "#" .. rank .. " RAP: " .. formattedRAP
+		
+		if rank <= 3 then
+			local color
+			if rank == 1 then
+				color = Color3.fromRGB(255, 215, 0) -- Gold
+			elseif rank == 2 then
+				color = Color3.fromRGB(192, 192, 192) -- Silver
+			else -- Rank 3
+				color = Color3.fromRGB(205, 127, 50) -- Bronze
+			end
+			rapLabel.TextColor3 = color
+		else
+			rapLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Default Green
+		end
+	else
+		rapLabel.Font = Enum.Font.SourceSans
+		rapLabel.Text = "RAP: " .. formattedRAP
+		rapLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Default Green
+	end
 end
 
 return NameplateUI 
