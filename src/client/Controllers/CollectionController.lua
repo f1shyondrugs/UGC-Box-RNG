@@ -112,6 +112,37 @@ local function updateProgressInfo(ui)
 	ui.ProgressInfo.Text = string.format("Discovered: %d/%d items (%d%%)", discoveredItems, totalItems, percentage)
 end
 
+-- Calculate drop chance for an item across all crates
+local function calculateDropChance(itemName)
+	local totalChance = 0
+	
+	-- Check all crates for this item
+	for crateName, crateConfig in pairs(GameConfig.Boxes) do
+		if crateConfig.Rewards and crateConfig.Rewards[itemName] then
+			totalChance = totalChance + crateConfig.Rewards[itemName]
+		end
+	end
+	
+	return totalChance
+end
+
+-- Format drop chance for display
+local function formatDropChance(chance)
+	if chance >= 10 then
+		return string.format("%.1f%%", chance)
+	elseif chance >= 1 then
+		return string.format("%.2f%%", chance)
+	elseif chance >= 0.1 then
+		return string.format("%.3f%%", chance)
+	elseif chance >= 0.01 then
+		return string.format("%.4f%%", chance)
+	elseif chance >= 0.001 then
+		return string.format("%.5f%%", chance)
+	else
+		return string.format("%.6f%%", chance)
+	end
+end
+
 -- Create tooltip content
 local function createTooltipContent(itemName, itemConfig, collectionData)
 	local content = {}
@@ -178,11 +209,24 @@ local function createTooltipContent(itemName, itemConfig, collectionData)
 		table.insert(content, "")
 		local baseValue = ItemValueCalculator.GetFormattedValue(itemConfig, nil, 1)
 		table.insert(content, "Base Value: " .. baseValue)
+		
+		-- Add drop chance information
+		local dropChance = calculateDropChance(itemName)
+		if dropChance > 0 then
+			table.insert(content, "Drop Rate: " .. formatDropChance(dropChance))
+		end
 	else
 		table.insert(content, "❓ NOT DISCOVERED")
 		table.insert(content, "")
 		table.insert(content, "Find this item by opening crates!")
 		table.insert(content, "Item details will be revealed once discovered.")
+		table.insert(content, "")
+		
+		-- Show drop chance even for undiscovered items
+		local dropChance = calculateDropChance(itemName)
+		if dropChance > 0 then
+			table.insert(content, "Drop Rate: " .. formatDropChance(dropChance))
+		end
 	end
 	
 	return table.concat(content, "\n")
@@ -298,17 +342,17 @@ local function toggleCollection(ui, visible, soundController)
 			end
 		end)
 		
-		-- Animate main frame
-		ui.MainFrame.Position = UDim2.new(0, 0, -1, 0)
-		local mainTween = TweenService:Create(ui.MainFrame, tweenInfo, {Position = UDim2.new(0, 0, 0, 0)})
+		-- Animate main frame from left
+		ui.MainFrame.Position = UDim2.new(-1, 0, 0, 30)
+		local mainTween = TweenService:Create(ui.MainFrame, tweenInfo, {Position = UDim2.new(0, 30, 0, 30)})
 		mainTween:Play()
 
 		task.delay(ANIMATION_TIME, function()
 			isAnimating = false
 		end)
 	else
-		-- Animate out and hide
-		local mainTween = TweenService:Create(ui.MainFrame, tweenInfo, {Position = UDim2.new(0, 0, -1, 0)})
+		-- Animate out to left and hide
+		local mainTween = TweenService:Create(ui.MainFrame, tweenInfo, {Position = UDim2.new(-1, 0, 0, 30)})
 		mainTween:Play()
 
 		task.delay(ANIMATION_TIME, function()

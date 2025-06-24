@@ -14,6 +14,8 @@ function BuyButtonUI.Create(parent)
 		screenGui.Name = "BuyButtonGui"
 		screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 		screenGui.Parent = parent
+
+		
 	end
 	components.ScreenGui = screenGui
 

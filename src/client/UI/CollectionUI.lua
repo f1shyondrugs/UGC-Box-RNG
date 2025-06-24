@@ -80,6 +80,11 @@ function CollectionUI.Create(parent)
 	titleBar.ZIndex = 51
 	titleBar.Parent = mainFrame
 	
+	-- Add rounded corners to title bar (top corners only)
+	local titleBarCorner = Instance.new("UICorner")
+	titleBarCorner.CornerRadius = UDim.new(0, 16)
+	titleBarCorner.Parent = titleBar
+	
 	local titleGradient = Instance.new("UIGradient")
 	titleGradient.Color = ColorSequence.new{
 		ColorSequenceKeypoint.new(0, Color3.fromRGB(45, 35, 65)),
@@ -133,7 +138,7 @@ function CollectionUI.Create(parent)
 	components.CloseButton = closeButton
 
 	local closeCorner = Instance.new("UICorner")
-	closeCorner.CornerRadius = UDim.new(1, 0)
+	closeCorner.CornerRadius = UDim.new(0, 16)
 	closeCorner.Parent = closeButton
 
 	-- Content Area
@@ -327,6 +332,37 @@ function CollectionUI.CreateCrateTab(crateName, isActive)
 	return tab
 end
 
+-- Calculate drop chance for an item across all crates
+local function calculateDropChance(itemName)
+	local totalChance = 0
+	
+	-- Check all crates for this item
+	for crateName, crateConfig in pairs(GameConfig.Boxes) do
+		if crateConfig.Rewards and crateConfig.Rewards[itemName] then
+			totalChance = totalChance + crateConfig.Rewards[itemName]
+		end
+	end
+	
+	return totalChance
+end
+
+-- Format drop chance for display
+local function formatDropChance(chance)
+	if chance >= 10 then
+		return string.format("%.1f%%", chance)
+	elseif chance >= 1 then
+		return string.format("%.2f%%", chance)
+	elseif chance >= 0.1 then
+		return string.format("%.3f%%", chance)
+	elseif chance >= 0.01 then
+		return string.format("%.4f%%", chance)
+	elseif chance >= 0.001 then
+		return string.format("%.5f%%", chance)
+	else
+		return string.format("%.6f%%", chance)
+	end
+end
+
 -- Create item card for collection display
 function CollectionUI.CreateItemCard(itemName, itemConfig, collectionData)
 	local isDiscovered = collectionData and collectionData.Discovered or false
@@ -455,12 +491,33 @@ function CollectionUI.CreateItemCard(itemName, itemConfig, collectionData)
 	valueLabel.ZIndex = 54
 	valueLabel.Parent = card
 	
+	-- Drop chance label
+	local dropChanceLabel = Instance.new("TextLabel")
+	dropChanceLabel.Name = "DropChanceLabel"
+	dropChanceLabel.Size = UDim2.new(1, -85, 0, 16)
+	dropChanceLabel.Position = UDim2.new(0, 75, 0, 84)
+	
+	local dropChance = calculateDropChance(itemName)
+	if dropChance > 0 then
+		dropChanceLabel.Text = "Drop Rate: " .. formatDropChance(dropChance)
+		dropChanceLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
+	else
+		dropChanceLabel.Text = "Drop Rate: Unknown"
+		dropChanceLabel.TextColor3 = Color3.fromRGB(100, 100, 100)
+	end
+	dropChanceLabel.Font = Enum.Font.SourceSans
+	dropChanceLabel.TextSize = 11
+	dropChanceLabel.BackgroundTransparency = 1
+	dropChanceLabel.TextXAlignment = Enum.TextXAlignment.Left
+	dropChanceLabel.ZIndex = 54
+	dropChanceLabel.Parent = card
+	
 	-- Progress indicator for discovered items
 	if isDiscovered then
 		local progressBar = Instance.new("Frame")
 		progressBar.Name = "ProgressBar"
 		progressBar.Size = UDim2.new(1, -20, 0, 4)
-		progressBar.Position = UDim2.new(0, 10, 1, -15)
+		progressBar.Position = UDim2.new(0, 10, 1, -10)
 		progressBar.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
 		progressBar.BorderSizePixel = 0
 		progressBar.ZIndex = 54
