@@ -10,6 +10,10 @@ local StatsUI = {}
 function StatsUI.Create(parentGui)
 	local components = {}
 	
+	-- Add a UIScale to manage UI scaling across different resolutions for the parent
+	local uiScale = Instance.new("UIScale")
+	uiScale.Parent = parentGui
+	
 	-- Main Stats Bar
 	local statsBar = Instance.new("Frame")
 	statsBar.Name = "StatsBar"

@@ -17,6 +17,10 @@ function NameplateUI.Create(targetPlayer)
 	billboardGui.StudsOffset = Vector3.new(0, 2.5, 0) -- Position it above the player's head
 	components.BillboardGui = billboardGui
 
+	-- Add a UIScale to manage UI scaling across different resolutions for BillboardGui
+	local uiScale = Instance.new("UIScale")
+	uiScale.Parent = billboardGui
+
 	-- A container frame for better organization and background
 	local backgroundFrame = Instance.new("Frame")
 	backgroundFrame.Name = "Background"

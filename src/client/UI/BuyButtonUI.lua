@@ -17,6 +17,10 @@ function BuyButtonUI.Create(parent)
 	end
 	components.ScreenGui = screenGui
 
+	-- Add a UIScale to manage UI scaling across different resolutions
+	local uiScale = Instance.new("UIScale")
+	uiScale.Parent = screenGui
+
 	-- Free Crate Button
 	local freeCrateButton = Instance.new("TextButton")
 	freeCrateButton.Name = "FreeCrateButton"

@@ -16,6 +16,10 @@ function CollectionUI.Create(parent)
 	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	components.ScreenGui = screenGui
 
+	-- Add a UIScale to manage UI scaling across different resolutions
+	local uiScale = Instance.new("UIScale")
+	uiScale.Parent = screenGui
+
 	-- Toggle Button
 	local toggleButton = Instance.new("TextButton")
 	toggleButton.Name = "CollectionToggleButton"
@@ -39,11 +43,11 @@ function CollectionUI.Create(parent)
 	toggleCorner.CornerRadius = UDim.new(0, 8)
 	toggleCorner.Parent = toggleButton
 
-	-- Main Frame
+	-- Main Frame (with margins from screen edges)
 	local mainFrame = Instance.new("Frame")
 	mainFrame.Name = "CollectionMainFrame"
-	mainFrame.Size = UDim2.new(1, 0, 1, 0)
-	mainFrame.Position = UDim2.new(0, 0, 0, 0)
+	mainFrame.Size = UDim2.new(1, -60, 1, -60) -- Add 30px margin on all sides
+	mainFrame.Position = UDim2.new(0, 30, 0, 30) -- Center with 30px offset
 	mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 	mainFrame.BackgroundTransparency = 0.05
 	mainFrame.BorderSizePixel = 0
@@ -51,6 +55,11 @@ function CollectionUI.Create(parent)
 	mainFrame.ZIndex = 50
 	mainFrame.Parent = screenGui
 	components.MainFrame = mainFrame
+	
+	-- Add rounded corners to main frame
+	local mainFrameCorner = Instance.new("UICorner")
+	mainFrameCorner.CornerRadius = UDim.new(0, 16)
+	mainFrameCorner.Parent = mainFrame
 
 	-- Background gradient
 	local gradient = Instance.new("UIGradient")
@@ -136,25 +145,49 @@ function CollectionUI.Create(parent)
 	contentFrame.ZIndex = 51
 	contentFrame.Parent = mainFrame
 
-	-- Crate Tabs Container
-	local tabsContainer = Instance.new("Frame")
+	-- Crate Tabs Container (Horizontal Scrolling Frame)
+	local tabsContainer = Instance.new("ScrollingFrame")
 	tabsContainer.Name = "TabsContainer"
-	tabsContainer.Size = UDim2.new(1, 0, 0, 50)
+	tabsContainer.Size = UDim2.new(1, 0, 0, 60) -- Made slightly taller for better visibility
 	tabsContainer.Position = UDim2.new(0, 0, 0, 0)
-	tabsContainer.BackgroundTransparency = 1
+	tabsContainer.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
+	tabsContainer.BackgroundTransparency = 0.3
+	tabsContainer.BorderSizePixel = 0
+	tabsContainer.CanvasSize = UDim2.new(0, 0, 0, 0) -- Will be set dynamically
+	tabsContainer.AutomaticCanvasSize = Enum.AutomaticSize.X -- Horizontal auto-sizing
+	tabsContainer.ScrollBarThickness = 6
+	tabsContainer.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 120)
+	tabsContainer.HorizontalScrollBarInset = Enum.ScrollBarInset.ScrollBar
+	tabsContainer.VerticalScrollBarInset = Enum.ScrollBarInset.None
+	tabsContainer.ScrollingDirection = Enum.ScrollingDirection.X -- Only horizontal scrolling
 	tabsContainer.ZIndex = 52
 	tabsContainer.Parent = contentFrame
+	
+	-- Add rounded corners to tabs container
+	local tabsContainerCorner = Instance.new("UICorner")
+	tabsContainerCorner.CornerRadius = UDim.new(0, 10)
+	tabsContainerCorner.Parent = tabsContainer
+	
+	-- Add padding to tabs container
+	local tabsContainerPadding = Instance.new("UIPadding")
+	tabsContainerPadding.PaddingLeft = UDim.new(0, 10)
+	tabsContainerPadding.PaddingRight = UDim.new(0, 10)
+	tabsContainerPadding.PaddingTop = UDim.new(0, 8)
+	tabsContainerPadding.PaddingBottom = UDim.new(0, 8)
+	tabsContainerPadding.Parent = tabsContainer
 
 	local tabsLayout = Instance.new("UIListLayout")
 	tabsLayout.FillDirection = Enum.FillDirection.Horizontal
-	tabsLayout.Padding = UDim.new(0, 5)
+	tabsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	tabsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	tabsLayout.Padding = UDim.new(0, 8) -- Increased padding between tabs
 	tabsLayout.Parent = tabsContainer
 
 	-- Items Display Area
 	local itemsContainer = Instance.new("ScrollingFrame")
 	itemsContainer.Name = "ItemsContainer"
-	itemsContainer.Size = UDim2.new(1, 0, 1, -70)
-	itemsContainer.Position = UDim2.new(0, 0, 0, 60)
+	itemsContainer.Size = UDim2.new(1, 0, 1, -80) -- Adjusted for new tabs height
+	itemsContainer.Position = UDim2.new(0, 0, 0, 70) -- Adjusted for new tabs height
 	itemsContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 	itemsContainer.BackgroundTransparency = 0.3
 	itemsContainer.BorderSizePixel = 0
@@ -169,11 +202,19 @@ function CollectionUI.Create(parent)
 	local itemsCorner = Instance.new("UICorner")
 	itemsCorner.CornerRadius = UDim.new(0, 12)
 	itemsCorner.Parent = itemsContainer
+	
+	-- Add padding to items container
+	local itemsContainerPadding = Instance.new("UIPadding")
+	itemsContainerPadding.PaddingLeft = UDim.new(0, 15)
+	itemsContainerPadding.PaddingRight = UDim.new(0, 15)
+	itemsContainerPadding.PaddingTop = UDim.new(0, 15)
+	itemsContainerPadding.PaddingBottom = UDim.new(0, 15)
+	itemsContainerPadding.Parent = itemsContainer
 
 	-- Use UIGridLayout for items
 	local itemsLayout = Instance.new("UIGridLayout")
 	itemsLayout.CellSize = UDim2.new(0, 200, 0, 120)
-	itemsLayout.CellPadding = UDim2.new(0, 10, 0, 10)
+	itemsLayout.CellPadding = UDim2.new(0, 12, 0, 12) -- Slightly increased padding
 	itemsLayout.SortOrder = Enum.SortOrder.Name
 	itemsLayout.Parent = itemsContainer
 
@@ -238,23 +279,48 @@ end
 function CollectionUI.CreateCrateTab(crateName, isActive)
 	local tab = Instance.new("TextButton")
 	tab.Name = crateName .. "Tab"
-	tab.Size = UDim2.new(0, 120, 1, 0)
-	tab.BackgroundColor3 = isActive and Color3.fromRGB(60, 50, 80) or Color3.fromRGB(40, 40, 55)
+	tab.Size = UDim2.new(0, 140, 0, 44) -- Fixed height for horizontal scrolling
+	tab.BackgroundColor3 = isActive and Color3.fromRGB(70, 60, 90) or Color3.fromRGB(45, 50, 65)
 	tab.Text = crateName
 	tab.Font = Enum.Font.SourceSansBold
-	tab.TextSize = 14
+	tab.TextSize = 15
 	tab.TextColor3 = Color3.fromRGB(255, 255, 255)
 	tab.BorderSizePixel = 0
 	tab.ZIndex = 53
 	
+	-- Add padding to tab text
+	local tabPadding = Instance.new("UIPadding")
+	tabPadding.PaddingLeft = UDim.new(0, 12)
+	tabPadding.PaddingRight = UDim.new(0, 12)
+	tabPadding.PaddingTop = UDim.new(0, 6)
+	tabPadding.PaddingBottom = UDim.new(0, 6)
+	tabPadding.Parent = tab
+	
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
+	corner.CornerRadius = UDim.new(0, 10)
 	corner.Parent = tab
 	
+	-- Enhanced styling for active/inactive states
 	if isActive then
 		local stroke = Instance.new("UIStroke")
-		stroke.Color = Color3.fromRGB(150, 100, 200)
+		stroke.Color = Color3.fromRGB(150, 120, 220)
 		stroke.Thickness = 2
+		stroke.Parent = tab
+		
+		-- Add gradient for active tab
+		local gradient = Instance.new("UIGradient")
+		gradient.Color = ColorSequence.new{
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 70, 100)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 50, 80))
+		}
+		gradient.Rotation = 90
+		gradient.Parent = tab
+	else
+		-- Add subtle stroke for inactive tabs
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = Color3.fromRGB(80, 85, 100)
+		stroke.Thickness = 1
+		stroke.Transparency = 0.5
 		stroke.Parent = tab
 	end
 	

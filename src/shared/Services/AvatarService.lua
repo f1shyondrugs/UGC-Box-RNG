@@ -104,6 +104,24 @@ local function applyMutationEffects(asset, itemInstance)
 				table.insert(effects, thread) -- Store thread to be stopped later
 
 			elseif mutationName == "Corrupted" then
+				-- Add a dark, pulsating light
+				local light = Instance.new("PointLight")
+				light.Color = Color3.fromRGB(85, 0, 255)
+				light.Brightness = 3 * sizeMultiplier
+				light.Range = 12 * sizeMultiplier
+				light.Parent = primaryPart
+				table.insert(effects, light)
+
+				local lightTween = coroutine.create(function()
+					while task.wait(0.5 + math.random() * 0.5) do
+						local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, 1, true)
+						local tween = game:GetService("TweenService"):Create(light, tweenInfo, { Brightness = 1.5 * sizeMultiplier })
+						tween:Play()
+					end
+				end)
+				coroutine.resume(lightTween)
+				table.insert(effects, lightTween)
+
 				-- Create dark purple smoke effect
 				local attachment = Instance.new("Attachment")
 				attachment.Parent = primaryPart
@@ -136,6 +154,28 @@ local function applyMutationEffects(asset, itemInstance)
 				table.insert(effects, smoke)
 				table.insert(effects, attachment)
 				
+				-- Create electrical sparks
+				local sparksAttachment = Instance.new("Attachment")
+				sparksAttachment.Parent = primaryPart
+
+				local sparks = Instance.new("ParticleEmitter")
+				sparks.Parent = sparksAttachment
+				sparks.Texture = "rbxassetid://10492238422" -- Lightning bolt texture
+				sparks.Color = ColorSequence.new(Color3.fromRGB(170, 0, 255))
+				sparks.LightEmission = 1
+				sparks.Size = NumberSequence.new{
+					NumberSequenceKeypoint.new(0, 0.2 * sizeMultiplier),
+					NumberSequenceKeypoint.new(0.5, 0.5 * sizeMultiplier),
+					NumberSequenceKeypoint.new(1, 0.1 * sizeMultiplier)
+				}
+				sparks.Lifetime = NumberRange.new(0.2, 0.5)
+				sparks.Rate = math.floor(10 * sizeMultiplier)
+				sparks.Speed = NumberRange.new(5 * sizeMultiplier, 10 * sizeMultiplier)
+				sparks.SpreadAngle = Vector2.new(180, 180)
+				sparks.Enabled = true
+				table.insert(effects, sparks)
+				table.insert(effects, sparksAttachment)
+
 			elseif mutationName == "Stellar" then
 				local light = Instance.new("PointLight")
 				light.Color = Color3.fromRGB(200, 225, 255)
@@ -184,6 +224,25 @@ local function applyMutationEffects(asset, itemInstance)
 				light.Parent = primaryPart
 				table.insert(effects, light)
 				
+				-- Quantum color shift thread
+				local colorThread = coroutine.create(function()
+					local originalColors = {}
+					for _, part in ipairs(allParts) do
+						originalColors[part] = part.Color
+					end
+					while task.wait(0.2) do
+						for _, part in ipairs(allParts) do
+							part.Color = Color3.fromHSV(math.random(), 1, 1)
+						end
+						task.wait(0.1)
+						for _, part in ipairs(allParts) do
+							part.Color = originalColors[part]
+						end
+					end
+				end)
+				coroutine.resume(colorThread)
+				table.insert(effects, colorThread)
+				
 				-- Create quantum energy particles
 				local attachment = Instance.new("Attachment")
 				attachment.Parent = primaryPart
@@ -214,6 +273,28 @@ local function applyMutationEffects(asset, itemInstance)
 				table.insert(effects, quantum)
 				table.insert(effects, attachment)
 				
+				-- Add a trail effect to moving parts
+				for _, part in ipairs(allParts) do
+					local trail = Instance.new("Trail")
+					trail.Attachment0 = part:FindFirstChildOfClass("Attachment") or Instance.new("Attachment", part)
+					trail.Color = ColorSequence.new{
+						ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 50, 150)),
+						ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 10, 40))
+					}
+					trail.Transparency = NumberSequence.new{
+						NumberSequenceKeypoint.new(0, 0.5),
+						NumberSequenceKeypoint.new(1, 1)
+					}
+					trail.Lifetime = 0.5
+					trail.WidthScale = NumberSequence.new{
+						NumberSequenceKeypoint.new(0, 1 * sizeMultiplier),
+						NumberSequenceKeypoint.new(1, 0)
+					}
+					trail.Enabled = true
+					trail.Parent = part
+					table.insert(effects, trail)
+				end
+				
 				local thread = coroutine.create(function()
 					local originalTransparencies = {}
 					for _, part in ipairs(allParts) do
@@ -233,38 +314,67 @@ local function applyMutationEffects(asset, itemInstance)
 				table.insert(effects, thread)
 
 			elseif mutationName == "Unknown" then
-				-- Create mysterious dark energy swirls
-				local attachment = Instance.new("Attachment")
-				attachment.Parent = primaryPart
-				
-				local swirl = Instance.new("ParticleEmitter")
-				swirl.Parent = attachment
-				swirl.Texture = "rbxasset://textures/particles/smoke_main.dds"
-				swirl.Color = ColorSequence.new{
-					ColorSequenceKeypoint.new(0, Color3.fromRGB(170, 0, 255)),
-					ColorSequenceKeypoint.new(0.5, Color3.fromRGB(85, 0, 127)),
-					ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))
+				-- Make the item's parts permanently black
+				for _, part in ipairs(allParts) do
+					part.Color = Color3.fromRGB(0, 0, 0)
+					local specialMesh = part:FindFirstChildOfClass("SpecialMesh")
+					if specialMesh then
+						specialMesh.VertexColor = Vector3.new(0, 0, 0)
+					end
+				end
+
+				-- Create standard black particles
+				local particleAttachment = Instance.new("Attachment")
+				particleAttachment.Parent = primaryPart
+
+				local particles = Instance.new("ParticleEmitter")
+				particles.Parent = particleAttachment
+				particles.Texture = "http://www.roblox.com/asset/?id=241650934" -- Standard sparkle texture
+				particles.Color = ColorSequence.new(Color3.fromRGB(20, 20, 20))
+				particles.LightEmission = 0
+				particles.Size = NumberSequence.new{
+					NumberSequenceKeypoint.new(0, 0.1 * sizeMultiplier),
+					NumberSequenceKeypoint.new(0.5, 0.2 * sizeMultiplier),
+					NumberSequenceKeypoint.new(1, 0)
 				}
-				swirl.LightEmission = 0.3
-				swirl.Size = NumberSequence.new{
+				particles.Transparency = NumberSequence.new{
+					NumberSequenceKeypoint.new(0, 0.2),
+					NumberSequenceKeypoint.new(1, 1)
+				}
+				particles.Lifetime = NumberRange.new(0.8, 1.5)
+				particles.Rate = math.floor(15 * sizeMultiplier)
+				particles.Speed = NumberRange.new(1 * sizeMultiplier, 3 * sizeMultiplier)
+				particles.SpreadAngle = Vector2.new(360, 360)
+				particles.Enabled = true
+				table.insert(effects, particles)
+				table.insert(effects, particleAttachment)
+
+				-- Create black smoke to represent a "black light" effect
+				local smokeAttachment = Instance.new("Attachment")
+				smokeAttachment.Parent = primaryPart
+				
+				local smoke = Instance.new("ParticleEmitter")
+				smoke.Parent = smokeAttachment
+				smoke.Texture = "rbxasset://textures/particles/smoke_main.dds"
+				smoke.Color = ColorSequence.new(Color3.fromRGB(10, 10, 10))
+				smoke.LightEmission = 0
+				smoke.Size = NumberSequence.new{
 					NumberSequenceKeypoint.new(0, 0.2 * sizeMultiplier),
 					NumberSequenceKeypoint.new(0.5, 0.8 * sizeMultiplier),
 					NumberSequenceKeypoint.new(1, 1.2 * sizeMultiplier)
 				}
-				swirl.Transparency = NumberSequence.new{
-					NumberSequenceKeypoint.new(0, 0.2),
-					NumberSequenceKeypoint.new(0.5, 0.6),
+				smoke.Transparency = NumberSequence.new{
+					NumberSequenceKeypoint.new(0, 0.5),
+					NumberSequenceKeypoint.new(0.7, 0.8),
 					NumberSequenceKeypoint.new(1, 1)
 				}
-				swirl.Lifetime = NumberRange.new(2, 4)
-				swirl.Rate = math.floor(8 * sizeMultiplier)
-				swirl.Speed = NumberRange.new(0.5 * sizeMultiplier, 2 * sizeMultiplier)
-				swirl.SpreadAngle = Vector2.new(20, 20)
-				swirl.Drag = 3
-				swirl.RotSpeed = NumberRange.new(-180, 180)
-				swirl.Enabled = true
-				table.insert(effects, swirl)
-				table.insert(effects, attachment)
+				smoke.Lifetime = NumberRange.new(2, 4)
+				smoke.Rate = math.floor(10 * sizeMultiplier)
+				smoke.Speed = NumberRange.new(0.5 * sizeMultiplier, 1.5 * sizeMultiplier)
+				smoke.Drag = 1
+				smoke.Enabled = true
+				table.insert(effects, smoke)
+				table.insert(effects, smokeAttachment)
 			end
 		end
 	end
