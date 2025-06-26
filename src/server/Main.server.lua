@@ -6,6 +6,7 @@ local Shared = ReplicatedStorage.Shared
 
 -- Require all services
 local ConfigVerifierService = require(Services:WaitForChild("ConfigVerifierService"))
+local UGCPreloaderService = require(Services:WaitForChild("UGCPreloaderService"))
 local PlayerDataService = require(Services:WaitForChild("PlayerDataService"))
 local BoxService = require(Services:WaitForChild("BoxService"))
 local InventoryService = require(Services:WaitForChild("InventoryService"))
@@ -18,6 +19,7 @@ local LeaderboardService = require(Services:WaitForChild("LeaderboardService"))
 
 -- Start Services
 ConfigVerifierService.Start() -- Start first to verify config
+UGCPreloaderService.Start() -- Start early to preload UGC items
 BoxService.Start()
 CollisionService.Start()
 InventoryService.Start()

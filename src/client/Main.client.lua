@@ -70,13 +70,12 @@ updateStatsDisplay()
 
 local function updateButtonState()
 	if currentBoxCount >= MAX_BOXES then
-		BuyButtonUI.SetEnabled(buyButtonGui, false, "All")
+		BuyButtonUI.SetEnabled(buyButtonGui, false)
 	else
-		if not isOnCooldown then
-			BuyButtonUI.SetEnabled(buyButtonGui, true, "Paid")
-		end
-		if not isFreeCrateOnCooldown then
-			BuyButtonUI.SetEnabled(buyButtonGui, true, "Free")
+		if not isOnCooldown and (not isFreeCrateOnCooldown or buyButtonGui.SelectedCrateType ~= "FreeCrate") then
+			BuyButtonUI.SetEnabled(buyButtonGui, true)
+		else
+			BuyButtonUI.SetEnabled(buyButtonGui, false)
 		end
 	end
 end
@@ -94,14 +93,21 @@ for crateType, optionButton in pairs(buyButtonGui.OptionButtons) do
 		BuyButtonUI.SetSelectedCrate(buyButtonGui, crateType)
 		BuyButtonUI.UpdateAffordability(buyButtonGui, robuxStat.Value)
 		BuyButtonUI.HideDropdown(buyButtonGui)
+		updateButtonState() -- Update button state when crate selection changes
 	end)
 end
 
--- Handle buy button click
+-- Handle buy button click (works for both paid and free crates)
 buyButtonGui.BuyButton.MouseButton1Click:Connect(function()
 	soundController:playUIClick()
 	if currentBoxCount < MAX_BOXES and not isOnCooldown then
 		local selectedCrateType = buyButtonGui.SelectedCrateType
+		
+		-- Check if it's a free crate and if it's on cooldown
+		if selectedCrateType == "FreeCrate" and isFreeCrateOnCooldown then
+			return -- Don't allow clicking if free crate is on cooldown
+		end
+		
 		Remotes.RequestBox:FireServer(selectedCrateType)
 		
 		isOnCooldown = true
@@ -114,29 +120,21 @@ buyButtonGui.BuyButton.MouseButton1Click:Connect(function()
 	end
 end)
 
--- Handle Free Crate button click
-buyButtonGui.FreeCrateButton.MouseButton1Click:Connect(function()
-	soundController:playUIClick()
-	if currentBoxCount < MAX_BOXES and not isFreeCrateOnCooldown then
-		Remotes.RequestBox:FireServer("FreeCrate")
-	end
-end)
-
--- Listen for server-initiated cooldown
+-- Listen for server-initiated cooldown (for free crates)
 Remotes.StartFreeCrateCooldown.OnClientEvent:Connect(function(duration)
 	isFreeCrateOnCooldown = true
-	BuyButtonUI.SetEnabled(buyButtonGui, false, "Free")
+	updateButtonState()
 	
 	local timer = duration
-	buyButtonGui.FreeCrateTimer.Text = tostring(timer) .. "s"
+	BuyButtonUI.UpdateFreeCrateCooldown(buyButtonGui, timer)
 	
 	local timerConnection
 	timerConnection = game:GetService("RunService").Heartbeat:Connect(function(dt)
 		timer = timer - dt
-		buyButtonGui.FreeCrateTimer.Text = tostring(math.ceil(timer)) .. "s"
+		BuyButtonUI.UpdateFreeCrateCooldown(buyButtonGui, timer)
 		if timer <= 0 then
 			isFreeCrateOnCooldown = false
-			buyButtonGui.FreeCrateTimer.Text = "Ready!"
+			BuyButtonUI.UpdateFreeCrateCooldown(buyButtonGui, 0)
 			updateButtonState()
 			timerConnection:Disconnect()
 		end

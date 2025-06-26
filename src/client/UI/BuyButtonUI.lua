@@ -1,9 +1,44 @@
 -- BuyButtonUI.lua
 -- This module creates the main "Buy UGC Crate" button UI with crate selection.
 
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
 local BuyButtonUI = {}
 
 local GameConfig = require(game.ReplicatedStorage.Shared.Modules.GameConfig)
+
+-- Function to calculate appropriate UI scale based on screen size
+local function calculateUIScale()
+	local camera = workspace.CurrentCamera
+	local screenSize = camera.ViewportSize
+	
+	-- Base scale for 1920x1080 (desktop)
+	local baseWidth = 1920
+	local baseHeight = 1080
+	
+	-- Calculate scale factors
+	local widthScale = screenSize.X / baseWidth
+	local heightScale = screenSize.Y / baseHeight
+	
+	-- Use the smaller scale to ensure UI fits on screen
+	local scale = math.min(widthScale, heightScale)
+	
+	-- Special handling for mobile vs desktop
+	if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+		-- Mobile device - keep smaller for touch interfaces
+		scale = scale * 0.8
+		-- Apply minimum and maximum bounds for mobile
+		scale = math.max(0.4, math.min(scale, 1.0))
+	else
+		-- Desktop/PC - make UI larger and more prominent
+		scale = scale * 1.3
+		-- Apply minimum and maximum bounds for desktop
+		scale = math.max(0.8, math.min(scale, 2.0))
+	end
+	
+	return scale
+end
 
 function BuyButtonUI.Create(parent)
 	local components = {}
@@ -14,76 +49,16 @@ function BuyButtonUI.Create(parent)
 		screenGui.Name = "BuyButtonGui"
 		screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 		screenGui.Parent = parent
-
-		
 	end
 	components.ScreenGui = screenGui
 
 	-- Add a UIScale to manage UI scaling across different resolutions
 	local uiScale = Instance.new("UIScale")
+	uiScale.Scale = calculateUIScale()
 	uiScale.Parent = screenGui
+	components.UIScale = uiScale
 
-	-- Free Crate Button
-	local freeCrateButton = Instance.new("TextButton")
-	freeCrateButton.Name = "FreeCrateButton"
-	freeCrateButton.Size = UDim2.new(0.15, 0, 0.1, 0) -- Responsive size
-	freeCrateButton.Position = UDim2.new(0.02, 0, 0.55, 0) -- Reverted margin
-	freeCrateButton.AnchorPoint = Vector2.new(0, 0)
-	freeCrateButton.BackgroundColor3 = Color3.fromRGB(76, 175, 80)
-	freeCrateButton.Font = Enum.Font.SourceSansBold
-	freeCrateButton.Text = ""
-	freeCrateButton.ZIndex = 1 -- Lower ZIndex
-	freeCrateButton.Parent = screenGui -- Parent to ScreenGui directly
-	components.FreeCrateButton = freeCrateButton
-
-	local freeCrateAspect = Instance.new("UIAspectRatioConstraint")
-	freeCrateAspect.AspectRatio = 2.0
-	freeCrateAspect.DominantAxis = Enum.DominantAxis.Width
-	freeCrateAspect.Parent = freeCrateButton
-
-	local freeCorner = Instance.new("UICorner")
-	freeCorner.CornerRadius = UDim.new(0, 12)
-	freeCorner.Parent = freeCrateButton
-	
-	local freeTitleLabel = Instance.new("TextLabel")
-	freeTitleLabel.Name = "Title"
-	freeTitleLabel.Size = UDim2.new(1, 0, 0.6, 0)
-	freeTitleLabel.Text = "Free Crate"
-	freeTitleLabel.Font = Enum.Font.SourceSansBold
-	freeTitleLabel.TextScaled = true
-	freeTitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	freeTitleLabel.BackgroundTransparency = 1
-	freeTitleLabel.ZIndex = 1 -- Lower ZIndex
-	freeTitleLabel.Parent = freeCrateButton
-	
-	local freeTitlePadding = Instance.new("UIPadding")
-	freeTitlePadding.PaddingLeft = UDim.new(0.1, 0)
-	freeTitlePadding.PaddingRight = UDim.new(0.1, 0)
-	freeTitlePadding.PaddingTop = UDim.new(0.1, 0)
-	freeTitlePadding.PaddingBottom = UDim.new(0.1, 0)
-	freeTitlePadding.Parent = freeTitleLabel
-	
-	local freeTimerLabel = Instance.new("TextLabel")
-	freeTimerLabel.Name = "TimerLabel"
-	freeTimerLabel.Size = UDim2.new(1, 0, 0.4, 0)
-	freeTimerLabel.Position = UDim2.new(0, 0, 0.6, 0)
-	freeTimerLabel.Text = "Ready!"
-	freeTimerLabel.Font = Enum.Font.SourceSans
-	freeTimerLabel.TextScaled = true
-	freeTimerLabel.TextColor3 = Color3.fromRGB(200, 255, 200)
-	freeTimerLabel.BackgroundTransparency = 1
-	freeTimerLabel.ZIndex = 1 -- Lower ZIndex
-	freeTimerLabel.Parent = freeCrateButton
-	components.FreeCrateTimer = freeTimerLabel
-
-	local freeTimerPadding = Instance.new("UIPadding")
-	freeTimerPadding.PaddingLeft = UDim.new(0.15, 0)
-	freeTimerPadding.PaddingRight = UDim.new(0.15, 0)
-	freeTimerPadding.PaddingTop = UDim.new(0.15, 0)
-	freeTimerPadding.PaddingBottom = UDim.new(0.15, 0)
-	freeTimerPadding.Parent = freeTimerLabel
-
-	-- Main Container Frame for paid crates
+	-- Main Container Frame for all crates (paid and free)
 	local mainFrame = Instance.new("Frame")
 	mainFrame.Name = "BuyContainer"
 	mainFrame.Size = UDim2.new(0.3, 0, 0.16, 0) -- Made container smaller
@@ -116,18 +91,19 @@ function BuyButtonUI.Create(parent)
 	corner.CornerRadius = UDim.new(0, 12)
 	corner.Parent = buyButton
 	
-	-- "Buy Crate" Text
+	-- "Buy/Get Crate" Text (will change based on selection)
 	local titleLabel = Instance.new("TextLabel")
 	titleLabel.Name = "Title"
 	titleLabel.Size = UDim2.new(1, 0, 0.6, 0)
 	titleLabel.Position = UDim2.new(0,0,0,0)
-	titleLabel.Text = "Buy UGC Crate"
+	titleLabel.Text = "Get Crate"
 	titleLabel.Font = Enum.Font.SourceSansBold
 	titleLabel.TextScaled = true
 	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.ZIndex = 1 -- Lower ZIndex
 	titleLabel.Parent = buyButton
+	components.TitleLabel = titleLabel
 	
 	local titlePadding = Instance.new("UIPadding")
 	titlePadding.PaddingLeft = UDim.new(0.1, 0)
@@ -136,7 +112,7 @@ function BuyButtonUI.Create(parent)
 	titlePadding.PaddingBottom = UDim.new(0.1, 0)
 	titlePadding.Parent = titleLabel
 
-	-- Cost Text
+	-- Cost Text (will show cost or cooldown)
 	local costLabel = Instance.new("TextLabel")
 	costLabel.Name = "CostLabel"
 	costLabel.Size = UDim2.new(1, 0, 0.4, 0)
@@ -220,7 +196,38 @@ function BuyButtonUI.Create(parent)
 	-- Create dropdown options
 	components.OptionButtons = {}
 	
-	-- First, get all paid crates and sort them by price
+	-- First, add the Free Crate option at the top
+	local freeCrateConfig = GameConfig.Boxes["FreeCrate"]
+	if freeCrateConfig then
+		local optionButton = Instance.new("TextButton")
+		optionButton.Name = "FreeCrate"
+		optionButton.Size = UDim2.new(1, 0, 0, 30)
+		optionButton.BackgroundColor3 = Color3.fromRGB(76, 175, 80) -- Green for free
+		optionButton.BorderSizePixel = 0
+		optionButton.Font = Enum.Font.SourceSansBold
+		optionButton.Text = "🆓 " .. freeCrateConfig.Name .. " - FREE"
+		optionButton.TextScaled = true
+		optionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+		optionButton.ZIndex = 3
+		optionButton.LayoutOrder = 0 -- First in list
+		optionButton.Parent = optionsFrame
+		components.OptionButtons["FreeCrate"] = optionButton
+		
+		local optionPadding = Instance.new("UIPadding")
+		optionPadding.PaddingLeft = UDim.new(0.05, 0)
+		optionPadding.PaddingRight = UDim.new(0.05, 0)
+		optionPadding.Parent = optionButton
+		
+		-- Add hover effect
+		optionButton.MouseEnter:Connect(function()
+			optionButton.BackgroundColor3 = Color3.fromRGB(96, 195, 100)
+		end)
+		optionButton.MouseLeave:Connect(function()
+			optionButton.BackgroundColor3 = Color3.fromRGB(76, 175, 80)
+		end)
+	end
+	
+	-- Then, get all paid crates and sort them by price
 	local sortedCrates = {}
 	for crateType, crateConfig in pairs(GameConfig.Boxes) do
 		if crateConfig.Price > 0 then
@@ -232,7 +239,7 @@ function BuyButtonUI.Create(parent)
 	end)
 
 	-- Now create the buttons from the sorted list
-	for _, crateData in ipairs(sortedCrates) do
+	for i, crateData in ipairs(sortedCrates) do
 		local crateType = crateData.type
 		local crateConfig = crateData.config
 		
@@ -246,6 +253,7 @@ function BuyButtonUI.Create(parent)
 		optionButton.TextScaled = true
 		optionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 		optionButton.ZIndex = 3 -- Higher than the frame but still low
+		optionButton.LayoutOrder = i -- After free crate
 		optionButton.Parent = optionsFrame
 		components.OptionButtons[crateType] = optionButton
 		
@@ -263,25 +271,47 @@ function BuyButtonUI.Create(parent)
 		end)
 	end
 	
-	-- Resize options frame based on number of options
-	optionsFrame.Size = UDim2.new(1, 0, 0, #sortedCrates * 30)
+	-- Resize options frame based on number of options (including free crate)
+	optionsFrame.Size = UDim2.new(1, 0, 0, (#sortedCrates + 1) * 30)
 
 	-- Store selected crate type
 	components.SelectedCrateType = "StarterCrate" -- Default
 	components.SelectedCrateConfig = GameConfig.Boxes["StarterCrate"]
+	
+	-- Update scale when screen size changes
+	local function updateScale()
+		uiScale.Scale = calculateUIScale()
+	end
+	
+	-- Connect to viewport size changes
+	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
+	components.UpdateScale = updateScale
 
 	return components
 end
 
 function BuyButtonUI.SetSelectedCrate(components, crateType)
 	local crateConfig = GameConfig.Boxes[crateType]
-	if not crateConfig or crateConfig.Price == 0 then return end
+	if not crateConfig then return end
 	
 	components.SelectedCrateType = crateType
 	components.SelectedCrateConfig = crateConfig
 	components.CrateDropdown.Text = crateConfig.Name .. " ▼"
-	components.CostLabel.Text = "Cost: " .. crateConfig.Price .. " R$"
-	components.CostLabel.TextColor3 = Color3.fromRGB(200, 205, 255) -- Reset to default color
+	
+	-- Update button appearance based on crate type
+	if crateType == "FreeCrate" then
+		-- Free crate styling
+		components.BuyButton.BackgroundColor3 = Color3.fromRGB(76, 175, 80)
+		components.TitleLabel.Text = "Get Free Crate"
+		components.CostLabel.Text = "FREE - No Cost!"
+		components.CostLabel.TextColor3 = Color3.fromRGB(200, 255, 200)
+	else
+		-- Paid crate styling
+		components.BuyButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+		components.TitleLabel.Text = "Buy UGC Crate"
+		components.CostLabel.Text = "Cost: " .. crateConfig.Price .. " R$"
+		components.CostLabel.TextColor3 = Color3.fromRGB(200, 205, 255)
+	end
 end
 
 function BuyButtonUI.ToggleDropdown(components)
@@ -293,27 +323,18 @@ function BuyButtonUI.HideDropdown(components)
 	components.OptionsFrame.Visible = false
 end
 
-function BuyButtonUI.SetEnabled(components, isEnabled, buttonType)
-	buttonType = buttonType or "All"
-	
-	if buttonType == "All" or buttonType == "Paid" then
-		local button = components.BuyButton
-		button.AutoButtonColor = isEnabled
-		if isEnabled then
-			button.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-		else
-			button.BackgroundColor3 = Color3.fromRGB(87, 91, 99)
-		end
-	end
-	
-	if buttonType == "All" or buttonType == "Free" then
-		local button = components.FreeCrateButton
-		button.AutoButtonColor = isEnabled
-		if isEnabled then
+function BuyButtonUI.SetEnabled(components, isEnabled)
+	local button = components.BuyButton
+	button.AutoButtonColor = isEnabled
+	if isEnabled then
+		-- Restore appropriate color based on selected crate
+		if components.SelectedCrateType == "FreeCrate" then
 			button.BackgroundColor3 = Color3.fromRGB(76, 175, 80)
 		else
-			button.BackgroundColor3 = Color3.fromRGB(87, 91, 99)
+			button.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
 		end
+	else
+		button.BackgroundColor3 = Color3.fromRGB(87, 91, 99)
 	end
 end
 
@@ -330,7 +351,7 @@ end
 
 function BuyButtonUI.UpdateAffordability(components, playerRobux)
 	local selectedConfig = components.SelectedCrateConfig
-	if not selectedConfig then return end
+	if not selectedConfig or selectedConfig.Price == 0 then return end -- Skip for free crates
 	
 	local canAfford = playerRobux >= selectedConfig.Price
 	local costLabel = components.CostLabel
@@ -342,6 +363,19 @@ function BuyButtonUI.UpdateAffordability(components, playerRobux)
 		local needed = selectedConfig.Price - playerRobux
 		costLabel.Text = "Need " .. needed .. " more R$!"
 		costLabel.TextColor3 = Color3.fromRGB(255, 100, 100) -- Red for insufficient funds
+	end
+end
+
+-- New function to update free crate cooldown display
+function BuyButtonUI.UpdateFreeCrateCooldown(components, timeRemaining)
+	if components.SelectedCrateType == "FreeCrate" then
+		if timeRemaining > 0 then
+			components.CostLabel.Text = "Cooldown: " .. math.ceil(timeRemaining) .. "s"
+			components.CostLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+		else
+			components.CostLabel.Text = "FREE - Ready!"
+			components.CostLabel.TextColor3 = Color3.fromRGB(200, 255, 200)
+		end
 	end
 end
 

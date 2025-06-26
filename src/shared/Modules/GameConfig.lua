@@ -485,143 +485,100 @@ Config.Boxes = {
         Name = "Premium Crate",
         Price = 150,
         Rewards = {
-            -- Common items
-            ["White Sneakers"] = 30,
-            ["School Backpack"] = 20,
-            -- Uncommon items (good chances)
-            ["Stylish Hat"] = 20,
-            ["Cool Hoodie"] = 15,
-            ["Designer Jeans"] = 10,
-            ["Sunglasses"] = 4,
-            ["Sports Watch"] = 0.8,
-            ["Leather Jacket"] = 0.2,
+            -- Removed low-value items, added a Rare item for better value
+            ["Cool Hoodie"] = 40,       -- R$ 75 value
+            ["Designer Jeans"] = 25,    -- R$ 90 value
+            ["Sunglasses"] = 15,        -- R$ 110 value
+            ["Sports Watch"] = 10,      -- R$ 150 value (break-even)
+            ["Leather Jacket"] = 7,     -- R$ 200 value (profit)
+            ["Gaming Headset"] = 3,     -- R$ 260 value (big profit!)
         },
     },
     ["LegendaryCrate"] = {
         Name = "Legendary Crate",
         Price = 1000,
         Rewards = {
-            -- Uncommon items
-            ["Leather Jacket"] = 35,
-            ["Sports Watch"] = 25,
-            ["Sunglasses"] = 15,
-            -- Rare items (decent chances)
-            ["Gaming Headset"] = 15,
-            ["Neon Jacket"] = 8,
-            ["Cargo Pants"] = 1.8,
-            ["VR Goggles"] = 0.15,
-            ["Holographic Visor"] = 0.04,
-            ["Jetpack"] = 0.01,
+            -- Focused on high-value Rares, added an Epic for jackpot
+            ["Neon Jacket"] = 35,           -- R$ 350 value
+            ["Cargo Pants"] = 25,           -- R$ 450 value
+            ["VR Goggles"] = 20,            -- R$ 600 value
+            ["Holographic Visor"] = 12,     -- R$ 800 value
+            ["Jetpack"] = 6,                -- R$ 1000 value (break-even)
+            ["Crown"] = 2,                  -- R$ 1200 value (profit!)
         },
     },
     ["MythicalCrate"] = {
         Name = "Mythical Crate",
         Price = 5000,
         Rewards = {
-            -- Rare items
-            ["Jetpack"] = 40,
-            ["Holographic Visor"] = 25,
-            ["VR Goggles"] = 15,
-            -- Epic items (good chances)
-            ["Crown"] = 12,
-            ["Dragon Robe"] = 5,
-            ["Knight Armor"] = 2.5,
-            ["Angel Wings"] = 0.4,
-            ["Wizard Hat"] = 0.08,
-            ["Power Gauntlet"] = 0.02,
+            -- High-value Epics, added a Legendary for profit chance
+            ["Dragon Robe"] = 35,       -- R$ 1800 value
+            ["Knight Armor"] = 25,      -- R$ 2500 value
+            ["Angel Wings"] = 20,       -- R$ 3500 value
+            ["Wizard Hat"] = 12,        -- R$ 4200 value
+            ["Power Gauntlet"] = 6,     -- R$ 5000 value (break-even)
+            ["Diamond Crown"] = 2,      -- R$ 6000 value (profit!)
         },
     },
     ["CelestialCrate"] = {
         Name = "Celestial Crate",
         Price = 25000,
         Rewards = {
-            -- Epic items
-            ["Power Gauntlet"] = 50,
-            ["Wizard Hat"] = 25,
-            ["Angel Wings"] = 15,
-            -- Legendary items (reasonable chances)
-            ["Diamond Crown"] = 6,
-            ["Phoenix Wings"] = 3,
-            ["Void Cloak"] = 0.8,
-            ["Time Boots"] = 0.15,
-            ["Crystal Sword"] = 0.04,
-            ["Celestial Armor"] = 0.01,
+            -- Good Legendaries, added a Mythical for profit chance
+            ["Void Cloak"] = 30,        -- R$ 12000 value
+            ["Time Boots"] = 25,        -- R$ 16000 value
+            ["Crystal Sword"] = 20,     -- R$ 20000 value
+            ["Celestial Armor"] = 15,   -- R$ 25000 value (break-even)
+            ["God's Halo"] = 10,        -- R$ 30000 value (profit!)
         },
     },
     ["DivineCrate"] = {
         Name = "Divine Crate",
         Price = 100000,
         Rewards = {
-            -- Legendary items
-            ["Celestial Armor"] = 60,
-            ["Crystal Sword"] = 25,
-            ["Time Boots"] = 10,
-            -- Mythical items (good chances)
-            ["God's Halo"] = 3,
-            ["Reality Gloves"] = 1.5,
-            ["Infinity Cloak"] = 0.4,
-            ["Cosmic Crown"] = 0.08,
-            ["Singularity Staff"] = 0.02,
+            -- Great Mythicals, added a Celestial for profit chance
+            ["Infinity Cloak"] = 35,    -- R$ 65000 value
+            ["Cosmic Crown"] = 30,      -- R$ 80000 value
+            ["Singularity Staff"] = 25, -- R$ 100000 value (break-even)
+            ["Galaxy Wings"] = 10,      -- R$ 120000 value (profit!)
         },
     },
     ["TranscendentCrate"] = {
         Name = "Transcendent Crate",
         Price = 750000,
         Rewards = {
-            -- Mythical items
-            ["Singularity Staff"] = 60,
-            ["Cosmic Crown"] = 25,
-            ["Infinity Cloak"] = 10,
-            -- Celestial items (decent chances)
-            ["Galaxy Wings"] = 3,
-            ["Nebula Armor"] = 1.5,
-            ["Stardust Pauldrons"] = 0.4,
-            ["Supernova Helmet"] = 0.08,
-            ["Black Hole Blade"] = 0.02,
+            -- High-value Celestials, added a Divine for profit chance
+            ["Stardust Pauldrons"] = 35,    -- R$ 250000 value
+            ["Supernova Helmet"] = 30,      -- R$ 350000 value
+            ["Black Hole Blade"] = 25,      -- R$ 500000 value
+            ["Aura of the Gods"] = 10,      -- R$ 600000 value
         },
     },
     ["EtherealCrate"] = {
         Name = "Ethereal Crate",
         Price = 5000000,
         Rewards = {
-            -- Celestial items
-            ["Black Hole Blade"] = 60,
-            ["Supernova Helmet"] = 25,
-            ["Stardust Pauldrons"] = 10,
-            -- Divine items (decent chances)
-            ["Aura of the Gods"] = 3,
-            ["Creator's Cape"] = 1.5,
-            ["The All-Seeing Eye"] = 0.4,
-            ["Dominus Astra"] = 0.08,
-            ["Valkyrie of the Metaverse"] = 0.02,
+            -- Top Divine items, added a Transcendent for profit chance
+            ["Dominus Astra"] = 50,            -- R$ 1800000 value
+            ["Valkyrie of the Metaverse"] = 35, -- R$ 2500000 value
+            ["Rift Walker's Scythe"] = 15,     -- R$ 5000000 value (break-even!)
         },
     },
     ["QuantumCrate"] = {
         Name = "Quantum Crate",
         Price = 30000000,
         Rewards = {
-            -- Divine items
-            ["Valkyrie of the Metaverse"] = 50,
-            ["Dominus Astra"] = 25,
-            ["The All-Seeing Eye"] = 15,
-            -- Transcendent items (decent chances)
-            ["Rift Walker's Scythe"] = 5,
-            ["Chronomancer's Crown"] = 3,
-            ["Echoes of the Void"] = 1.5,
-            ["Heart of a Dying Star"] = 0.4,
-            ["Singularity Wings"] = 0.08,
-            -- Ethereal items (rare but possible)
-            ["The First Omen"] = 0.015,
-            ["Crown of the Silent King"] = 0.008,
-            ["Aetherium Blade"] = 0.004,
-            ["Mantle of the Architect"] = 0.002,
-            ["The Unseen Hand"] = 0.001,
-            -- Quantum items (ultra rare but achievable)
-            ["Fragment of Creation"] = 0.0005,
-            ["The Final Shape"] = 0.0003,
-            ["Event Horizon"] = 0.0002,
-            ["Glimpse of Infinity"] = 0.0001,
-            ["The Robloxian"] = 0.00005,
+            -- All items are now worth the price of the crate or more!
+            ["The First Omen"] = 40,            -- R$ 30,000,000 value (break-even)
+            ["Crown of the Silent King"] = 25,  -- R$ 50,000,000 value
+            ["Aetherium Blade"] = 15,           -- R$ 75,000,000 value
+            ["Mantle of the Architect"] = 10,   -- R$ 110,000,000 value
+            ["The Unseen Hand"] = 7,            -- R$ 150,000,000 value
+            ["Fragment of Creation"] = 2,       -- R$ 200,000,000 value
+            ["The Final Shape"] = 0.5,          -- R$ 350,000,000 value
+            ["Event Horizon"] = 0.3,            -- R$ 500,000,000 value
+            ["Glimpse of Infinity"] = 0.15,     -- R$ 750,000,000 value
+            ["The Robloxian"] = 0.05,           -- R$ 1,000,000,000 value
         },
     },
     ["FreeCrate"] = {

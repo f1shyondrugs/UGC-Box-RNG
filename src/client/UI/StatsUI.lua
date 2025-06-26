@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 local Shared = ReplicatedStorage.Shared
@@ -7,180 +8,232 @@ local ItemValueCalculator = require(Shared.Modules.ItemValueCalculator)
 
 local StatsUI = {}
 
+-- Function to calculate appropriate UI scale based on screen size
+local function calculateUIScale()
+	local camera = workspace.CurrentCamera
+	local screenSize = camera.ViewportSize
+	
+	-- Base scale for 1920x1080 (desktop)
+	local baseWidth = 1920
+	local baseHeight = 1080
+	
+	-- Calculate scale factors
+	local widthScale = screenSize.X / baseWidth
+	local heightScale = screenSize.Y / baseHeight
+	
+	-- Use the smaller scale to ensure UI fits on screen
+	local scale = math.min(widthScale, heightScale)
+	
+	-- Special handling for mobile vs desktop
+	if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+		-- Mobile device - keep smaller for touch interfaces
+		scale = scale * 0.8
+		-- Apply minimum and maximum bounds for mobile
+		scale = math.max(0.4, math.min(scale, 1.0))
+	else
+		-- Desktop/PC - make UI larger and more prominent
+		scale = scale * 1.3
+		-- Apply minimum and maximum bounds for desktop
+		scale = math.max(0.8, math.min(scale, 2.0))
+	end
+	
+	return scale
+end
+
 function StatsUI.Create(parentGui)
 	local components = {}
 	
-	-- Add a UIScale to manage UI scaling across different resolutions for the parent
+	-- Create a ScreenGui container for the stats
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "StatsGui"
+	screenGui.ResetOnSpawn = false
+	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	screenGui.Parent = parentGui
+	components.ScreenGui = screenGui
+	
+	-- Add a UIScale to manage UI scaling across different resolutions
 	local uiScale = Instance.new("UIScale")
-	uiScale.Parent = parentGui
+	uiScale.Scale = calculateUIScale()
+	uiScale.Parent = screenGui
+	components.UIScale = uiScale
 	
-	-- Main Stats Bar
-	local statsBar = Instance.new("Frame")
-	statsBar.Name = "StatsBar"
-	statsBar.Size = UDim2.new(1, 0, 0, 60)
-	statsBar.Position = UDim2.new(0, 0, 0, 0)
-	statsBar.BackgroundColor3 = Color3.fromRGB(24, 25, 28)
-	statsBar.BorderSizePixel = 0
-	statsBar.Parent = parentGui
-	components.StatsBar = statsBar
-	
-	-- Gradient for visual appeal
-	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new{
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(24, 25, 28)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(31, 33, 38))
-	}
-	gradient.Rotation = 90
-	gradient.Parent = statsBar
-	
-	-- Stats Container
+	-- Main Stats Container (top center)
 	local statsContainer = Instance.new("Frame")
-	statsContainer.Size = UDim2.new(1, -20, 1, -10)
-	statsContainer.Position = UDim2.new(0, 10, 0, 5)
+	statsContainer.Name = "StatsContainer"
+	statsContainer.Size = UDim2.new(0, 450, 0, 60) -- Increased width for margins
+	statsContainer.Position = UDim2.new(0.5, -225, 0, 20) -- Adjusted center position
 	statsContainer.BackgroundTransparency = 1
-	statsContainer.Parent = statsBar
+	statsContainer.ZIndex = 100
+	statsContainer.Parent = screenGui
+	components.StatsContainer = statsContainer
 	
-	local statsLayout = Instance.new("UIListLayout")
-	statsLayout.FillDirection = Enum.FillDirection.Horizontal
-	statsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-	statsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	statsLayout.Padding = UDim.new(0.05, 0)
-	statsLayout.Parent = statsContainer
-	
-	-- R$ Stat
-	local robuxFrame = Instance.new("Frame")
-	robuxFrame.Size = UDim2.new(0.2, 0, 1, 0)
-	robuxFrame.BackgroundTransparency = 1
-	robuxFrame.Parent = statsContainer
-	
-	local robuxIcon = Instance.new("TextLabel")
-	robuxIcon.Size = UDim2.new(0, 50, 0, 50)
-	robuxIcon.Position = UDim2.new(0, 0, 0.5, 0)
-	robuxIcon.AnchorPoint = Vector2.new(0, 0.5)
-	robuxIcon.BackgroundColor3 = Color3.fromRGB(76, 175, 80)
-	robuxIcon.Text = "R$"
-	robuxIcon.Font = Enum.Font.SourceSansBold
-	robuxIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-	robuxIcon.TextScaled = true
-	robuxIcon.Parent = robuxFrame
-	
-	local robuxIconAspect = Instance.new("UIAspectRatioConstraint")
-	robuxIconAspect.AspectRatio = 1
-	robuxIconAspect.Parent = robuxIcon
-	
-	local robuxCorner = Instance.new("UICorner")
-	robuxCorner.CornerRadius = UDim.new(0, 6)
-	robuxCorner.Parent = robuxIcon
-	
-	local robuxLabel = Instance.new("TextLabel")
-	robuxLabel.Size = UDim2.new(1, -55, 1, 0)
-	robuxLabel.Position = UDim2.new(0, 55, 0, 0)
-	robuxLabel.BackgroundTransparency = 1
-	robuxLabel.Text = "R$100"
-	robuxLabel.Font = Enum.Font.SourceSansBold
-	robuxLabel.TextColor3 = Color3.fromRGB(76, 175, 80)
-	robuxLabel.TextXAlignment = Enum.TextXAlignment.Left
-	robuxLabel.TextScaled = true
-	robuxLabel.Parent = robuxFrame
-	components.RobuxLabel = robuxLabel
-	
-	-- RAP Stat
+	-- RAP (Left side)
 	local rapFrame = Instance.new("Frame")
-	rapFrame.Size = UDim2.new(0.2, 0, 1, 0)
-	rapFrame.BackgroundTransparency = 1
+	rapFrame.Name = "RAPFrame"
+	rapFrame.Size = UDim2.new(0, 120, 0, 40)
+	rapFrame.Position = UDim2.new(0, 0, 0.5, -20)
+	rapFrame.BackgroundColor3 = Color3.fromRGB(41, 43, 48)
+	rapFrame.BorderSizePixel = 2
+	rapFrame.BorderColor3 = Color3.fromRGB(25, 27, 32) -- Darker border
+	rapFrame.ZIndex = 101
 	rapFrame.Parent = statsContainer
-	
-	local rapIcon = Instance.new("TextLabel")
-	rapIcon.Size = UDim2.new(0, 50, 0, 50)
-	rapIcon.Position = UDim2.new(0, 0, 0.5, 0)
-	rapIcon.AnchorPoint = Vector2.new(0, 0.5)
-	rapIcon.BackgroundColor3 = Color3.fromRGB(255, 193, 7)
-	rapIcon.Text = "📊"
-	rapIcon.Font = Enum.Font.SourceSans
-	rapIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-	rapIcon.TextScaled = true
-	rapIcon.Parent = rapFrame
-	
-	local rapIconAspect = Instance.new("UIAspectRatioConstraint")
-	rapIconAspect.AspectRatio = 1
-	rapIconAspect.Parent = rapIcon
+	components.RAPFrame = rapFrame
 	
 	local rapCorner = Instance.new("UICorner")
-	rapCorner.CornerRadius = UDim.new(0, 6)
-	rapCorner.Parent = rapIcon
+	rapCorner.CornerRadius = UDim.new(0, 8)
+	rapCorner.Parent = rapFrame
+	
+	local rapIcon = Instance.new("TextLabel")
+	rapIcon.Size = UDim2.new(0, 30, 0, 30)
+	rapIcon.Position = UDim2.new(0, 5, 0.5, -15)
+	rapIcon.BackgroundTransparency = 1
+	rapIcon.Text = "📊"
+	rapIcon.Font = Enum.Font.SourceSansBold
+	rapIcon.TextScaled = true
+	rapIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+	rapIcon.ZIndex = 102
+	rapIcon.Parent = rapFrame
 	
 	local rapLabel = Instance.new("TextLabel")
-	rapLabel.Size = UDim2.new(1, -55, 1, 0)
-	rapLabel.Position = UDim2.new(0, 55, 0, 0)
+	rapLabel.Name = "RAPLabel"
+	rapLabel.Size = UDim2.new(1, -40, 1, 0)
+	rapLabel.Position = UDim2.new(0, 35, 0, 0)
 	rapLabel.BackgroundTransparency = 1
-	rapLabel.Text = "RAP: R$0"
+	rapLabel.Text = "R$0"
 	rapLabel.Font = Enum.Font.SourceSansBold
-	rapLabel.TextColor3 = Color3.fromRGB(255, 193, 7)
+	rapLabel.TextSize = 14
+	rapLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	rapLabel.TextXAlignment = Enum.TextXAlignment.Left
-	rapLabel.TextScaled = true
+	rapLabel.TextYAlignment = Enum.TextYAlignment.Center
+	rapLabel.ZIndex = 102
 	rapLabel.Parent = rapFrame
 	components.RAPLabel = rapLabel
 	
-	-- Boxes Opened Stat
+	-- R$ (Center - Main display)
+	local robuxFrame = Instance.new("Frame")
+	robuxFrame.Name = "RobuxFrame"
+	robuxFrame.Size = UDim2.new(0, 160, 0, 50)
+	robuxFrame.Position = UDim2.new(0.5, -80, 0.5, -25)
+	robuxFrame.BackgroundColor3 = Color3.fromRGB(41, 43, 48)
+	robuxFrame.BorderSizePixel = 2
+	robuxFrame.BorderColor3 = Color3.fromRGB(25, 27, 32) -- Darker border
+	robuxFrame.ZIndex = 103
+	robuxFrame.Parent = statsContainer
+	components.RobuxFrame = robuxFrame
+	
+	local robuxCorner = Instance.new("UICorner")
+	robuxCorner.CornerRadius = UDim.new(0, 10)
+	robuxCorner.Parent = robuxFrame
+	
+	-- Add subtle gradient to robux frame
+	local robuxGradient = Instance.new("UIGradient")
+	robuxGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(45, 47, 52)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(35, 37, 42))
+	}
+	robuxGradient.Rotation = 90
+	robuxGradient.Parent = robuxFrame
+	
+	local robuxIcon = Instance.new("TextLabel")
+	robuxIcon.Size = UDim2.new(0, 35, 0, 35)
+	robuxIcon.Position = UDim2.new(0, 8, 0.5, -17)
+	robuxIcon.BackgroundTransparency = 1
+	robuxIcon.Text = "R$"
+	robuxIcon.Font = Enum.Font.SourceSansBold
+	robuxIcon.TextScaled = true
+	robuxIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+	robuxIcon.ZIndex = 104
+	robuxIcon.Parent = robuxFrame
+	
+	local robuxLabel = Instance.new("TextLabel")
+	robuxLabel.Name = "RobuxLabel"
+	robuxLabel.Size = UDim2.new(1, -50, 1, 0)
+	robuxLabel.Position = UDim2.new(0, 45, 0, 0)
+	robuxLabel.BackgroundTransparency = 1
+	robuxLabel.Text = "500"
+	robuxLabel.Font = Enum.Font.SourceSansBold
+	robuxLabel.TextSize = 20
+	robuxLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	robuxLabel.TextXAlignment = Enum.TextXAlignment.Left
+	robuxLabel.TextYAlignment = Enum.TextYAlignment.Center
+	robuxLabel.ZIndex = 104
+	robuxLabel.Parent = robuxFrame
+	components.RobuxLabel = robuxLabel
+	
+	-- Boxes Opened (Right side)
 	local boxesFrame = Instance.new("Frame")
-	boxesFrame.Size = UDim2.new(0.2, 0, 1, 0)
-	boxesFrame.BackgroundTransparency = 1
+	boxesFrame.Name = "BoxesFrame"
+	boxesFrame.Size = UDim2.new(0, 120, 0, 40)
+	boxesFrame.Position = UDim2.new(1, -120, 0.5, -20)
+	boxesFrame.BackgroundColor3 = Color3.fromRGB(41, 43, 48)
+	boxesFrame.BorderSizePixel = 2
+	boxesFrame.BorderColor3 = Color3.fromRGB(25, 27, 32) -- Darker border
+	boxesFrame.ZIndex = 101
 	boxesFrame.Parent = statsContainer
-	
-	local boxesIcon = Instance.new("TextLabel")
-	boxesIcon.Size = UDim2.new(0, 50, 0, 50)
-	boxesIcon.Position = UDim2.new(0, 0, 0.5, 0)
-	boxesIcon.AnchorPoint = Vector2.new(0, 0.5)
-	boxesIcon.BackgroundColor3 = Color3.fromRGB(156, 39, 176)
-	boxesIcon.Text = "📦"
-	boxesIcon.Font = Enum.Font.SourceSans
-	boxesIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-	boxesIcon.TextScaled = true
-	boxesIcon.Parent = boxesFrame
-	
-	local boxesIconAspect = Instance.new("UIAspectRatioConstraint")
-	boxesIconAspect.AspectRatio = 1
-	boxesIconAspect.Parent = boxesIcon
+	components.BoxesFrame = boxesFrame
 	
 	local boxesCorner = Instance.new("UICorner")
-	boxesCorner.CornerRadius = UDim.new(0, 6)
-	boxesCorner.Parent = boxesIcon
+	boxesCorner.CornerRadius = UDim.new(0, 8)
+	boxesCorner.Parent = boxesFrame
+	
+	local boxesIcon = Instance.new("TextLabel")
+	boxesIcon.Size = UDim2.new(0, 30, 0, 30)
+	boxesIcon.Position = UDim2.new(0, 5, 0.5, -15)
+	boxesIcon.BackgroundTransparency = 1
+	boxesIcon.Text = "📦"
+	boxesIcon.Font = Enum.Font.SourceSansBold
+	boxesIcon.TextScaled = true
+	boxesIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+	boxesIcon.ZIndex = 102
+	boxesIcon.Parent = boxesFrame
 	
 	local boxesLabel = Instance.new("TextLabel")
-	boxesLabel.Size = UDim2.new(1, -55, 1, 0)
-	boxesLabel.Position = UDim2.new(0, 55, 0, 0)
+	boxesLabel.Name = "BoxesLabel"
+	boxesLabel.Size = UDim2.new(1, -40, 1, 0)
+	boxesLabel.Position = UDim2.new(0, 35, 0, 0)
 	boxesLabel.BackgroundTransparency = 1
-	boxesLabel.Text = "Boxes: 0"
+	boxesLabel.Text = "0"
 	boxesLabel.Font = Enum.Font.SourceSansBold
-	boxesLabel.TextColor3 = Color3.fromRGB(156, 39, 176)
+	boxesLabel.TextSize = 14
+	boxesLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	boxesLabel.TextXAlignment = Enum.TextXAlignment.Left
-	boxesLabel.TextScaled = true
+	boxesLabel.TextYAlignment = Enum.TextYAlignment.Center
+	boxesLabel.ZIndex = 102
 	boxesLabel.Parent = boxesFrame
 	components.BoxesLabel = boxesLabel
+	
+	-- Update scale when screen size changes
+	local function updateScale()
+		uiScale.Scale = calculateUIScale()
+	end
+	
+	-- Connect to viewport size changes
+	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
+	components.UpdateScale = updateScale
 	
 	return components
 end
 
 function StatsUI.UpdateStats(components, robux, rap, boxesOpened)
-	-- Update R$ with formatting
+	-- Update R$ with formatting (center display - no R$ prefix since icon shows it)
 	if robux >= 1000000 then
-		components.RobuxLabel.Text = string.format("R$%.1fM", robux / 1000000)
+		components.RobuxLabel.Text = string.format("%.1fM", robux / 1000000)
 	elseif robux >= 1000 then
-		components.RobuxLabel.Text = string.format("R$%.1fK", robux / 1000)
+		components.RobuxLabel.Text = string.format("%.1fK", robux / 1000)
 	else
-		components.RobuxLabel.Text = string.format("R$%d", robux)
+		components.RobuxLabel.Text = string.format("%d", robux)
 	end
 	
 	-- Update RAP with formatting
-	components.RAPLabel.Text = "RAP: " .. ItemValueCalculator.GetFormattedRAP(rap)
+	components.RAPLabel.Text = "" .. ItemValueCalculator.GetFormattedRAP(rap)
 	
 	-- Update Boxes Opened with formatting
 	if boxesOpened >= 1000000 then
-		components.BoxesLabel.Text = string.format("Boxes: %.1fM", boxesOpened / 1000000)
+		components.BoxesLabel.Text = string.format("%.1fM", boxesOpened / 1000000)
 	elseif boxesOpened >= 1000 then
-		components.BoxesLabel.Text = string.format("Boxes: %.1fK", boxesOpened / 1000)
+		components.BoxesLabel.Text = string.format("%.1fK", boxesOpened / 1000)
 	else
-		components.BoxesLabel.Text = string.format("Boxes: %d", boxesOpened)
+		components.BoxesLabel.Text = string.format("%d", boxesOpened)
 	end
 end
 

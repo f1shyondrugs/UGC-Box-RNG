@@ -1,24 +1,63 @@
 -- CollectionUI.lua
 -- Comprehensive item collection index organized by crates
 
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local Shared = ReplicatedStorage.Shared
+local GameConfig = require(Shared.Modules.GameConfig)
+local ItemValueCalculator = require(Shared.Modules.ItemValueCalculator)
+
 local CollectionUI = {}
 
-local ItemValueCalculator = require(game.ReplicatedStorage.Shared.Modules.ItemValueCalculator)
-local GameConfig = require(game.ReplicatedStorage.Shared.Modules.GameConfig)
+-- Function to calculate appropriate UI scale based on screen size
+local function calculateUIScale()
+	local camera = workspace.CurrentCamera
+	local screenSize = camera.ViewportSize
+	
+	-- Base scale for 1920x1080 (desktop)
+	local baseWidth = 1920
+	local baseHeight = 1080
+	
+	-- Calculate scale factors
+	local widthScale = screenSize.X / baseWidth
+	local heightScale = screenSize.Y / baseHeight
+	
+	-- Use the smaller scale to ensure UI fits on screen
+	local scale = math.min(widthScale, heightScale)
+	
+	-- Special handling for mobile vs desktop
+	if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+		-- Mobile device - keep smaller for touch interfaces
+		scale = scale * 0.8
+		-- Apply minimum and maximum bounds for mobile
+		scale = math.max(0.4, math.min(scale, 1.0))
+	else
+		-- Desktop/PC - make UI larger and more prominent
+		scale = scale * 1.3
+		-- Apply minimum and maximum bounds for desktop
+		scale = math.max(0.8, math.min(scale, 2.0))
+	end
+	
+	return scale
+end
 
-function CollectionUI.Create(parent)
+function CollectionUI.Create(parentGui)
 	local components = {}
-
-	-- Main ScreenGui
+	
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "CollectionGui"
 	screenGui.ResetOnSpawn = false
+	screenGui.Parent = parentGui
 	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	components.ScreenGui = screenGui
 
-	-- Add a UIScale to manage UI scaling across different resolutions
 	local uiScale = Instance.new("UIScale")
+	uiScale.Scale = calculateUIScale()
 	uiScale.Parent = screenGui
+	components.UIScale = uiScale
 
 	-- Toggle Button
 	local toggleButton = Instance.new("TextButton")
@@ -270,12 +309,18 @@ function CollectionUI.Create(parent)
 	tooltipContent.TextYAlignment = Enum.TextYAlignment.Top
 	tooltipContent.TextWrapped = true
 	tooltipContent.ZIndex = 101
-	tooltipContent.Parent = tooltip
+		tooltipContent.Parent = tooltip
 	components.TooltipContent = tooltipContent
-
-	-- Parent to provided parent
-	screenGui.Parent = parent
 	components.TabsContainer = tabsContainer
+	
+	-- Update scale when screen size changes
+	local function updateScale()
+		uiScale.Scale = calculateUIScale()
+	end
+	
+	-- Connect to viewport size changes
+	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
+	components.UpdateScale = updateScale
 	
 	return components
 end
