@@ -341,6 +341,8 @@ function UpgradeUI.UpdateUpgradeFrame(components, upgradeId, upgradeData)
 			effectText = "Current: " .. upgradeData.effects.CurrentSlots .. " → Next: " .. upgradeData.effects.NextSlots
 		elseif upgradeId == "MultiCrateOpening" then
 			effectText = "Current: " .. upgradeData.effects.CurrentBoxes .. " → Next: " .. upgradeData.effects.NextBoxes
+		elseif upgradeId == "FasterCooldowns" then
+			effectText = "Current: " .. upgradeData.effects.CurrentCooldown .. " → Next: " .. upgradeData.effects.NextCooldown
 		end
 		components.EffectLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
 	end

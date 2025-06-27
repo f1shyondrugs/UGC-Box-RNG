@@ -34,6 +34,27 @@ UpgradeConfig.Upgrades = {
 				NextBoxes = math.min(1 + level + 1, 5)
 			}
 		end
+	},
+	
+	FasterCooldowns = {
+		Name = "Faster Cooldowns",
+		Description = "Reduces the cooldown between crate purchases",
+		BaseCost = 500,
+		CostExponent = 5eee,
+		BaseValue = 0.5, -- Starting cooldown in seconds
+		ValuePerLevel = -0.05, -- -0.05 seconds per level
+		MaxLevel = 10, -- Up to 0.1 second cooldown (0.5 - 8*0.05 = 0.1)
+		Icon = "⚡",
+		Effects = function(level)
+			local currentCooldown = math.max(0.1, 0.5 - (level * 0.05)) -- Minimum 0.1 seconds
+			local nextCooldown = math.max(0.1, 0.5 - ((level + 1) * 0.05))
+			return {
+				CurrentCooldown = string.format("%.2fs", currentCooldown),
+				NextCooldown = string.format("%.2fs", nextCooldown),
+				CurrentCooldownValue = currentCooldown,
+				NextCooldownValue = nextCooldown
+			}
+		end
 	}
 }
 

@@ -19,6 +19,15 @@ local function initializePlayerUpgrades(player)
 		for upgradeId, _ in pairs(UpgradeConfig.Upgrades) do
 			playerUpgrades[player.UserId][upgradeId] = 0
 		end
+		
+		-- Send initial upgrade values to client
+		task.spawn(function()
+			task.wait(2) -- Wait for client to initialize
+			local maxBoxes = UpgradeService.GetPlayerMaxBoxes(player)
+			local cooldown = UpgradeService.GetPlayerCooldown(player)
+			Remotes.MaxBoxesUpdated:FireClient(player, maxBoxes)
+			Remotes.CooldownUpdated:FireClient(player, cooldown)
+		end)
 	end
 end
 
@@ -52,6 +61,14 @@ function UpgradeService.GetPlayerMaxBoxes(player)
 	local upgradeLevel = UpgradeService.GetPlayerUpgradeLevel(player, "MultiCrateOpening")
 	local upgrade = UpgradeConfig.Upgrades.MultiCrateOpening
 	return upgrade.BaseValue + upgradeLevel
+end
+
+-- Calculate current cooldown based on upgrade level
+function UpgradeService.GetPlayerCooldown(player)
+	local upgradeLevel = UpgradeService.GetPlayerUpgradeLevel(player, "FasterCooldowns")
+	local upgrade = UpgradeConfig.Upgrades.FasterCooldowns
+	local cooldown = upgrade.BaseValue + (upgradeLevel * upgrade.ValuePerLevel)
+	return math.max(0.1, cooldown) -- Minimum 0.1 seconds
 end
 
 -- Handle upgrade purchase
@@ -103,6 +120,10 @@ local function handleUpgradePurchase(player, upgradeId)
 		-- Update max boxes for this player
 		local newMaxBoxes = UpgradeService.GetPlayerMaxBoxes(player)
 		Remotes.MaxBoxesUpdated:FireClient(player, newMaxBoxes)
+	elseif upgradeId == "FasterCooldowns" then
+		-- Update cooldown for this player
+		local newCooldown = UpgradeService.GetPlayerCooldown(player)
+		Remotes.CooldownUpdated:FireClient(player, newCooldown)
 	end
 	
 	-- Save upgrade data (will be handled by existing PlayerDataService)

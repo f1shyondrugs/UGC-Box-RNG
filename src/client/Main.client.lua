@@ -23,7 +23,7 @@ local StatsUI = require(script.Parent.UI.StatsUI)
 
 -- Constants (will be updated by upgrades)
 local MAX_BOXES = 1 -- Default, will be updated by upgrade system
-local BUY_COOLDOWN = 0.5 -- seconds
+local BUY_COOLDOWN = 0.5 -- Default, will be updated by upgrade system
 
 -- State
 local currentBoxCount = 0
@@ -178,15 +178,31 @@ Remotes.MaxBoxesUpdated.OnClientEvent:Connect(function(newMaxBoxes)
 	updateButtonState()
 end)
 
--- Get initial max boxes value from upgrade system
-local success, initialMaxBoxes = pcall(function()
+-- Handle cooldown updates from upgrade system
+Remotes.CooldownUpdated.OnClientEvent:Connect(function(newCooldown)
+	BUY_COOLDOWN = newCooldown
+end)
+
+-- Get initial upgrade values from upgrade system
+local success, initialUpgradeData = pcall(function()
 	return Remotes.GetUpgradeData:InvokeServer()
 end)
 
-if success and initialMaxBoxes and initialMaxBoxes.MultiCrateOpening then
-	local multiCrateData = initialMaxBoxes.MultiCrateOpening
-	if multiCrateData.effects and multiCrateData.effects.CurrentBoxes then
-		MAX_BOXES = multiCrateData.effects.CurrentBoxes
+if success and initialUpgradeData then
+	-- Set initial max boxes
+	if initialUpgradeData.MultiCrateOpening then
+		local multiCrateData = initialUpgradeData.MultiCrateOpening
+		if multiCrateData.effects and multiCrateData.effects.CurrentBoxes then
+			MAX_BOXES = multiCrateData.effects.CurrentBoxes
+		end
+	end
+	
+	-- Set initial cooldown
+	if initialUpgradeData.FasterCooldowns then
+		local cooldownData = initialUpgradeData.FasterCooldowns
+		if cooldownData.effects and cooldownData.effects.CurrentCooldownValue then
+			BUY_COOLDOWN = cooldownData.effects.CurrentCooldownValue
+		end
 	end
 end
 

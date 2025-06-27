@@ -43,4 +43,5 @@ return {
 	GetUpgradeData = createRemote("RemoteFunction", "GetUpgradeData"),
 	UpgradeUpdated = createRemote("RemoteEvent", "UpgradeUpdated"),
 	MaxBoxesUpdated = createRemote("RemoteEvent", "MaxBoxesUpdated"),
+	CooldownUpdated = createRemote("RemoteEvent", "CooldownUpdated"),
 } 
