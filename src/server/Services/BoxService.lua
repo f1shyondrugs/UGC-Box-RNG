@@ -12,8 +12,8 @@ local Box = require(Shared.Modules.Box)
 
 local BoxService = {}
 
-local MAX_BOXES = 16
-local INVENTORY_LIMIT = 50
+local DEFAULT_MAX_BOXES = 1
+local DEFAULT_INVENTORY_LIMIT = 50
 local activeBoxes = {} -- boxPart -> Box object
 local playerBoxCount = {} -- player.UserId -> number
 local playerFreeCrateCooldowns = {} -- player.UserId -> last claim tick()
@@ -46,8 +46,12 @@ local function requestBox(player: Player, boxType: string)
 		return
 	end
 
-	if (playerBoxCount[player.UserId] or 0) >= MAX_BOXES then
-		Remotes.Notify:FireClient(player, "You can only have 4 boxes out at a time!", "Error")
+	-- Get player's max boxes from upgrade system
+	local UpgradeService = require(script.Parent.UpgradeService)
+	local maxBoxes = UpgradeService.GetPlayerMaxBoxes(player)
+	
+	if (playerBoxCount[player.UserId] or 0) >= maxBoxes then
+		Remotes.Notify:FireClient(player, "You can only have " .. maxBoxes .. " boxes out at a time!", "Error")
 		return
 	end
 
@@ -170,11 +174,15 @@ local function openBox(player: Player, boxPart: Part)
 		prompt.Enabled = false
 	end
 
-	-- Check if inventory is full before opening
+	-- Check if inventory is full before opening (using upgrade system)
 	local inventory = player:FindFirstChild("Inventory")
 	if not inventory then return end
-	if #inventory:GetChildren() >= INVENTORY_LIMIT then
-		Remotes.Notify:FireClient(player, "Your inventory is full! (50/50)", "Error")
+	
+	local UpgradeService = require(script.Parent.UpgradeService)
+	local inventoryLimit = UpgradeService.GetPlayerInventoryLimit(player)
+	
+	if #inventory:GetChildren() >= inventoryLimit then
+		Remotes.Notify:FireClient(player, "Your inventory is full! (" .. #inventory:GetChildren() .. "/" .. inventoryLimit .. ")", "Error")
 		return
 	end
 
@@ -337,7 +345,9 @@ local function onAnimationComplete(player: Player, boxPart: Part)
 	local rewardItemName = boxPart:GetAttribute("RewardItem")
 	if rewardItemName then
 		local inventory = player:FindFirstChild("Inventory")
-		if inventory and #inventory:GetChildren() < INVENTORY_LIMIT then
+		local UpgradeService = require(script.Parent.UpgradeService)
+		local inventoryLimit = UpgradeService.GetPlayerInventoryLimit(player)
+		if inventory and #inventory:GetChildren() < inventoryLimit then
 			local item = Instance.new("StringValue")
 			-- Generate unique UUID for the item
 			local itemUUID = generateUUID()

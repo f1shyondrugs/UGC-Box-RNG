@@ -37,4 +37,10 @@ return {
 	
 	-- Collection Remotes
 	GetPlayerCollection = createRemote("RemoteFunction", "GetPlayerCollection"),
+	
+	-- Upgrade Remotes
+	PurchaseUpgrade = createRemote("RemoteEvent", "PurchaseUpgrade"),
+	GetUpgradeData = createRemote("RemoteFunction", "GetUpgradeData"),
+	UpgradeUpdated = createRemote("RemoteEvent", "UpgradeUpdated"),
+	MaxBoxesUpdated = createRemote("RemoteEvent", "MaxBoxesUpdated"),
 } 

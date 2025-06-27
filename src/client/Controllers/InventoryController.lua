@@ -14,7 +14,7 @@ local InventoryUI = require(script.Parent.Parent.UI.InventoryUI)
 local ItemValueCalculator = require(Shared.Modules.ItemValueCalculator)
 
 local InventoryController = {}
-local INVENTORY_LIMIT = 50
+local DEFAULT_INVENTORY_LIMIT = 50
 
 -- Camera and UI state management
 local originalCamera = nil
@@ -97,6 +97,19 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	local inventory = LocalPlayer:WaitForChild("Inventory")
 	local leaderstats = LocalPlayer:WaitForChild("leaderstats")
 	local rapStat = leaderstats:WaitForChild("RAP")
+	
+	-- Get current inventory limit from upgrades
+	local currentInventoryLimit = DEFAULT_INVENTORY_LIMIT
+	local success, upgradeData = pcall(function()
+		return Remotes.GetUpgradeData:InvokeServer()
+	end)
+	
+	if success and upgradeData and upgradeData.InventorySlots then
+		local inventoryUpgrade = upgradeData.InventorySlots
+		if inventoryUpgrade.effects and inventoryUpgrade.effects.CurrentSlots then
+			currentInventoryLimit = inventoryUpgrade.effects.CurrentSlots
+		end
+	end
 	
 	local ui = InventoryUI.Create(parentGui)
 	
@@ -356,9 +369,9 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 
 	local function updateInventoryCount()
 		local count = #inventory:GetChildren()
-		ui.InventoryTitle.Text = string.format("INVENTORY (%d / %d)", count, INVENTORY_LIMIT)
-		
-		local isFull = count >= INVENTORY_LIMIT
+			ui.InventoryTitle.Text = string.format("INVENTORY (%d / %d)", count, currentInventoryLimit)
+	
+	local isFull = count >= currentInventoryLimit
 		ui.WarningIcon.Visible = isFull
 		updateBoxPrompts(isFull)
 	end
@@ -818,6 +831,24 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	
 	-- Connect to RAP changes
 	rapStat:GetPropertyChangedSignal("Value"):Connect(updateRAP)
+	
+	-- Listen for upgrade updates to refresh inventory limit
+	Remotes.UpgradeUpdated.OnClientEvent:Connect(function(upgradeId, newLevel)
+		if upgradeId == "InventorySlots" then
+			-- Update inventory limit
+			local success, upgradeData = pcall(function()
+				return Remotes.GetUpgradeData:InvokeServer()
+			end)
+			
+			if success and upgradeData and upgradeData.InventorySlots then
+				local inventoryUpgrade = upgradeData.InventorySlots
+				if inventoryUpgrade.effects and inventoryUpgrade.effects.CurrentSlots then
+					currentInventoryLimit = inventoryUpgrade.effects.CurrentSlots
+					updateInventoryCount() -- Refresh display
+				end
+			end
+		end
+	end)
 	
 	-- Make global action buttons visible
 	ui.SellUnlockedButton.Visible = true

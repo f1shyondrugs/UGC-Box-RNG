@@ -45,4 +45,119 @@ This is a box-opening RNG game created for Roblox and managed with Rojo.
 2.  Start a playtest session.
 3.  The UI will appear on your screen to buy boxes.
 4.  An inventory panel will show your items.
-5.  Enjoy the game! 
+5.  Enjoy the game!
+
+# RNG Simulator
+
+A Roblox RNG (Random Number Generator) game where players can:
+- Purchase and open crates to collect rare UGC items
+- Build an inventory of unique cosmetic items
+- Equip items to customize their avatar
+- View their collection progress
+- Upgrade their gameplay experience with various enhancements
+
+## 🚀 New Features
+
+### ⚡ Upgrade System
+The game now includes a comprehensive upgrade system that allows players to enhance their gameplay experience:
+
+#### Available Upgrades:
+1. **More Inventory Slots** 🎒
+   - Increases your inventory capacity beyond the default 50 slots
+   - Starts at 50 slots, +5 slots per level
+   - Maximum level 20 (150 total slots)
+   - Cost scaling: 100 R$ base cost with 1.5x exponential scaling
+
+2. **Multi-Crate Opening** 📦
+   - Unlock the ability to open multiple crates simultaneously
+   - Starts at 1 box, +1 box per level
+   - Maximum level 4 (5 boxes total)
+   - Cost scaling: 500 R$ base cost with 2.0x exponential scaling
+
+#### Upgrade Features:
+- **Persistent Progress**: All upgrades are saved using DataStore
+- **Real-time Effects**: Upgrades immediately affect gameplay systems
+- **Visual Feedback**: Clean UI showing current level, effects, and costs
+- **Smart Affordability**: Buttons show when you can't afford upgrades
+- **Mobile-Friendly**: Responsive design that works on all devices
+
+### 🎮 Gameplay Features
+- **Crate Opening**: Open crates to discover rare UGC cosmetic items
+- **Inventory Management**: Store and organize your collected items
+- **Avatar Customization**: Equip items to change your appearance
+- **Collection Tracking**: Track your discovery progress across all items
+- **Item Trading**: Lock valuable items to prevent accidental sales
+- **Statistics**: View your total value, boxes opened, and progress
+
+### 🎨 UI/UX Features
+- **Modern Dark Theme**: Clean, professional interface
+- **Responsive Design**: Works perfectly on desktop and mobile
+- **Smooth Animations**: Polished tweening and visual effects
+- **Sound Integration**: Audio feedback for all interactions
+- **Accessibility**: Large touch targets for mobile users
+
+## 🛠️ Technical Architecture
+
+### Client-Side Structure
+```
+src/client/
+├── Controllers/
+│   ├── UpgradeController.lua      # Manages upgrade UI and interactions
+│   ├── InventoryController.lua    # Handles inventory with upgrade limits
+│   ├── CollectionController.lua   # Item collection tracking
+│   └── ...
+├── UI/
+│   ├── UpgradeUI.lua             # Upgrade system interface
+│   ├── InventoryUI.lua           # Dynamic inventory display
+│   └── ...
+└── Main.client.lua               # Updated with upgrade integration
+```
+
+### Server-Side Structure
+```
+src/server/Services/
+├── UpgradeService.lua            # Core upgrade logic and persistence
+├── PlayerDataService.lua         # Enhanced with upgrade data storage
+├── BoxService.lua                # Updated to use upgrade limits
+└── ...
+```
+
+### Shared Modules
+```
+src/shared/Modules/
+├── UpgradeConfig.lua             # Upgrade definitions and calculations
+├── GameConfig.lua                # Game configuration and items
+└── ...
+```
+
+## 🔧 Development Setup
+
+This project uses [Rojo](https://rojo.space/) for development workflow:
+
+1. Install Rojo and dependencies
+2. Run `rojo serve` to start the development server
+3. Connect from Roblox Studio using the Rojo plugin
+4. Make changes to the source files and sync to see updates
+
+### Key Files for Upgrades:
+- `UpgradeConfig.lua` - Define new upgrades and their scaling
+- `UpgradeService.lua` - Server-side upgrade logic
+- `UpgradeUI.lua` - Client-side interface (matches Collection GUI style)
+- `PlayerDataService.lua` - Handles upgrade data persistence
+
+## 📈 Future Enhancements
+
+The upgrade system is designed to be easily extensible. Planned future upgrades include:
+- **Luck Boost**: Increase rare item drop rates
+- **Auto-Sell**: Automatically sell common items
+- **Faster Cooldowns**: Reduce free crate cooldown times
+- **Better Rewards**: Improve crate reward quality
+- **Special Effects**: Cosmetic enhancements and animations
+
+## 🎯 Core Mechanics
+
+- **Economy**: R$ currency system with balanced pricing
+- **RNG**: Weighted random rewards with multiple rarity tiers
+- **Progression**: Level-based upgrades with exponential costs
+- **Persistence**: All player data saved securely with DataStore
+- **Scalability**: Modular architecture supports easy feature additions 

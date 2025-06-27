@@ -17,11 +17,12 @@ local InventoryController = require(script.Parent.Controllers.InventoryControlle
 local CollectionController = require(script.Parent.Controllers.CollectionController)
 local NameplateController = require(script.Parent.Controllers.NameplateController)
 local SoundController = require(script.Parent.Controllers.SoundController)
+local UpgradeController = require(script.Parent.Controllers.UpgradeController)
 local BuyButtonUI = require(script.Parent.UI.BuyButtonUI)
 local StatsUI = require(script.Parent.UI.StatsUI)
 
--- Constants
-local MAX_BOXES = 16
+-- Constants (will be updated by upgrades)
+local MAX_BOXES = 1 -- Default, will be updated by upgrade system
 local BUY_COOLDOWN = 0.5 -- seconds
 
 -- State
@@ -38,6 +39,7 @@ CameraShaker.Start()
 Notifier.Start(PlayerGui)
 InventoryController.Start(PlayerGui, openingBoxes, soundController)
 CollectionController.Start(PlayerGui, soundController)
+UpgradeController.Start(PlayerGui, soundController)
 NameplateController.Start()
 
 -- Create Stats UI at the top
@@ -169,6 +171,24 @@ Remotes.BoxLanded.OnClientEvent:Connect(function()
 	soundController:playBoxLand()
 	-- CameraShaker.Shake(0.2, 0.3) -- Short, sharp shake
 end)
+
+-- Handle max boxes updates from upgrade system
+Remotes.MaxBoxesUpdated.OnClientEvent:Connect(function(newMaxBoxes)
+	MAX_BOXES = newMaxBoxes
+	updateButtonState()
+end)
+
+-- Get initial max boxes value from upgrade system
+local success, initialMaxBoxes = pcall(function()
+	return Remotes.GetUpgradeData:InvokeServer()
+end)
+
+if success and initialMaxBoxes and initialMaxBoxes.MultiCrateOpening then
+	local multiCrateData = initialMaxBoxes.MultiCrateOpening
+	if multiCrateData.effects and multiCrateData.effects.CurrentBoxes then
+		MAX_BOXES = multiCrateData.effects.CurrentBoxes
+	end
+end
 
 -- Initial State
 updateButtonState()

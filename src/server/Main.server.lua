@@ -15,15 +15,17 @@ local AdminService = require(Services:WaitForChild("AdminService"))
 local AvatarService = require(Services:WaitForChild("AvatarService"))
 local AssetPreviewService = require(Services:WaitForChild("AssetPreviewService"))
 local LeaderboardService = require(Services:WaitForChild("LeaderboardService"))
+local UpgradeService = require(Services:WaitForChild("UpgradeService"))
 -- local other services will be added here
 
 -- Start Services
 ConfigVerifierService.Start() -- Start first to verify config
 UGCPreloaderService.Start() -- Start early to preload UGC items
+PlayerDataService.Start()
+UpgradeService.Init() -- Initialize upgrade system before other services that depend on it
 BoxService.Start()
 CollisionService.Start()
 InventoryService.Start()
-PlayerDataService.Start()
 AdminService.Start() -- Start the new service
 AvatarService.Start() -- Start the avatar service
 AssetPreviewService.Start() -- Start the asset preview service

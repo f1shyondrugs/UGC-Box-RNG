@@ -170,6 +170,14 @@ local function onPlayerAdded(player: Player)
 			end
 		end
 		
+		-- Load upgrade data
+		local UpgradeService = require(script.Parent.UpgradeService)
+		if data.upgrades then
+			for upgradeId, level in pairs(data.upgrades) do
+				UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, level)
+			end
+		end
+		
 		-- Load equipped items
 		if data.equippedItems then
 			-- Apply equipped items after character spawns
@@ -292,6 +300,10 @@ local function saveData(player: Player)
 	-- Use the shared service to get a clean, savable table of equipped items
 	local SharedAvatarService = require(game.ReplicatedStorage.Shared.Services.AvatarService)
 	dataToSave.equippedItems = SharedAvatarService.GetSerializableEquippedItems(player)
+	
+	-- Save upgrade data
+	local UpgradeService = require(script.Parent.UpgradeService)
+	dataToSave.upgrades = UpgradeService.GetPlayerUpgrades(player)
 
 	-- Retry logic for DataStore operations
 	local attempts = 0
@@ -368,6 +380,14 @@ end
 
 -- Expose function for other services to trigger a save
 function DataService.Save(player)
+	task.spawn(saveData, player)
+end
+
+-- Add function for upgrade service to save upgrade data
+function DataService.SaveUpgradeData(player, upgradeData)
+	-- This will be called by UpgradeService when upgrades change
+	-- The actual saving will happen during the regular save cycle
+	-- But we can trigger an immediate save if needed for upgrades
 	task.spawn(saveData, player)
 end
 

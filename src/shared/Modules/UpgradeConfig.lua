@@ -1,0 +1,77 @@
+local UpgradeConfig = {}
+
+-- Upgrade definitions with scaling costs and effects
+UpgradeConfig.Upgrades = {
+	InventorySlots = {
+		Name = "More Inventory Slots",
+		Description = "Increases your inventory capacity",
+		BaseCost = 1000,
+		CostExponent = 5,
+		BaseValue = 50, -- Starting inventory slots
+		ValuePerLevel = 5, -- +5 slots per level
+		MaxLevel = 100, -- Up to 550 slots total
+		Icon = "🎒",
+		Effects = function(level)
+			return {
+				CurrentSlots = 50 + (level * 5),
+				NextSlots = 50 + ((level + 1) * 5)
+			}
+		end
+	},
+	
+	MultiCrateOpening = {
+		Name = "Multi-Crate Opening",
+		Description = "Open multiple crates at once",
+		BaseCost = 10000,
+		CostExponent = 5,
+		BaseValue = 1, -- Starting max boxes
+		ValuePerLevel = 1, -- +1 box per level
+		MaxLevel = 4, -- Up to 5 boxes total (1 + 4 levels)
+		Icon = "📦",
+		Effects = function(level)
+			return {
+				CurrentBoxes = math.min(1 + level, 5),
+				NextBoxes = math.min(1 + level + 1, 5)
+			}
+		end
+	}
+}
+
+-- Calculate upgrade cost for a specific level
+function UpgradeConfig.GetUpgradeCost(upgradeId, level)
+	local upgrade = UpgradeConfig.Upgrades[upgradeId]
+	if not upgrade then return 0 end
+	
+	if level >= upgrade.MaxLevel then
+		return nil -- Max level reached
+	end
+	
+	return math.floor(upgrade.BaseCost * math.pow(level + 1, upgrade.CostExponent))
+end
+
+-- Get current upgrade effects
+function UpgradeConfig.GetUpgradeEffects(upgradeId, level)
+	local upgrade = UpgradeConfig.Upgrades[upgradeId]
+	if not upgrade or not upgrade.Effects then return {} end
+	
+	return upgrade.Effects(level)
+end
+
+-- Check if upgrade is at max level
+function UpgradeConfig.IsMaxLevel(upgradeId, level)
+	local upgrade = UpgradeConfig.Upgrades[upgradeId]
+	if not upgrade then return true end
+	
+	return level >= upgrade.MaxLevel
+end
+
+-- Get all upgrade IDs
+function UpgradeConfig.GetAllUpgradeIds()
+	local ids = {}
+	for id, _ in pairs(UpgradeConfig.Upgrades) do
+		table.insert(ids, id)
+	end
+	return ids
+end
+
+return UpgradeConfig 
