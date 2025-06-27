@@ -115,6 +115,68 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	
 	local itemEntries = {} -- itemInstance -> { Template, LockIcon, Connection }
 	local searchText = ""
+	
+	-- Sorting and filtering state
+	local currentSort = "name" -- name, rarity, value, type, size
+	local sortAscending = true
+	local currentRarityFilter = "all" -- all, common, uncommon, rare, etc.
+	local lockedOnlyFilter = false
+	local equippedOnlyFilter = false
+	local mutatedOnlyFilter = false
+
+	-- Get sorting value for an item
+	local function getSortValue(itemInstance, sortType)
+		local itemName = itemInstance:GetAttribute("ItemName") or itemInstance.Name
+		local itemConfig = GameConfig.Items[itemName]
+		if not itemConfig then return "" end
+		
+		if sortType == "name" then
+			local mutationNames = ItemValueCalculator.GetMutationNames(itemInstance)
+			if #mutationNames > 0 then
+				return table.concat(mutationNames, " ") .. " " .. itemName
+			end
+			return itemName
+		elseif sortType == "rarity" then
+			local rarityOrder = {Common = 1, Uncommon = 2, Rare = 3, Epic = 4, Legendary = 5, Mythical = 6, Celestial = 7, Divine = 8, Transcendent = 9, Ethereal = 10, Quantum = 11}
+			return rarityOrder[itemConfig.Rarity] or 0
+		elseif sortType == "value" then
+			local mutationConfigs = ItemValueCalculator.GetMutationConfigs(itemInstance)
+			local size = itemInstance:GetAttribute("Size") or 1
+			return ItemValueCalculator.GetValue(itemConfig, mutationConfigs, size)
+		elseif sortType == "type" then
+			return itemConfig.Type or "Unknown"
+		elseif sortType == "size" then
+			return itemInstance:GetAttribute("Size") or 1
+		end
+		return ""
+	end
+	
+	-- Sort items in the inventory
+	local function sortInventory()
+		local sortedItems = {}
+		for itemInstance, _ in pairs(itemEntries) do
+			table.insert(sortedItems, itemInstance)
+		end
+		
+		table.sort(sortedItems, function(a, b)
+			local valueA = getSortValue(a, currentSort)
+			local valueB = getSortValue(b, currentSort)
+			
+			if sortAscending then
+				return valueA < valueB
+			else
+				return valueA > valueB
+			end
+		end)
+		
+		-- Update layout orders
+		for i, itemInstance in ipairs(sortedItems) do
+			local entry = itemEntries[itemInstance]
+			if entry and entry.Template then
+				entry.Template.LayoutOrder = i
+			end
+		end
+	end
 
 	local function matchesSearch(itemInstance, searchQuery)
 		if not searchQuery or searchQuery == "" then
@@ -159,20 +221,262 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		
 		return false
 	end
+	
+	-- Enhanced filtering with all criteria
+	local function matchesFilters(itemInstance)
+		-- Search text filter
+		if not matchesSearch(itemInstance, searchText) then
+			return false
+		end
+		
+		local itemName = itemInstance:GetAttribute("ItemName") or itemInstance.Name
+		local itemConfig = GameConfig.Items[itemName]
+		if not itemConfig then return false end
+		
+		-- Rarity filter
+		if currentRarityFilter ~= "all" and itemConfig.Rarity ~= currentRarityFilter then
+			return false
+		end
+		
+		-- Locked filter
+		if lockedOnlyFilter then
+			local isLocked = itemInstance:GetAttribute("Locked") or false
+			if not isLocked then
+				return false
+			end
+		end
+		
+		-- Equipped filter
+		if equippedOnlyFilter then
+			local success, equippedItems = pcall(function()
+				return Remotes.GetEquippedItems:InvokeServer()
+			end)
+			local isEquipped = false
+			if success and equippedItems and itemConfig.Type then
+				for _, equippedItem in pairs(equippedItems) do
+					if equippedItem == itemInstance then
+						isEquipped = true
+						break
+					end
+				end
+			end
+			if not isEquipped then
+				return false
+			end
+		end
+		
+		-- Mutated filter
+		if mutatedOnlyFilter then
+			local mutationNames = ItemValueCalculator.GetMutationNames(itemInstance)
+			if #mutationNames == 0 then
+				return false
+			end
+		end
+		
+		return true
+	end
 
-	local function filterInventory()
+	local function filterAndSortInventory()
+		-- Filter items
 		for itemInstance, entry in pairs(itemEntries) do
 			if entry.Template then
-				local visible = matchesSearch(itemInstance, searchText)
+				local visible = matchesFilters(itemInstance)
 				entry.Template.Visible = visible
 			end
 		end
+		
+		-- Sort visible items
+		sortInventory()
+	end
+
+	-- Update sort button text
+	local function updateSortButtonText()
+		local sortNames = {
+			name = "Name",
+			rarity = "Rarity", 
+			value = "Value",
+			type = "Type",
+			size = "Size"
+		}
+		local arrow = sortAscending and "↑" or "↓"
+		ui.SortButton.Text = "Sort: " .. sortNames[currentSort] .. " " .. arrow
+	end
+	
+	-- Update filter button text
+	local function updateFilterButtonText()
+		if currentRarityFilter == "all" then
+			ui.FilterButton.Text = "Filter: All Rarities"
+		else
+			ui.FilterButton.Text = "Filter: " .. currentRarityFilter
+		end
+	end
+	
+	-- Update toggle button appearance
+	local function updateToggleButton(button, active)
+		if active then
+			button.BackgroundColor3 = Color3.fromRGB(76, 175, 80)
+			button.TextColor3 = Color3.fromRGB(255, 255, 255)
+		else
+			button.BackgroundColor3 = Color3.fromRGB(45, 50, 60)
+			button.TextColor3 = Color3.fromRGB(180, 180, 180)
+		end
+	end
+	
+	-- Show sort dropdown menu
+	local function showSortMenu()
+		-- Create dropdown menu
+		local menu = Instance.new("Frame")
+		menu.Name = "SortMenu"
+		menu.Size = UDim2.new(0, 120, 0, 150)
+		menu.Position = UDim2.new(0, 0, 1, 5)
+		menu.BackgroundColor3 = Color3.fromRGB(35, 40, 50)
+		menu.BorderSizePixel = 0
+		menu.ZIndex = 100
+		menu.Parent = ui.SortButton.Parent
+		
+		local menuCorner = Instance.new("UICorner")
+		menuCorner.CornerRadius = UDim.new(0, 6)
+		menuCorner.Parent = menu
+		
+		local menuStroke = Instance.new("UIStroke")
+		menuStroke.Color = Color3.fromRGB(80, 90, 110)
+		menuStroke.Thickness = 1
+		menuStroke.Parent = menu
+		
+		local layout = Instance.new("UIListLayout")
+		layout.Padding = UDim.new(0, 2)
+		layout.Parent = menu
+		
+		local sortOptions = {
+			{key = "name", text = "Name"},
+			{key = "rarity", text = "Rarity"},
+			{key = "value", text = "Value"},
+			{key = "type", text = "Type"},
+			{key = "size", text = "Size"}
+		}
+		
+		for _, option in ipairs(sortOptions) do
+			local button = Instance.new("TextButton")
+			button.Size = UDim2.new(1, 0, 0, 25)
+			button.BackgroundColor3 = (currentSort == option.key) and Color3.fromRGB(76, 175, 80) or Color3.fromRGB(25, 30, 40)
+			button.BorderSizePixel = 0
+			button.Text = option.text
+			button.Font = Enum.Font.SourceSans
+			button.TextSize = 12
+			button.TextColor3 = Color3.fromRGB(255, 255, 255)
+			button.ZIndex = 101
+			button.Parent = menu
+			
+			button.MouseButton1Click:Connect(function()
+				if currentSort == option.key then
+					-- Toggle sort direction
+					sortAscending = not sortAscending
+				else
+					-- Change sort type
+					currentSort = option.key
+					sortAscending = true
+				end
+				updateSortButtonText()
+				filterAndSortInventory()
+				menu:Destroy()
+			end)
+		end
+		
+		-- Click outside to close
+		local connection
+		connection = UserInputService.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				local mousePosition = UserInputService:GetMouseLocation()
+				local guiPosition = menu.AbsolutePosition
+				local guiSize = menu.AbsoluteSize
+				
+				if mousePosition.X < guiPosition.X or mousePosition.X > guiPosition.X + guiSize.X or
+				   mousePosition.Y < guiPosition.Y or mousePosition.Y > guiPosition.Y + guiSize.Y then
+					menu:Destroy()
+					connection:Disconnect()
+				end
+			end
+		end)
+	end
+	
+	-- Show rarity filter menu
+	local function showRarityFilterMenu()
+		local menu = Instance.new("Frame")
+		menu.Name = "RarityFilterMenu"
+		menu.Size = UDim2.new(0, 120, 0, 250)
+		menu.Position = UDim2.new(0, 0, 1, 5)
+		menu.BackgroundColor3 = Color3.fromRGB(35, 40, 50)
+		menu.BorderSizePixel = 0
+		menu.ZIndex = 100
+		menu.Parent = ui.FilterButton.Parent
+		
+		local menuCorner = Instance.new("UICorner")
+		menuCorner.CornerRadius = UDim.new(0, 6)
+		menuCorner.Parent = menu
+		
+		local menuStroke = Instance.new("UIStroke")
+		menuStroke.Color = Color3.fromRGB(80, 90, 110)
+		menuStroke.Thickness = 1
+		menuStroke.Parent = menu
+		
+		local layout = Instance.new("UIListLayout")
+		layout.Padding = UDim.new(0, 2)
+		layout.Parent = menu
+		
+		local rarityOptions = {
+			{key = "all", text = "All Rarities"},
+			{key = "Common", text = "Common"},
+			{key = "Uncommon", text = "Uncommon"},
+			{key = "Rare", text = "Rare"},
+			{key = "Epic", text = "Epic"},
+			{key = "Legendary", text = "Legendary"},
+			{key = "Mythical", text = "Mythical"},
+			{key = "Celestial", text = "Celestial"},
+			{key = "Divine", text = "Divine"},
+			{key = "Transcendent", text = "Transcendent"}
+		}
+		
+		for _, option in ipairs(rarityOptions) do
+			local button = Instance.new("TextButton")
+			button.Size = UDim2.new(1, 0, 0, 22)
+			button.BackgroundColor3 = (currentRarityFilter == option.key) and Color3.fromRGB(76, 175, 80) or Color3.fromRGB(25, 30, 40)
+			button.BorderSizePixel = 0
+			button.Text = option.text
+			button.Font = Enum.Font.SourceSans
+			button.TextSize = 11
+			button.TextColor3 = Color3.fromRGB(255, 255, 255)
+			button.ZIndex = 101
+			button.Parent = menu
+			
+			button.MouseButton1Click:Connect(function()
+				currentRarityFilter = option.key
+				updateFilterButtonText()
+				filterAndSortInventory()
+				menu:Destroy()
+			end)
+		end
+		
+		-- Click outside to close
+		local connection
+		connection = UserInputService.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				local mousePosition = UserInputService:GetMouseLocation()
+				local guiPosition = menu.AbsolutePosition
+				local guiSize = menu.AbsoluteSize
+				
+				if mousePosition.X < guiPosition.X or mousePosition.X > guiPosition.X + guiSize.X or
+				   mousePosition.Y < guiPosition.Y or mousePosition.Y > guiPosition.Y + guiSize.Y then
+					menu:Destroy()
+					connection:Disconnect()
+				end
+			end
+		end)
 	end
 
 	local function onSearchChanged()
 		searchText = ui.SearchBox.Text
 		ui.ClearButton.Visible = searchText ~= ""
-		filterInventory()
+		filterAndSortInventory()
 	end
 
 	-- Connect search functionality
@@ -181,6 +485,55 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		ui.SearchBox.Text = ""
 		ui.SearchBox:CaptureFocus()
 	end)
+	
+	-- Connect sorting and filtering controls
+	ui.SortButton.MouseButton1Click:Connect(showSortMenu)
+	ui.FilterButton.MouseButton1Click:Connect(showRarityFilterMenu)
+	
+	-- Connect toggle buttons
+	ui.LockedOnlyToggle.MouseButton1Click:Connect(function()
+		lockedOnlyFilter = not lockedOnlyFilter
+		updateToggleButton(ui.LockedOnlyToggle, lockedOnlyFilter)
+		filterAndSortInventory()
+	end)
+	
+	ui.EquippedOnlyToggle.MouseButton1Click:Connect(function()
+		equippedOnlyFilter = not equippedOnlyFilter
+		updateToggleButton(ui.EquippedOnlyToggle, equippedOnlyFilter)
+		filterAndSortInventory()
+	end)
+	
+	ui.MutatedOnlyToggle.MouseButton1Click:Connect(function()
+		mutatedOnlyFilter = not mutatedOnlyFilter
+		updateToggleButton(ui.MutatedOnlyToggle, mutatedOnlyFilter)
+		filterAndSortInventory()
+	end)
+	
+	-- Reset filters button
+	ui.ResetFiltersButton.MouseButton1Click:Connect(function()
+		-- Reset all filters and sorting to defaults
+		currentSort = "name"
+		sortAscending = true
+		currentRarityFilter = "all"
+		lockedOnlyFilter = false
+		equippedOnlyFilter = false
+		mutatedOnlyFilter = false
+		searchText = ""
+		
+		-- Update UI
+		ui.SearchBox.Text = ""
+		updateSortButtonText()
+		updateFilterButtonText()
+		updateToggleButton(ui.LockedOnlyToggle, lockedOnlyFilter)
+		updateToggleButton(ui.EquippedOnlyToggle, equippedOnlyFilter)
+		updateToggleButton(ui.MutatedOnlyToggle, mutatedOnlyFilter)
+		
+		filterAndSortInventory()
+	end)
+	
+	-- Initialize UI text
+	updateSortButtonText()
+	updateFilterButtonText()
 
 	
 
@@ -636,8 +989,8 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		updateInventoryCount()
 		updateItemStatus() -- Set initial state
 		
-		-- Apply search filter to new item
-		filterInventory()
+		-- Apply filters and sorting to new item
+		filterAndSortInventory()
 	end
 
 	local function removeItemEntry(itemInstance)

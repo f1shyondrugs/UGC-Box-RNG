@@ -26,7 +26,7 @@ UpgradeConfig.Upgrades = {
 		CostExponent = 5,
 		BaseValue = 1, -- Starting max boxes
 		ValuePerLevel = 1, -- +1 box per level
-		MaxLevel = 4, -- Up to 5 boxes total (1 + 4 levels)
+		MaxLevel = 49, -- Up to 5 boxes total (1 + 4 levels)
 		Icon = "📦",
 		Effects = function(level)
 			return {
@@ -39,8 +39,8 @@ UpgradeConfig.Upgrades = {
 	FasterCooldowns = {
 		Name = "Faster Cooldowns",
 		Description = "Reduces the cooldown between crate purchases",
-		BaseCost = 500,
-		CostExponent = 5eee,
+		BaseCost = 1000,
+		CostExponent = 5,
 		BaseValue = 0.5, -- Starting cooldown in seconds
 		ValuePerLevel = -0.05, -- -0.05 seconds per level
 		MaxLevel = 10, -- Up to 0.1 second cooldown (0.5 - 8*0.05 = 0.1)

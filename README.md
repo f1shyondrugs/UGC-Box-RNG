@@ -65,14 +65,20 @@ The game now includes a comprehensive upgrade system that allows players to enha
 1. **More Inventory Slots** 🎒
    - Increases your inventory capacity beyond the default 50 slots
    - Starts at 50 slots, +5 slots per level
-   - Maximum level 20 (150 total slots)
-   - Cost scaling: 100 R$ base cost with 1.5x exponential scaling
+   - Maximum level 100 (550 total slots)
+   - Cost scaling: 1000 R$ base cost with 5x exponential scaling
 
 2. **Multi-Crate Opening** 📦
    - Unlock the ability to open multiple crates simultaneously
    - Starts at 1 box, +1 box per level
    - Maximum level 4 (5 boxes total)
-   - Cost scaling: 500 R$ base cost with 2.0x exponential scaling
+   - Cost scaling: 10000 R$ base cost with 5x exponential scaling
+
+3. **Faster Cooldowns** ⚡
+   - Reduces the cooldown between crate purchases
+   - Starts at 0.5s cooldown, -0.05s per level
+   - Maximum level 8 (0.1s minimum cooldown)
+   - Cost scaling: 2500 R$ base cost with 3.5x exponential scaling
 
 #### Upgrade Features:
 - **Persistent Progress**: All upgrades are saved using DataStore
@@ -150,9 +156,10 @@ This project uses [Rojo](https://rojo.space/) for development workflow:
 The upgrade system is designed to be easily extensible. Planned future upgrades include:
 - **Luck Boost**: Increase rare item drop rates
 - **Auto-Sell**: Automatically sell common items
-- **Faster Cooldowns**: Reduce free crate cooldown times
 - **Better Rewards**: Improve crate reward quality
 - **Special Effects**: Cosmetic enhancements and animations
+
+Note: **Faster Cooldowns** has been implemented as the third core upgrade!
 
 ## 🎯 Core Mechanics
 
