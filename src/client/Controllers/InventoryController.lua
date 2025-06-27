@@ -328,11 +328,15 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		local menu = Instance.new("Frame")
 		menu.Name = "SortMenu"
 		menu.Size = UDim2.new(0, 120, 0, 150)
-		menu.Position = UDim2.new(0, 0, 1, 5)
+		-- Calculate position relative to ScreenGui
+		local buttonPos = ui.SortButton.AbsolutePosition
+		local buttonSize = ui.SortButton.AbsoluteSize
+		local screenSize = ui.ScreenGui.AbsoluteSize
+		menu.Position = UDim2.new(0, buttonPos.X, 0, buttonPos.Y + buttonSize.Y + 5)
 		menu.BackgroundColor3 = Color3.fromRGB(35, 40, 50)
 		menu.BorderSizePixel = 0
-		menu.ZIndex = 100
-		menu.Parent = ui.SortButton.Parent
+		menu.ZIndex = 200
+		menu.Parent = ui.ScreenGui
 		
 		local menuCorner = Instance.new("UICorner")
 		menuCorner.CornerRadius = UDim.new(0, 6)
@@ -364,7 +368,7 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 			button.Font = Enum.Font.SourceSans
 			button.TextSize = 12
 			button.TextColor3 = Color3.fromRGB(255, 255, 255)
-			button.ZIndex = 101
+			button.ZIndex = 201
 			button.Parent = menu
 			
 			button.MouseButton1Click:Connect(function()
@@ -404,11 +408,14 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		local menu = Instance.new("Frame")
 		menu.Name = "RarityFilterMenu"
 		menu.Size = UDim2.new(0, 120, 0, 250)
-		menu.Position = UDim2.new(0, 0, 1, 5)
+		-- Calculate position relative to ScreenGui
+		local buttonPos = ui.FilterButton.AbsolutePosition
+		local buttonSize = ui.FilterButton.AbsoluteSize
+		menu.Position = UDim2.new(0, buttonPos.X, 0, buttonPos.Y + buttonSize.Y + 5)
 		menu.BackgroundColor3 = Color3.fromRGB(35, 40, 50)
 		menu.BorderSizePixel = 0
-		menu.ZIndex = 100
-		menu.Parent = ui.FilterButton.Parent
+		menu.ZIndex = 200
+		menu.Parent = ui.ScreenGui
 		
 		local menuCorner = Instance.new("UICorner")
 		menuCorner.CornerRadius = UDim.new(0, 6)
@@ -445,7 +452,7 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 			button.Font = Enum.Font.SourceSans
 			button.TextSize = 11
 			button.TextColor3 = Color3.fromRGB(255, 255, 255)
-			button.ZIndex = 101
+			button.ZIndex = 201
 			button.Parent = menu
 			
 			button.MouseButton1Click:Connect(function()
@@ -1171,8 +1178,8 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		addItemEntry(itemInstance)
 	end
 	
-	-- Apply initial search filter
-	filterInventory()
+	-- Apply initial filters and sorting
+	filterAndSortInventory()
 
 	inventory.ChildAdded:Connect(addItemEntry)
 	inventory.ChildRemoved:Connect(removeItemEntry)
