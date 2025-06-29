@@ -25,6 +25,7 @@ return {
 	SellUnlockedItems = createRemote("RemoteEvent", "SellUnlockedItems"),
 	ToggleItemLock = createRemote("RemoteEvent", "ToggleItemLock"),
 	StartFreeCrateCooldown = createRemote("RemoteEvent", "StartFreeCrateCooldown"),
+	InventoryLoadComplete = createRemote("RemoteEvent", "InventoryLoadComplete"),
 	
 	-- Avatar/Equipment Remotes
 	EquipItem = createRemote("RemoteEvent", "EquipItem"),

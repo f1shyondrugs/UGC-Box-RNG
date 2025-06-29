@@ -6,6 +6,7 @@ local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
+local NavigationController = require(script.Parent.NavigationController)
 
 local Shared = ReplicatedStorage.Shared
 local Remotes = require(Shared.Remotes.Remotes)
@@ -616,7 +617,8 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		ui.InventoryTitle.Text = "INVENTORY (" .. NumberFormatter.FormatCount(count) .. " / " .. NumberFormatter.FormatCount(currentLimit) .. ")"
 	
 		local isFull = count >= currentLimit
-		ui.WarningIcon.Visible = isFull
+		-- Show inventory full notification on navigation button
+		NavigationController.SetNotification("Inventory", isFull)
 		updateBoxPrompts(isFull)
 	end
 
@@ -1014,7 +1016,6 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		if visible then
 			-- Show and animate in
 			hideOtherUIs(true)
-			ui.ToggleButton.Visible = false
 			setupCharacterViewport(ui)
 			
 			ui.MainFrame.Visible = true
@@ -1073,7 +1074,6 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 			task.delay(ANIMATION_TIME, function()
 				ui.MainFrame.Visible = false
 				hideOtherUIs(false)
-				ui.ToggleButton.Visible = true
 				isAnimating = false
 			end)
 		end
@@ -1081,8 +1081,8 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 
 	
 
-	-- Connect Buttons
-	ui.ToggleButton.MouseButton1Click:Connect(function()
+	-- Register with NavigationController instead of connecting to toggle button
+	NavigationController.RegisterController("Inventory", function()
 		toggleInventory(not ui.MainFrame.Visible)
 	end)
 	
@@ -1158,15 +1158,44 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		end
 	end)
 
-	-- FAST LOADING: Use batch processing instead of individual item processing
-	loadInventoryBatched()
-
-	inventory.ChildAdded:Connect(function(itemInstance)
-		-- Handle new items immediately (not in batch mode)
-		if not loadingBatch then
-			addItemEntry(itemInstance)
+	-- Handle initial loading and new items
+	local initialLoadComplete = false
+	local timerActive = true
+	
+	local function startInitialLoad()
+		-- Start a fallback timer - if no server signal comes within 5 seconds, load anyway
+		task.delay(5, function()
+			if timerActive and not initialLoadComplete then
+				initialLoadComplete = true
+				loadInventoryBatched()
+			end
+		end)
+	end
+	
+	-- Listen for server signal that inventory loading is complete
+	Remotes.InventoryLoadComplete.OnClientEvent:Connect(function()
+		if not initialLoadComplete then
+			-- Cancel fallback timer by setting flag
+			timerActive = false
+			initialLoadComplete = true
+			loadInventoryBatched()
 		end
 	end)
+
+	inventory.ChildAdded:Connect(function(itemInstance)
+		if not initialLoadComplete then
+			-- We're still in the initial loading phase - items are being loaded by server
+			-- Don't start individual item processing yet
+		else
+			-- Handle new items immediately (not in batch mode)
+			if not loadingBatch then
+				addItemEntry(itemInstance)
+			end
+		end
+	end)
+	
+	-- Start the fallback timer
+	startInitialLoad()
 	inventory.ChildRemoved:Connect(removeItemEntry)
 	
 	-- Initialize UI state

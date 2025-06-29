@@ -6,6 +6,11 @@ function NumberFormatter.FormatNumber(value, options)
 	local decimals = options.decimals or 1
 	local forceInteger = options.forceInteger or false
 	
+	-- Convert to number if it's a string
+	if type(value) == "string" then
+		value = tonumber(value) or 0
+	end
+	
 	if not value or value ~= value then -- Check for nil and NaN
 		return "0"
 	end
@@ -41,6 +46,11 @@ function NumberFormatter.FormatPercentage(value, options)
 	options = options or {}
 	local decimals = options.decimals or 1
 	
+	-- Convert to number if it's a string
+	if type(value) == "string" then
+		value = tonumber(value) or 0
+	end
+	
 	if not value or value ~= value then
 		return "0%"
 	end
@@ -65,6 +75,11 @@ function NumberFormatter.FormatSize(value, options)
 	options = options or {}
 	local decimals = options.decimals or 2
 	
+	-- Convert to number if it's a string
+	if type(value) == "string" then
+		value = tonumber(value) or 0
+	end
+	
 	if not value or value ~= value then
 		return "0.00"
 	end
@@ -74,6 +89,11 @@ end
 
 -- Format count/integer (no decimals, with suffixes for large numbers)
 function NumberFormatter.FormatCount(value)
+	-- Convert to number if it's a string
+	if type(value) == "string" then
+		value = tonumber(value) or 0
+	end
+	
 	if not value or value ~= value then
 		return "0"
 	end

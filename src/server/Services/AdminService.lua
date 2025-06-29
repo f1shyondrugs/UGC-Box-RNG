@@ -68,9 +68,19 @@ local function onPlayerChatted(player, message)
 			return
 		end
 
-		statToChange.Value = newValue
-
-		Remotes.Notify:FireClient(player, "Successfully set " .. targetPlayer.Name .. "'s " .. statName .. " to " .. newValue, "Info")
+		-- Use proper PlayerDataService functions to update stats
+		if statName == "R$" then
+			PlayerDataService.UpdatePlayerRobux(targetPlayer, newValue)
+			Remotes.Notify:FireClient(player, "Successfully set " .. targetPlayer.Name .. "'s R$ to " .. newValue, "Info")
+		elseif statName == "Boxes Opened" then
+			PlayerDataService.UpdatePlayerBoxesOpened(targetPlayer, newValue)
+			Remotes.Notify:FireClient(player, "Successfully set " .. targetPlayer.Name .. "'s Boxes Opened to " .. newValue, "Info")
+		elseif statName == "RAP" then
+			-- RAP is calculated, not directly set, so we'll notify that it's not supported
+			Remotes.Notify:FireClient(player, "RAP cannot be directly set as it's calculated from inventory. Use /give to add items instead.", "Error")
+		else
+			Remotes.Notify:FireClient(player, "Unknown leaderstat: '" .. statName .. "'. Valid stats: R$, Boxes Opened", "Error")
+		end
 
 	elseif command == "/give" then
 		-- Handle /give command

@@ -60,28 +60,7 @@ function UpgradeUI.Create(parentGui)
 	uiScale.Parent = screenGui
 	components.UIScale = uiScale
 
-	-- Toggle Button
-	local toggleButton = Instance.new("TextButton")
-	toggleButton.Name = "UpgradeToggleButton"
-	toggleButton.Size = UDim2.new(0, 50, 0, 50)
-	toggleButton.Position = UDim2.new(0, 15, 0.5, 90) -- Below collection button
-	toggleButton.BackgroundColor3 = Color3.fromRGB(88, 61, 33)
-	toggleButton.BorderSizePixel = 0
-	toggleButton.Text = "⚡"
-	toggleButton.Font = Enum.Font.SourceSansBold
-	toggleButton.TextScaled = true
-	toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	toggleButton.ZIndex = 100
-	toggleButton.Parent = screenGui
-	components.ToggleButton = toggleButton
-	
-	local toggleAspect = Instance.new("UIAspectRatioConstraint")
-	toggleAspect.AspectRatio = 1
-	toggleAspect.Parent = toggleButton
-	
-	local toggleCorner = Instance.new("UICorner")
-	toggleCorner.CornerRadius = UDim.new(0, 8)
-	toggleCorner.Parent = toggleButton
+	-- Note: Toggle button is now managed by NavigationController
 
 	-- Main Frame (with margins from screen edges)
 	local mainFrame = Instance.new("Frame")
@@ -363,11 +342,19 @@ end
 
 -- Update affordability based on player money
 function UpgradeUI.UpdateAffordability(ui, playerMoney)
+	-- Convert playerMoney to number if it's a string (from StringValue)
+	local numericPlayerMoney = tonumber(playerMoney)
+	if not numericPlayerMoney then
+		-- Handle formatted currency strings by removing non-digit characters except decimal points
+		local cleanString = string.gsub(tostring(playerMoney), "[^%d%.]", "")
+		numericPlayerMoney = tonumber(cleanString) or 0
+	end
+	
 	for upgradeId, upgradeFrame in pairs(ui.UpgradeFrames) do
 		local button = upgradeFrame.UpgradeButton
 		if button.Active then
 			local cost = tonumber(string.match(button.Text, "(%d+)"))
-			if cost and playerMoney < cost then
+			if cost and numericPlayerMoney < cost then
 				button.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
 			else
 				button.BackgroundColor3 = Color3.fromRGB(50, 150, 50)

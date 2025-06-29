@@ -57,15 +57,23 @@ local function requestBox(player: Player, boxType: string)
 
 	-- Check for cost or cooldown
 	if boxConfig.Price > 0 then
-		local leaderstats = player:FindFirstChild("leaderstats")
-		local robux = leaderstats and leaderstats:FindFirstChild("R$")
+		local currentRobux = player:GetAttribute("RobuxValue") or 0
 
-		if not robux or robux.Value < boxConfig.Price then
+		if currentRobux < boxConfig.Price then
 			Remotes.Notify:FireClient(player, "Not enough R$! Need " .. boxConfig.Price .. " R$", "Error")
 			return
 		end
 		
-		robux.Value = robux.Value - boxConfig.Price
+		-- Update the raw attribute value
+		player:SetAttribute("RobuxValue", currentRobux - boxConfig.Price)
+		
+		-- Also update the StringValue for display consistency
+		local leaderstats = player:FindFirstChild("leaderstats")
+		local robux = leaderstats and leaderstats:FindFirstChild("R$")
+		if robux then
+			local NumberFormatter = require(game.ReplicatedStorage.Shared.Modules.NumberFormatter)
+			robux.Value = NumberFormatter.FormatCurrency(currentRobux - boxConfig.Price)
+		end
 	else -- This is a free crate, check cooldown
 		local cooldown = boxConfig.Cooldown or 60
 		local lastClaim = playerFreeCrateCooldowns[player.UserId]
@@ -86,10 +94,15 @@ local function requestBox(player: Player, boxType: string)
 	end
 	
 	-- Increment Boxes Opened stat
+	local currentBoxesOpened = player:GetAttribute("BoxesOpenedValue") or 0
+	player:SetAttribute("BoxesOpenedValue", currentBoxesOpened + 1)
+	
+	-- Also update the StringValue for display consistency
 	local leaderstats = player:FindFirstChild("leaderstats")
-	local boxesOpenedStat = leaderstats:FindFirstChild("Boxes Opened")
+	local boxesOpenedStat = leaderstats and leaderstats:FindFirstChild("Boxes Opened")
 	if boxesOpenedStat then
-		boxesOpenedStat.Value = boxesOpenedStat.Value + 1
+		local NumberFormatter = require(game.ReplicatedStorage.Shared.Modules.NumberFormatter)
+		boxesOpenedStat.Value = NumberFormatter.FormatCount(currentBoxesOpened + 1)
 	end
 
 	-- New Spawning Logic to prevent stacking
@@ -126,7 +139,7 @@ local function requestBox(player: Player, boxType: string)
 	-- Add a vertical offset to make it fall from the sky
 	local spawnInTheAir = spawnPosition + Vector3.new(0, 50, 0)
 
-	local box = Box.new(player)
+	local box = Box.new(player, boxType)
 	box:SetParent(getBoxesFolder()) 
 	box:SetPosition(spawnInTheAir)
 	

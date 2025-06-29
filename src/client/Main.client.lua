@@ -13,12 +13,14 @@ local GameConfig = require(Shared.Modules.GameConfig)
 local BoxAnimator = require(script.Parent.Controllers.BoxAnimator)
 local CameraShaker = require(script.Parent.Controllers.CameraShaker)
 local Notifier = require(script.Parent.Controllers.Notifier)
+local NavigationController = require(script.Parent.Controllers.NavigationController)
 local InventoryController = require(script.Parent.Controllers.InventoryController)
 local CollectionController = require(script.Parent.Controllers.CollectionController)
 local NameplateController = require(script.Parent.Controllers.NameplateController)
 local SoundController = require(script.Parent.Controllers.SoundController)
 local UpgradeController = require(script.Parent.Controllers.UpgradeController)
 local SettingsController = require(script.Parent.Controllers.SettingsController)
+local CrateSelectionController = require(script.Parent.Controllers.CrateSelectionController)
 local BoxAnimator = require(script.Parent.Controllers.BoxAnimator)
 local Notifier = require(script.Parent.Controllers.Notifier)
 local BuyButtonUI = require(script.Parent.UI.BuyButtonUI)
@@ -40,10 +42,15 @@ soundController:playMusic()
 
 CameraShaker.Start()
 Notifier.Start(PlayerGui)
+NavigationController.Start(PlayerGui, soundController)
 InventoryController.Start(PlayerGui, openingBoxes, soundController)
 CollectionController.Start(PlayerGui, soundController)
 UpgradeController.Start(PlayerGui, soundController)
 SettingsController.Start(PlayerGui, soundController)
+CrateSelectionController:Start()
+
+-- Connect BuyButtonUI to CrateSelectionController
+BuyButtonUI.SetCrateSelectionController(CrateSelectionController)
 
 -- Connect sound controller, box animator, and notifier to settings controller for effect checking
 soundController:setSettingsController(SettingsController)
@@ -67,15 +74,17 @@ local robuxStat = leaderstats:WaitForChild("R$")
 local boxesOpenedStat = leaderstats:WaitForChild("Boxes Opened")
 
 local function updateStatsDisplay()
+	local robuxValue = LocalPlayer:GetAttribute("RobuxValue") or 0
 	local rapValue = LocalPlayer:GetAttribute("RAPValue") or 0
-	StatsUI.UpdateStats(statsGui, robuxStat.Value, rapValue, boxesOpenedStat.Value)
-	BuyButtonUI.UpdateAffordability(buyButtonGui, robuxStat.Value)
+	local boxesOpenedValue = LocalPlayer:GetAttribute("BoxesOpenedValue") or 0
+	StatsUI.UpdateStats(statsGui, robuxValue, rapValue, boxesOpenedValue)
+	BuyButtonUI.UpdateAffordability(buyButtonGui, robuxValue)
 end
 
--- Connect to stat changes
-robuxStat.Changed:Connect(updateStatsDisplay)
+-- Connect to stat changes using attributes (raw numeric values)
+LocalPlayer:GetAttributeChangedSignal("RobuxValue"):Connect(updateStatsDisplay)
 LocalPlayer:GetAttributeChangedSignal("RAPValue"):Connect(updateStatsDisplay)
-boxesOpenedStat.Changed:Connect(updateStatsDisplay)
+LocalPlayer:GetAttributeChangedSignal("BoxesOpenedValue"):Connect(updateStatsDisplay)
 
 -- Initial update
 updateStatsDisplay()
@@ -92,22 +101,28 @@ local function updateButtonState()
 	end
 end
 
--- Handle dropdown interactions
+-- Handle crate selection button click (opens crate selection GUI)
 buyButtonGui.CrateDropdown.MouseButton1Click:Connect(function()
 	soundController:playUIClick()
-	BuyButtonUI.ToggleDropdown(buyButtonGui)
+	BuyButtonUI.OpenCrateSelection()
 end)
 
--- Handle crate selection
-for crateType, optionButton in pairs(buyButtonGui.OptionButtons) do
-	optionButton.MouseButton1Click:Connect(function()
-		soundController:playUIClick()
-		BuyButtonUI.SetSelectedCrate(buyButtonGui, crateType)
-		BuyButtonUI.UpdateAffordability(buyButtonGui, robuxStat.Value)
-		BuyButtonUI.HideDropdown(buyButtonGui)
-		updateButtonState() -- Update button state when crate selection changes
-	end)
-end
+-- Listen for crate selection changes from CrateSelectionController
+-- We'll poll for changes since we don't have an event system set up
+task.spawn(function()
+	local lastSelectedCrate = CrateSelectionController:GetSelectedCrate()
+	while true do
+		task.wait(0.1) -- Check every 100ms
+		local currentSelectedCrate = CrateSelectionController:GetSelectedCrate()
+		if currentSelectedCrate ~= lastSelectedCrate then
+			lastSelectedCrate = currentSelectedCrate
+			BuyButtonUI.SetSelectedCrate(buyButtonGui, currentSelectedCrate)
+			local robuxValue = LocalPlayer:GetAttribute("RobuxValue") or 0
+			BuyButtonUI.UpdateAffordability(buyButtonGui, robuxValue)
+			updateButtonState() -- Update button state when crate selection changes
+		end
+	end
+end)
 
 -- Handle buy button click (works for both paid and free crates)
 buyButtonGui.BuyButton.MouseButton1Click:Connect(function()
@@ -153,23 +168,7 @@ Remotes.StartFreeCrateCooldown.OnClientEvent:Connect(function(duration)
 	end)
 end)
 
--- Close dropdown when clicking elsewhere
-game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		if buyButtonGui.OptionsFrame.Visible then
-			-- Check if the click was outside the dropdown
-			local dropdown = buyButtonGui.CrateDropdown
-			local mousePos = game:GetService("UserInputService"):GetMouseLocation()
-			local isMouseOver = mousePos.X >= dropdown.AbsolutePosition.X and mousePos.X <= dropdown.AbsolutePosition.X + dropdown.AbsoluteSize.X and
-			                    mousePos.Y >= dropdown.AbsolutePosition.Y and mousePos.Y <= dropdown.AbsolutePosition.Y + dropdown.AbsoluteSize.Y + buyButtonGui.OptionsFrame.AbsoluteSize.Y
-			
-			if not isMouseOver then
-				BuyButtonUI.HideDropdown(buyButtonGui)
-			end
-		end
-	end
-end)
+
 
 Remotes.UpdateBoxCount.OnClientEvent:Connect(function(newCount)
 	currentBoxCount = newCount

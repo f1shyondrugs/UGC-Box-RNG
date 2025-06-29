@@ -3,25 +3,24 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Box = {}
 Box.__index = Box
 
-function Box.new(owner: Player)
+function Box.new(owner: Player, crateId: string)
 	local self = setmetatable({}, Box)
 
-	-- Try to get the custom crate model from ReplicatedStorage
-	local customCrateSuccess, customCrate = pcall(function()
-		return ReplicatedStorage.Models.Crates.Crate
-	end)
-	
-	if customCrateSuccess and customCrate then
-		-- Clone the custom crate
+	-- Try to get the custom crate model from ReplicatedStorage.Models.Crates[crateId]
+	local customCrate = nil
+	if crateId and ReplicatedStorage:FindFirstChild("Models") then
+		local cratesFolder = ReplicatedStorage.Models:FindFirstChild("Crates")
+		if cratesFolder then
+			customCrate = cratesFolder:FindFirstChild(crateId)
+		end
+	end
+
+	if customCrate then
 		local crateClone = customCrate:Clone()
 		local actualPart = nil
-		
-		-- Handle different types of custom crates
 		if crateClone:IsA("BasePart") then
-			-- It's a UnionPart or regular Part
 			actualPart = crateClone
 		elseif crateClone:IsA("Model") then
-			-- It's a Model, find the main part inside
 			actualPart = crateClone.PrimaryPart or crateClone:FindFirstChildOfClass("BasePart")
 			if not actualPart then
 				warn("Custom crate model has no PrimaryPart or BasePart, using default Part")
@@ -29,32 +28,23 @@ function Box.new(owner: Player)
 				actualPart = nil
 			end
 		end
-		
 		if actualPart then
-			-- Set up the properties on the actual part
-			actualPart.Anchored = true -- Must be anchored for tweening
-			actualPart.CanCollide = false -- No collisions during the animation
-			actualPart.Transparency = 1 -- Start invisible
+			actualPart.Anchored = true
+			actualPart.CanCollide = false
+			actualPart.Transparency = 1
 			actualPart:SetAttribute("Owner", owner.UserId)
-			
-			-- Create and attach the ProximityPrompt to the actual part
 			local prompt = Instance.new("ProximityPrompt")
 			prompt.ActionText = "Open Box"
 			prompt.ObjectText = "Box"
 			prompt.KeyboardKeyCode = Enum.KeyCode.E
 			prompt.RequiresLineOfSight = false
 			prompt.Parent = actualPart
-
-			-- Store the actual part (not the model) for consistency
 			self.Part = actualPart
 			self.Prompt = prompt
-			
-			-- If it was a model, we need to keep track of it for cleanup
 			if crateClone:IsA("Model") then
 				self.Model = crateClone
 			end
 		else
-			-- Fallback if we couldn't find a usable part
 			warn("Could not find usable part in custom crate, using default Part")
 			if crateClone and crateClone.Parent then
 				crateClone:Destroy()
@@ -62,25 +52,21 @@ function Box.new(owner: Player)
 			actualPart = nil
 		end
 	end
-	
-	-- Fallback to the original method if custom crate failed
+
 	if not self.Part then
-		warn("Custom crate model not found or unusable at ReplicatedStorage.Models.Crates.Crate, using default Part")
-		
+		warn("Custom crate model not found or unusable at ReplicatedStorage.Models.Crates[" .. tostring(crateId) .. "], using default Part")
 		local boxPart = Instance.new("Part")
 		boxPart.Size = Vector3.new(4, 4, 4)
-		boxPart.Anchored = true -- Must be anchored for tweening
-		boxPart.CanCollide = false -- No collisions during the animation
-		boxPart.Transparency = 1 -- Start invisible
+		boxPart.Anchored = true
+		boxPart.CanCollide = false
+		boxPart.Transparency = 1
 		boxPart:SetAttribute("Owner", owner.UserId)
-		
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = "Open Box"
 		prompt.ObjectText = "Box"
 		prompt.KeyboardKeyCode = Enum.KeyCode.E
 		prompt.RequiresLineOfSight = false
 		prompt.Parent = boxPart
-
 		self.Part = boxPart
 		self.Prompt = prompt
 	end
@@ -89,7 +75,6 @@ function Box.new(owner: Player)
 end
 
 function Box:Destroy()
-	-- Destroy the model if it exists, otherwise just the part
 	if self.Model then
 		self.Model:Destroy()
 	else
@@ -98,7 +83,6 @@ function Box:Destroy()
 end
 
 function Box:SetParent(parent)
-	-- Set parent of the model if it exists, otherwise just the part
 	if self.Model then
 		self.Model.Parent = parent
 	else

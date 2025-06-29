@@ -4,6 +4,7 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
+local NavigationController = require(script.Parent.NavigationController)
 local Shared = ReplicatedStorage.Shared
 local SettingsConfig = require(Shared.Modules.SettingsConfig)
 local SettingsUI = require(script.Parent.Parent.UI.SettingsUI)
@@ -321,11 +322,8 @@ function SettingsController.Start(parentGui, soundControllerRef)
 	-- Create UI
 	ui = SettingsUI.Create(parentGui)
 	
-	-- Connect toggle button
-	ui.ToggleButton.MouseButton1Click:Connect(function()
-		if soundController then
-			soundController:playUIClick()
-		end
+	-- Register with NavigationController instead of connecting to toggle button
+	NavigationController.RegisterController("Settings", function()
 		toggleSettingsGUI()
 	end)
 	

@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
+local NavigationController = require(script.Parent.NavigationController)
 local Shared = ReplicatedStorage.Shared
 local Remotes = require(Shared.Remotes.Remotes)
 local UpgradeConfig = require(Shared.Modules.UpgradeConfig)
@@ -66,10 +67,9 @@ local function refreshUpgradeData()
 		updateUpgradeDisplay()
 		
 		-- Update affordability based on current money
-		local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
-		local robux = leaderstats and leaderstats:FindFirstChild("R$")
-		if robux and ui then
-			UpgradeUI.UpdateAffordability(ui, robux.Value)
+		local playerMoney = LocalPlayer:GetAttribute("RobuxValue") or 0
+		if ui then
+			UpgradeUI.UpdateAffordability(ui, playerMoney)
 		end
 	end
 end
@@ -116,11 +116,8 @@ function UpgradeController.Start(parentGui, soundControllerRef)
 	-- Create UI
 	ui = UpgradeUI.Create(parentGui)
 	
-	-- Connect toggle button
-	ui.ToggleButton.MouseButton1Click:Connect(function()
-		if soundController then
-			soundController:playUIClick()
-		end
+	-- Register with NavigationController instead of connecting to toggle button
+	NavigationController.RegisterController("Upgrade", function()
 		toggleUpgradeGUI()
 	end)
 	
@@ -159,12 +156,11 @@ function UpgradeController.Start(parentGui, soundControllerRef)
 	end)
 	
 	-- Monitor money changes for affordability updates
-	local leaderstats = LocalPlayer:WaitForChild("leaderstats")
-	local robux = leaderstats:WaitForChild("R$")
-	
-	robux.Changed:Connect(function()
+	-- Use attribute changes to get raw numeric values instead of formatted strings
+	LocalPlayer:GetAttributeChangedSignal("RobuxValue"):Connect(function()
+		local playerMoney = LocalPlayer:GetAttribute("RobuxValue") or 0
 		if ui then
-			UpgradeUI.UpdateAffordability(ui, robux.Value)
+			UpgradeUI.UpdateAffordability(ui, playerMoney)
 		end
 	end)
 	

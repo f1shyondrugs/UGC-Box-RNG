@@ -44,10 +44,16 @@ local function sellItem(player: Player, itemToSell: Instance)
 
 	itemToSell:Destroy()
 
+	-- Update the raw attribute value
+	local currentRobux = player:GetAttribute("RobuxValue") or 0
+	player:SetAttribute("RobuxValue", currentRobux + sellPrice)
+	
+	-- Also update the StringValue for display consistency
 	local leaderstats = player:FindFirstChild("leaderstats")
 	local robux = leaderstats and leaderstats:FindFirstChild("R$")
 	if robux then
-		robux.Value = robux.Value + sellPrice
+		local NumberFormatter = require(game.ReplicatedStorage.Shared.Modules.NumberFormatter)
+		robux.Value = NumberFormatter.FormatCurrency(currentRobux + sellPrice)
 	end
 	
 	-- Update player's RAP and trigger a save
@@ -79,10 +85,16 @@ local function sellAllItems(player: Player)
 	end
 	
 	-- Give the player the R$ for the items that were actually sold
+	-- Update the raw attribute value
+	local currentRobux = player:GetAttribute("RobuxValue") or 0
+	player:SetAttribute("RobuxValue", currentRobux + totalSellPrice)
+	
+	-- Also update the StringValue for display consistency
 	local leaderstats = player:FindFirstChild("leaderstats")
 	local robux = leaderstats and leaderstats:FindFirstChild("R$")
 	if robux then
-		robux.Value = robux.Value + totalSellPrice
+		local NumberFormatter = require(game.ReplicatedStorage.Shared.Modules.NumberFormatter)
+		robux.Value = NumberFormatter.FormatCurrency(currentRobux + totalSellPrice)
 	end
 	
 	-- Update player's RAP and trigger a save
@@ -121,10 +133,16 @@ local function sellUnlockedItems(player: Player)
 	end
 	
 	-- Give the player the R$ for the items that were actually sold
+	-- Update the raw attribute value
+	local currentRobux = player:GetAttribute("RobuxValue") or 0
+	player:SetAttribute("RobuxValue", currentRobux + totalSellPrice)
+	
+	-- Also update the StringValue for display consistency
 	local leaderstats = player:FindFirstChild("leaderstats")
 	local robux = leaderstats and leaderstats:FindFirstChild("R$")
 	if robux then
-		robux.Value = robux.Value + totalSellPrice
+		local NumberFormatter = require(game.ReplicatedStorage.Shared.Modules.NumberFormatter)
+		robux.Value = NumberFormatter.FormatCurrency(currentRobux + totalSellPrice)
 	end
 	
 	-- Update player's RAP and trigger a save

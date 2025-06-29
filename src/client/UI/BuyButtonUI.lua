@@ -155,7 +155,7 @@ function BuyButtonUI.Create(parent)
 	crateDropdown.Size = UDim2.new(0.48, 0, 0.9, 0) -- 48% of container width
 	crateDropdown.BackgroundColor3 = Color3.fromRGB(60, 65, 75)
 	crateDropdown.Font = Enum.Font.SourceSans
-	crateDropdown.Text = "Select Crate ▼"
+	crateDropdown.Text = "📦 Select Crate"
 	crateDropdown.TextScaled = true
 	crateDropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
 	crateDropdown.ZIndex = 1 -- Lower ZIndex
@@ -170,109 +170,6 @@ function BuyButtonUI.Create(parent)
 	local dropdownCorner = Instance.new("UICorner")
 	dropdownCorner.CornerRadius = UDim.new(0, 8)
 	dropdownCorner.Parent = crateDropdown
-
-	-- Dropdown Options Frame (initially hidden)
-	local optionsFrame = Instance.new("Frame")
-	optionsFrame.Name = "OptionsFrame"
-	optionsFrame.AnchorPoint = Vector2.new(0.5, 1) -- Anchor to middle bottom
-	optionsFrame.Size = UDim2.new(1, 0, 0, 0) -- Will be resized based on options
-	optionsFrame.Position = UDim2.new(0.5, 0, 0, -5) -- Position above the dropdown
-	optionsFrame.BackgroundColor3 = Color3.fromRGB(50, 55, 65)
-	optionsFrame.BorderSizePixel = 1
-	optionsFrame.BorderColor3 = Color3.fromRGB(70, 75, 85)
-	optionsFrame.Visible = false
-	optionsFrame.ZIndex = 2 -- Keep this higher than buttons but still low
-	optionsFrame.Parent = crateDropdown
-	components.OptionsFrame = optionsFrame
-
-	local optionsCorner = Instance.new("UICorner")
-	optionsCorner.CornerRadius = UDim.new(0, 8)
-	optionsCorner.Parent = optionsFrame
-
-	local optionsLayout = Instance.new("UIListLayout")
-	optionsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	optionsLayout.Parent = optionsFrame
-
-	-- Create dropdown options
-	components.OptionButtons = {}
-	
-	-- First, add the Free Crate option at the top
-	local freeCrateConfig = GameConfig.Boxes["FreeCrate"]
-	if freeCrateConfig then
-		local optionButton = Instance.new("TextButton")
-		optionButton.Name = "FreeCrate"
-		optionButton.Size = UDim2.new(1, 0, 0, 30)
-		optionButton.BackgroundColor3 = Color3.fromRGB(76, 175, 80) -- Green for free
-		optionButton.BorderSizePixel = 0
-		optionButton.Font = Enum.Font.SourceSansBold
-		optionButton.Text = "🆓 " .. freeCrateConfig.Name .. " - FREE"
-		optionButton.TextScaled = true
-		optionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-		optionButton.ZIndex = 3
-		optionButton.LayoutOrder = 0 -- First in list
-		optionButton.Parent = optionsFrame
-		components.OptionButtons["FreeCrate"] = optionButton
-		
-		local optionPadding = Instance.new("UIPadding")
-		optionPadding.PaddingLeft = UDim.new(0.05, 0)
-		optionPadding.PaddingRight = UDim.new(0.05, 0)
-		optionPadding.Parent = optionButton
-		
-		-- Add hover effect
-		optionButton.MouseEnter:Connect(function()
-			optionButton.BackgroundColor3 = Color3.fromRGB(96, 195, 100)
-		end)
-		optionButton.MouseLeave:Connect(function()
-			optionButton.BackgroundColor3 = Color3.fromRGB(76, 175, 80)
-		end)
-	end
-	
-	-- Then, get all paid crates and sort them by price
-	local sortedCrates = {}
-	for crateType, crateConfig in pairs(GameConfig.Boxes) do
-		if crateConfig.Price > 0 then
-			table.insert(sortedCrates, {type = crateType, config = crateConfig})
-		end
-	end
-	table.sort(sortedCrates, function(a, b)
-		return a.config.Price < b.config.Price
-	end)
-
-	-- Now create the buttons from the sorted list
-	for i, crateData in ipairs(sortedCrates) do
-		local crateType = crateData.type
-		local crateConfig = crateData.config
-		
-		local optionButton = Instance.new("TextButton")
-		optionButton.Name = crateType
-		optionButton.Size = UDim2.new(1, 0, 0, 30) -- Keep fixed height for options
-		optionButton.BackgroundColor3 = Color3.fromRGB(50, 55, 65)
-		optionButton.BorderSizePixel = 0
-		optionButton.Font = Enum.Font.SourceSans
-		optionButton.Text = crateConfig.Name .. " - " .. crateConfig.Price .. " R$"
-		optionButton.TextScaled = true
-		optionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-		optionButton.ZIndex = 3 -- Higher than the frame but still low
-		optionButton.LayoutOrder = i -- After free crate
-		optionButton.Parent = optionsFrame
-		components.OptionButtons[crateType] = optionButton
-		
-		local optionPadding = Instance.new("UIPadding")
-		optionPadding.PaddingLeft = UDim.new(0.05, 0)
-		optionPadding.PaddingRight = UDim.new(0.05, 0)
-		optionPadding.Parent = optionButton
-		
-		-- Add hover effect
-		optionButton.MouseEnter:Connect(function()
-			optionButton.BackgroundColor3 = Color3.fromRGB(70, 75, 85)
-		end)
-		optionButton.MouseLeave:Connect(function()
-			optionButton.BackgroundColor3 = Color3.fromRGB(50, 55, 65)
-		end)
-	end
-	
-	-- Resize options frame based on number of options (including free crate)
-	optionsFrame.Size = UDim2.new(1, 0, 0, (#sortedCrates + 1) * 30)
 
 	-- Store selected crate type
 	components.SelectedCrateType = "StarterCrate" -- Default
@@ -296,7 +193,7 @@ function BuyButtonUI.SetSelectedCrate(components, crateType)
 	
 	components.SelectedCrateType = crateType
 	components.SelectedCrateConfig = crateConfig
-	components.CrateDropdown.Text = crateConfig.Name .. " ▼"
+	components.CrateDropdown.Text = crateConfig.Name
 	
 	-- Update button appearance based on crate type
 	if crateType == "FreeCrate" then
@@ -314,13 +211,17 @@ function BuyButtonUI.SetSelectedCrate(components, crateType)
 	end
 end
 
-function BuyButtonUI.ToggleDropdown(components)
-	local optionsFrame = components.OptionsFrame
-	optionsFrame.Visible = not optionsFrame.Visible
+-- Store reference to CrateSelectionController for opening the GUI
+local CrateSelectionController = nil
+
+function BuyButtonUI.SetCrateSelectionController(controller)
+	CrateSelectionController = controller
 end
 
-function BuyButtonUI.HideDropdown(components)
-	components.OptionsFrame.Visible = false
+function BuyButtonUI.OpenCrateSelection()
+	if CrateSelectionController then
+		CrateSelectionController:Show()
+	end
 end
 
 function BuyButtonUI.SetEnabled(components, isEnabled)

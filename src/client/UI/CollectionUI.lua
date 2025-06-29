@@ -60,28 +60,7 @@ function CollectionUI.Create(parentGui)
 	uiScale.Parent = screenGui
 	components.UIScale = uiScale
 
-	-- Toggle Button
-	local toggleButton = Instance.new("TextButton")
-	toggleButton.Name = "CollectionToggleButton"
-	toggleButton.Size = UDim2.new(0, 50, 0, 50)
-	toggleButton.Position = UDim2.new(0, 15, 0.5, 30) -- Below inventory button
-	toggleButton.BackgroundColor3 = Color3.fromRGB(61, 33, 88)
-	toggleButton.BorderSizePixel = 0
-	toggleButton.Text = "📚"
-	toggleButton.Font = Enum.Font.SourceSansBold
-	toggleButton.TextScaled = true
-	toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	toggleButton.ZIndex = 100
-	toggleButton.Parent = screenGui
-	components.ToggleButton = toggleButton
-	
-	local toggleAspect = Instance.new("UIAspectRatioConstraint")
-	toggleAspect.AspectRatio = 1
-	toggleAspect.Parent = toggleButton
-	
-	local toggleCorner = Instance.new("UICorner")
-	toggleCorner.CornerRadius = UDim.new(0, 8)
-	toggleCorner.Parent = toggleButton
+	-- Note: Toggle button is now managed by NavigationController
 
 	-- Main Frame (with margins from screen edges)
 	local mainFrame = Instance.new("Frame")

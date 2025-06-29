@@ -213,6 +213,11 @@ local function onPlayerAdded(player: Player)
 	leaderstats.Name = "leaderstats"
 	leaderstats.Parent = player
 
+	-- Create inventory folder
+	local inventory = Instance.new("Folder")
+	inventory.Name = "Inventory"
+	inventory.Parent = player
+
 	-- Use formatted StringValues for all stats
 	local robux = createFormattedRobuxStat(player, leaderstats, GameConfig.Currency.StartingAmount)
 	local boxesOpened = createFormattedBoxesStat(player, leaderstats, 0)
@@ -295,6 +300,9 @@ local function onPlayerAdded(player: Player)
 						-- Update collection with existing inventory items
 						DataService.UpdatePlayerCollection(player)
 						
+						-- Signal client that inventory loading is complete
+						Remotes.InventoryLoadComplete:FireClient(player)
+						
 						print("Player data fully loaded for " .. player.Name)
 						return
 					end
@@ -322,6 +330,9 @@ local function onPlayerAdded(player: Player)
 				-- Update collection with existing inventory items
 				DataService.UpdatePlayerCollection(player)
 				
+				-- Signal client that inventory loading is complete (even though there were no items)
+				Remotes.InventoryLoadComplete:FireClient(player)
+				
 				print("Player data loaded for " .. player.Name)
 			end
 		else
@@ -329,6 +340,10 @@ local function onPlayerAdded(player: Player)
 			updatePlayerRobux(player, GameConfig.Currency.StartingAmount)
 			updatePlayerBoxesOpened(player, 0)
 			player:SetAttribute("RAPValue", 0)
+			
+			-- Signal client that inventory loading is complete (new player, no items to load)
+			Remotes.InventoryLoadComplete:FireClient(player)
+			
 			print("No data found for " .. player.Name .. ". Creating new profile.")
 			if err then
 				warn("Error loading data for " .. player.Name .. ": " .. tostring(err))
@@ -507,6 +522,16 @@ end
 -- Expose function for other services to update RAP
 function DataService.UpdatePlayerRAP(player)
 	updatePlayerRAP(player)
+end
+
+-- Expose function for other services to update R$
+function DataService.UpdatePlayerRobux(player, value)
+	updatePlayerRobux(player, value)
+end
+
+-- Expose function for other services to update Boxes Opened
+function DataService.UpdatePlayerBoxesOpened(player, value)
+	updatePlayerBoxesOpened(player, value)
 end
 
 -- Expose function for other services to trigger a save

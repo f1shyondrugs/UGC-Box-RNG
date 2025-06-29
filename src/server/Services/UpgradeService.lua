@@ -95,16 +95,24 @@ local function handleUpgradePurchase(player, upgradeId)
 	end
 	
 	-- Check if player has enough money
-	local leaderstats = player:FindFirstChild("leaderstats")
-	local robux = leaderstats and leaderstats:FindFirstChild("R$")
+	local currentRobux = player:GetAttribute("RobuxValue") or 0
 	
-	if not robux or robux.Value < cost then
+	if currentRobux < cost then
 		Remotes.Notify:FireClient(player, "Not enough R$! Need " .. cost .. " R$", "Error")
 		return
 	end
 	
 	-- Deduct cost and upgrade
-	robux.Value = robux.Value - cost
+	-- Update the raw attribute value
+	player:SetAttribute("RobuxValue", currentRobux - cost)
+	
+	-- Also update the StringValue for display consistency
+	local leaderstats = player:FindFirstChild("leaderstats")
+	local robux = leaderstats and leaderstats:FindFirstChild("R$")
+	if robux then
+		local NumberFormatter = require(game.ReplicatedStorage.Shared.Modules.NumberFormatter)
+		robux.Value = NumberFormatter.FormatCurrency(currentRobux - cost)
+	end
 	UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, currentLevel + 1)
 	
 	-- Notify player of successful upgrade

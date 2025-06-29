@@ -62,48 +62,7 @@ function InventoryUI.Create(parentGui)
 	uiScale.Parent = screenGui
 	components.UIScale = uiScale
 
-	-- Toggle Button (compact design)
-	local toggleButton = Instance.new("TextButton")
-	toggleButton.Name = "InventoryToggleButton"
-	toggleButton.Size = UDim2.new(0, 50, 0, 50)
-	toggleButton.Position = UDim2.new(0, 15, 0.5, -25)
-	toggleButton.BackgroundColor3 = Color3.fromRGB(41, 43, 48)
-	toggleButton.BorderSizePixel = 0
-	toggleButton.Text = "📦"
-	toggleButton.Font = Enum.Font.SourceSansBold
-	toggleButton.TextScaled = true
-	toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	toggleButton.ZIndex = 100
-	toggleButton.Parent = screenGui
-	components.ToggleButton = toggleButton
-	
-	local toggleAspect = Instance.new("UIAspectRatioConstraint")
-	toggleAspect.AspectRatio = 1
-	toggleAspect.Parent = toggleButton
-	
-	local toggleCorner = Instance.new("UICorner")
-	toggleCorner.CornerRadius = UDim.new(0, 8)
-	toggleCorner.Parent = toggleButton
-
-	-- Warning icon for full inventory
-	local warningIcon = Instance.new("TextLabel")
-	warningIcon.Name = "WarningIcon"
-	warningIcon.Size = UDim2.new(0, 20, 0, 20)
-	warningIcon.Position = UDim2.new(1, -5, 0, -5)
-	warningIcon.AnchorPoint = Vector2.new(1, 0)
-	warningIcon.Text = "!"
-	warningIcon.Font = Enum.Font.SourceSansBold
-	warningIcon.TextScaled = true
-	warningIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-	warningIcon.BackgroundColor3 = Color3.fromRGB(237, 66, 69)
-	warningIcon.Visible = false
-	warningIcon.ZIndex = 101
-	warningIcon.Parent = toggleButton
-	components.WarningIcon = warningIcon
-	
-	local warningCorner = Instance.new("UICorner")
-	warningCorner.CornerRadius = UDim.new(1, 0)
-	warningCorner.Parent = warningIcon
+	-- Note: Toggle button is now managed by NavigationController
 
 	-- Full Screen Inventory Frame (initially hidden)
 	local mainFrame = Instance.new("Frame")

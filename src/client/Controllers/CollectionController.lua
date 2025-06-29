@@ -7,6 +7,7 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
+local NavigationController = require(script.Parent.NavigationController)
 
 local Shared = ReplicatedStorage.Shared
 local Remotes = require(Shared.Remotes.Remotes)
@@ -373,7 +374,6 @@ local function toggleCollection(ui, visible, soundController)
 	if visible then
 		-- Show and animate in
 		hideOtherUIs(true)
-		ui.ToggleButton.Visible = false
 		ui.MainFrame.Visible = true
 		
 		-- Load latest collection data
@@ -405,7 +405,6 @@ local function toggleCollection(ui, visible, soundController)
 		task.delay(ANIMATION_TIME, function()
 			ui.MainFrame.Visible = false
 			hideOtherUIs(false)
-			ui.ToggleButton.Visible = true
 			hideTooltip(ui)
 			isAnimating = false
 		end)
@@ -415,9 +414,8 @@ end
 function CollectionController.Start(parentGui, soundController)
 	local ui = CollectionUI.Create(parentGui)
 	
-	-- Connect buttons
-	ui.ToggleButton.MouseButton1Click:Connect(function()
-		soundController:playUIClick()
+	-- Register with NavigationController instead of connecting to toggle button
+	NavigationController.RegisterController("Collection", function()
 		toggleCollection(ui, not ui.MainFrame.Visible, soundController)
 	end)
 	
