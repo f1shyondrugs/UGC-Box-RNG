@@ -53,7 +53,7 @@ local function sellItem(player: Player, itemToSell: Instance)
 	local robux = leaderstats and leaderstats:FindFirstChild("R$")
 	if robux then
 		local NumberFormatter = require(game.ReplicatedStorage.Shared.Modules.NumberFormatter)
-		robux.Value = NumberFormatter.FormatCurrency(currentRobux + sellPrice)
+		robux.Value = NumberFormatter.FormatNumber(currentRobux + sellPrice)
 	end
 	
 	-- Update player's RAP and trigger a save
@@ -94,7 +94,7 @@ local function sellAllItems(player: Player)
 	local robux = leaderstats and leaderstats:FindFirstChild("R$")
 	if robux then
 		local NumberFormatter = require(game.ReplicatedStorage.Shared.Modules.NumberFormatter)
-		robux.Value = NumberFormatter.FormatCurrency(currentRobux + totalSellPrice)
+		robux.Value = NumberFormatter.FormatNumber(currentRobux + totalSellPrice)
 	end
 	
 	-- Update player's RAP and trigger a save
@@ -142,7 +142,7 @@ local function sellUnlockedItems(player: Player)
 	local robux = leaderstats and leaderstats:FindFirstChild("R$")
 	if robux then
 		local NumberFormatter = require(game.ReplicatedStorage.Shared.Modules.NumberFormatter)
-		robux.Value = NumberFormatter.FormatCurrency(currentRobux + totalSellPrice)
+		robux.Value = NumberFormatter.FormatNumber(currentRobux + totalSellPrice)
 	end
 	
 	-- Update player's RAP and trigger a save

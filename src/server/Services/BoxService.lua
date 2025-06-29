@@ -72,7 +72,7 @@ local function requestBox(player: Player, boxType: string)
 		local robux = leaderstats and leaderstats:FindFirstChild("R$")
 		if robux then
 			local NumberFormatter = require(game.ReplicatedStorage.Shared.Modules.NumberFormatter)
-			robux.Value = NumberFormatter.FormatCurrency(currentRobux - boxConfig.Price)
+			robux.Value = NumberFormatter.FormatNumber(currentRobux - boxConfig.Price)
 		end
 	else -- This is a free crate, check cooldown
 		local cooldown = boxConfig.Cooldown or 60

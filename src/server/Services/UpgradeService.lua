@@ -111,7 +111,7 @@ local function handleUpgradePurchase(player, upgradeId)
 	local robux = leaderstats and leaderstats:FindFirstChild("R$")
 	if robux then
 		local NumberFormatter = require(game.ReplicatedStorage.Shared.Modules.NumberFormatter)
-		robux.Value = NumberFormatter.FormatCurrency(currentRobux - cost)
+		robux.Value = NumberFormatter.FormatNumber(currentRobux - cost)
 	end
 	UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, currentLevel + 1)
 	

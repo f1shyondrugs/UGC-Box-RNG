@@ -96,7 +96,7 @@ local function createFormattedRAPStat(player, leaderstats, initialValue)
 	-- Create only a StringValue for the formatted display in leaderboard
 	local rapDisplay = Instance.new("StringValue")
 	rapDisplay.Name = "RAP"
-	rapDisplay.Value = NumberFormatter.FormatCurrency(initialValue)
+	rapDisplay.Value = NumberFormatter.FormatNumber(initialValue)
 	rapDisplay.Parent = leaderstats
 	
 	return rapDisplay
@@ -107,7 +107,7 @@ local function createFormattedRobuxStat(player, leaderstats, initialValue)
 	player:SetAttribute("RobuxValue", initialValue)
 	local robuxDisplay = Instance.new("StringValue")
 	robuxDisplay.Name = "R$"
-	robuxDisplay.Value = NumberFormatter.FormatCurrency(initialValue)
+	robuxDisplay.Value = NumberFormatter.FormatNumber(initialValue)
 	robuxDisplay.Parent = leaderstats
 	return robuxDisplay
 end
@@ -135,7 +135,7 @@ local function updatePlayerRAP(player)
 	-- Update the formatted display
 	local rapDisplay = leaderstats:FindFirstChild("RAP")
 	if rapDisplay then
-		rapDisplay.Value = NumberFormatter.FormatCurrency(totalRAP)
+		rapDisplay.Value = NumberFormatter.FormatNumber(totalRAP)
 	end
 	
 	-- Queue the leaderboard update instead of calling directly
@@ -149,7 +149,7 @@ local function updatePlayerRobux(player, value)
 	if leaderstats then
 		local robux = leaderstats:FindFirstChild("R$")
 		if robux then
-			robux.Value = NumberFormatter.FormatCurrency(value)
+			robux.Value = NumberFormatter.FormatNumber(value)
 		end
 	end
 end

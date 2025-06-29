@@ -6,12 +6,12 @@ Box.__index = Box
 function Box.new(owner: Player, crateId: string)
 	local self = setmetatable({}, Box)
 
-	-- Try to get the custom crate model from ReplicatedStorage.Models.Crates[crateId]
+	-- Always use the same crate model from ReplicatedStorage.Models.Crates.Crate
 	local customCrate = nil
-	if crateId and ReplicatedStorage:FindFirstChild("Models") then
+	if ReplicatedStorage:FindFirstChild("Models") then
 		local cratesFolder = ReplicatedStorage.Models:FindFirstChild("Crates")
 		if cratesFolder then
-			customCrate = cratesFolder:FindFirstChild(crateId)
+			customCrate = cratesFolder:FindFirstChild("Crate")
 		end
 	end
 
@@ -54,7 +54,7 @@ function Box.new(owner: Player, crateId: string)
 	end
 
 	if not self.Part then
-		warn("Custom crate model not found or unusable at ReplicatedStorage.Models.Crates[" .. tostring(crateId) .. "], using default Part")
+		warn("Custom crate model not found or unusable at ReplicatedStorage.Models.Crates.Crate, using default Part")
 		local boxPart = Instance.new("Part")
 		boxPart.Size = Vector3.new(4, 4, 4)
 		boxPart.Anchored = true
