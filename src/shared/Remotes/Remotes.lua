@@ -49,4 +49,10 @@ return {
 	-- Settings Remotes
 	SaveSetting = createRemote("RemoteEvent", "SaveSetting"),
 	GetPlayerSettings = createRemote("RemoteFunction", "GetPlayerSettings"),
+	
+	-- Enchanter Remotes
+	OpenEnchanter = createRemote("RemoteEvent", "OpenEnchanter"),
+	RerollMutators = createRemote("RemoteEvent", "RerollMutators"),
+	GetEnchanterData = createRemote("RemoteFunction", "GetEnchanterData"),
+	GetMutatorProbabilities = createRemote("RemoteFunction", "GetMutatorProbabilities"),
 } 

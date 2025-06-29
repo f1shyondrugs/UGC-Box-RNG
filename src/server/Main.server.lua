@@ -16,6 +16,7 @@ local AvatarService = require(Services:WaitForChild("AvatarService"))
 local AssetPreviewService = require(Services:WaitForChild("AssetPreviewService"))
 local LeaderboardService = require(Services:WaitForChild("LeaderboardService"))
 local UpgradeService = require(Services:WaitForChild("UpgradeService"))
+local EnchanterService = require(Services:WaitForChild("EnchanterService"))
 -- local other services will be added here
 
 -- Start Services
@@ -30,4 +31,5 @@ AdminService.Start() -- Start the new service
 AvatarService.Start() -- Start the avatar service
 AssetPreviewService.Start() -- Start the asset preview service
 LeaderboardService.Start()
+EnchanterService.Start()
 -- other services will be started here 

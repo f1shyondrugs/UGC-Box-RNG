@@ -8,6 +8,9 @@ local GameConfig = require(script.Parent.Parent.Modules.GameConfig)
 
 local equippedAccessories = {} -- [userId] = { [itemType] = { instance, assetId, itemInstance, effectsThread } }
 
+-- Asset cache to avoid repeated InsertService:LoadAsset calls
+local assetCache = {} -- [assetId] = asset
+
 local function applyMutationEffects(asset, itemInstance)
 	-- Check for new multiple mutations format first
 	local mutationsJson = itemInstance:GetAttribute("Mutations")
@@ -549,13 +552,20 @@ function AvatarService.EquipItem(player, itemName, itemInstanceId)
 	-- Unequip any existing item of the same type
 	unequipItemOfType(player, itemConfig.Type)
 
-	local success, asset = pcall(function()
-		return InsertService:LoadAsset(itemConfig.AssetId)
-	end)
-
-	if not success or not asset then
-		warn("Failed to load assetId " .. tostring(itemConfig.AssetId) .. " for item " .. itemName)
-		return false
+	-- Asset caching logic
+	local asset
+	if assetCache[itemConfig.AssetId] then
+		asset = assetCache[itemConfig.AssetId]:Clone()
+	else
+		local success, loadedAsset = pcall(function()
+			return InsertService:LoadAsset(itemConfig.AssetId)
+		end)
+		if not success or not loadedAsset then
+			warn("Failed to load assetId " .. tostring(itemConfig.AssetId) .. " for item " .. itemName)
+			return false
+		end
+		assetCache[itemConfig.AssetId] = loadedAsset
+		asset = loadedAsset:Clone()
 	end
 
 	local userId = player.UserId

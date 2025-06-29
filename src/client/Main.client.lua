@@ -21,6 +21,7 @@ local SoundController = require(script.Parent.Controllers.SoundController)
 local UpgradeController = require(script.Parent.Controllers.UpgradeController)
 local SettingsController = require(script.Parent.Controllers.SettingsController)
 local CrateSelectionController = require(script.Parent.Controllers.CrateSelectionController)
+local EnchanterController = require(script.Parent.Controllers.EnchanterController)
 local BoxAnimator = require(script.Parent.Controllers.BoxAnimator)
 local Notifier = require(script.Parent.Controllers.Notifier)
 local BuyButtonUI = require(script.Parent.UI.BuyButtonUI)
@@ -48,9 +49,13 @@ CollectionController.Start(PlayerGui, soundController)
 UpgradeController.Start(PlayerGui, soundController)
 SettingsController.Start(PlayerGui, soundController)
 CrateSelectionController:Start()
+EnchanterController:Start()
 
 -- Connect BuyButtonUI to CrateSelectionController
 BuyButtonUI.SetCrateSelectionController(CrateSelectionController)
+
+-- Connect sound controller to controllers
+EnchanterController:SetSoundController(soundController)
 
 -- Connect sound controller, box animator, and notifier to settings controller for effect checking
 soundController:setSettingsController(SettingsController)

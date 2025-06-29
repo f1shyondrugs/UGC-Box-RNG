@@ -600,8 +600,8 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 			if boxPart:IsA("BasePart") and boxPart:GetAttribute("Owner") == LocalPlayer.UserId then
 				local prompt = boxPart:FindFirstChildOfClass("ProximityPrompt")
 				if prompt then
-					-- Check if box is already being opened or if inventory is full
-					if isFull or openingBoxes[boxPart] or boxPart:GetAttribute("IsOpening") then
+					-- openingBoxes is expected to be a boolean map: openingBoxes[boxPart] == true if opening
+					if isFull or (openingBoxes and openingBoxes[boxPart]) or boxPart:GetAttribute("IsOpening") then
 						prompt.Enabled = false
 					else
 						prompt.Enabled = true
