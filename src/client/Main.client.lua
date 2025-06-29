@@ -64,17 +64,17 @@ BuyButtonUI.SetSelectedCrate(buyButtonGui, "StarterCrate")
 -- Setup stats monitoring
 local leaderstats = LocalPlayer:WaitForChild("leaderstats")
 local robuxStat = leaderstats:WaitForChild("R$")
-local rapStat = leaderstats:WaitForChild("RAPValue")
 local boxesOpenedStat = leaderstats:WaitForChild("Boxes Opened")
 
 local function updateStatsDisplay()
-	StatsUI.UpdateStats(statsGui, robuxStat.Value, rapStat.Value, boxesOpenedStat.Value)
+	local rapValue = LocalPlayer:GetAttribute("RAPValue") or 0
+	StatsUI.UpdateStats(statsGui, robuxStat.Value, rapValue, boxesOpenedStat.Value)
 	BuyButtonUI.UpdateAffordability(buyButtonGui, robuxStat.Value)
 end
 
 -- Connect to stat changes
 robuxStat.Changed:Connect(updateStatsDisplay)
-rapStat.Changed:Connect(updateStatsDisplay)
+LocalPlayer:GetAttributeChangedSignal("RAPValue"):Connect(updateStatsDisplay)
 boxesOpenedStat.Changed:Connect(updateStatsDisplay)
 
 -- Initial update

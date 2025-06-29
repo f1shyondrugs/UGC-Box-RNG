@@ -37,18 +37,13 @@ local function processUpdateQueue()
 		print("Processing leaderboard updates for " .. #playersToUpdate .. " players.")
 		for _, player in ipairs(playersToUpdate) do
 			task.spawn(function() -- Make leaderboard updates async to prevent blocking
-				local leaderstats = player:FindFirstChild("leaderstats")
-				if leaderstats then
-					-- Use the hidden IntValue for the leaderboard ranking
-					local rapStat = leaderstats:FindFirstChild("RAPValue")
-					if rapStat then
-						local success, err = pcall(function()
-							rapLeaderboardStore:SetAsync(tostring(player.UserId), rapStat.Value)
-						end)
-						if not success then
-							warn("Failed to update RAP for " .. player.Name .. " in leaderboard: " .. tostring(err))
-						end
-					end
+				-- Use the player attribute for the leaderboard ranking
+				local rapValue = player:GetAttribute("RAPValue") or 0
+				local success, err = pcall(function()
+					rapLeaderboardStore:SetAsync(tostring(player.UserId), rapValue)
+				end)
+				if not success then
+					warn("Failed to update RAP for " .. player.Name .. " in leaderboard: " .. tostring(err))
 				end
 			end)
 		end
@@ -94,40 +89,37 @@ local function calculatePlayerRAP(player)
 end
 
 -- Custom StringValue for formatted RAP display
-local function createFormattedRAPStat(leaderstats, initialValue)
-	-- Create the IntValue for internal calculations (hidden from leaderboard)
-	local rapValue = Instance.new("IntValue")
-	rapValue.Name = "RAPValue" -- Different name so it doesn't show in leaderboard
-	rapValue.Value = initialValue
-	rapValue.Parent = leaderstats
+local function createFormattedRAPStat(player, leaderstats, initialValue)
+	-- Store the numeric value as a player attribute (hidden from leaderboard)
+	player:SetAttribute("RAPValue", initialValue)
 	
-	-- Create a StringValue for the formatted display in leaderboard
+	-- Create only a StringValue for the formatted display in leaderboard
 	local rapDisplay = Instance.new("StringValue")
 	rapDisplay.Name = "RAP"
 	rapDisplay.Value = NumberFormatter.FormatCurrency(initialValue)
 	rapDisplay.Parent = leaderstats
 	
-	-- Connect to update the display when the value changes
-	rapValue.Changed:Connect(function(newValue)
-		rapDisplay.Value = NumberFormatter.FormatCurrency(newValue)
-	end)
-	
-	return rapValue, rapDisplay
+	return rapDisplay
 end
 
 local function updatePlayerRAP(player)
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if not leaderstats then return end
 	
-	-- Use the hidden IntValue for calculations
-	local rapStat = leaderstats:FindFirstChild("RAPValue")
-	if rapStat then
-		local totalRAP = calculatePlayerRAP(player)
-		rapStat.Value = totalRAP -- This will automatically update the StringValue display
-		
-		-- Queue the leaderboard update instead of calling directly
-		updateQueue[player.UserId] = player
+	-- Calculate the new RAP value
+	local totalRAP = calculatePlayerRAP(player)
+	
+	-- Update the player attribute
+	player:SetAttribute("RAPValue", totalRAP)
+	
+	-- Update the formatted display
+	local rapDisplay = leaderstats:FindFirstChild("RAP")
+	if rapDisplay then
+		rapDisplay.Value = NumberFormatter.FormatCurrency(totalRAP)
 	end
+	
+	-- Queue the leaderboard update instead of calling directly
+	updateQueue[player.UserId] = player
 end
 
 -- Optimized inventory loading function
@@ -182,8 +174,8 @@ local function onPlayerAdded(player: Player)
 	robux.Name = "R$"
 	robux.Parent = leaderstats
 
-	-- Use custom formatted RAP display
-	local rapValue, rapDisplay = createFormattedRAPStat(leaderstats, 0)
+	-- Use custom formatted RAP display (only creates the StringValue in leaderstats)
+	local rapDisplay = createFormattedRAPStat(player, leaderstats, 0)
 
 	local boxesOpened = Instance.new("IntValue")
 	boxesOpened.Name = "Boxes Opened"
@@ -303,7 +295,7 @@ local function onPlayerAdded(player: Player)
 			-- New player or data load failed
 			robux.Value = GameConfig.Currency.StartingAmount
 			boxesOpened.Value = 0
-			rapValue.Value = 0
+			player:SetAttribute("RAPValue", 0)
 			print("No data found for " .. player.Name .. ". Creating new profile.")
 			if err then
 				warn("Error loading data for " .. player.Name .. ": " .. tostring(err))

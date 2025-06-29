@@ -21,18 +21,18 @@ local function createNameplateForCharacter(player, character)
 	end
 
 	local head = character:WaitForChild("Head")
-	local leaderstats = player:WaitForChild("leaderstats")
-	local rapStat = leaderstats:WaitForChild("RAPValue") -- Use the numeric value for calculations
 	
 	-- Create the UI
 	local uiComponents = NameplateUI.Create(player)
 	uiComponents.BillboardGui.Parent = head
 	
-	-- Initial update
-	NameplateUI.UpdateRAP(uiComponents, rapStat.Value, player)
+	-- Initial update using player attribute
+	local rapValue = player:GetAttribute("RAPValue") or 0
+	NameplateUI.UpdateRAP(uiComponents, rapValue, player)
 	
-	-- Listen for changes to the RAP stat
-	local connection = rapStat.Changed:Connect(function(newValue)
+	-- Listen for changes to the RAP attribute
+	local connection = player:GetAttributeChangedSignal("RAPValue"):Connect(function()
+		local newValue = player:GetAttribute("RAPValue") or 0
 		NameplateUI.UpdateRAP(uiComponents, newValue, player)
 	end)
 	

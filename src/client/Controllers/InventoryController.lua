@@ -97,20 +97,6 @@ end
 function InventoryController.Start(parentGui, openingBoxes, soundController)
 	local inventory = LocalPlayer:WaitForChild("Inventory")
 	local leaderstats = LocalPlayer:WaitForChild("leaderstats")
-	local rapStat = leaderstats:WaitForChild("RAPValue") -- Use the numeric value for calculations
-	
-	-- Get current inventory limit from upgrades
-	local currentInventoryLimit = DEFAULT_INVENTORY_LIMIT
-	local success, upgradeData = pcall(function()
-		return Remotes.GetUpgradeData:InvokeServer()
-	end)
-	
-	if success and upgradeData and upgradeData.InventorySlots then
-		local inventoryUpgrade = upgradeData.InventorySlots
-		if inventoryUpgrade.effects and inventoryUpgrade.effects.CurrentSlots then
-			currentInventoryLimit = inventoryUpgrade.effects.CurrentSlots
-		end
-	end
 	
 	local ui = InventoryUI.Create(parentGui)
 	
@@ -119,6 +105,22 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	local sortBy = "Value" -- Default sort type
 	local sortOrder = "desc" -- "asc" or "desc"
 	local sortOptions = {"Value", "Name", "Size", "Rarity"}
+
+	-- Function to get current inventory limit dynamically
+	local function getCurrentInventoryLimit()
+		local success, upgradeData = pcall(function()
+			return Remotes.GetUpgradeData:InvokeServer()
+		end)
+		
+		if success and upgradeData and upgradeData.InventorySlots then
+			local inventoryUpgrade = upgradeData.InventorySlots
+			if inventoryUpgrade.effects and inventoryUpgrade.effects.CurrentSlots then
+				return inventoryUpgrade.effects.CurrentSlots
+			end
+		end
+		
+		return DEFAULT_INVENTORY_LIMIT -- Fallback to default
+	end
 
 	local function matchesSearch(itemInstance, searchQuery)
 		if not searchQuery or searchQuery == "" then
@@ -512,7 +514,7 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	end
 
 	local function updateRAP()
-		local totalRAP = rapStat.Value
+		local totalRAP = LocalPlayer:GetAttribute("RAPValue") or 0
 		local formattedRAP = ItemValueCalculator.GetFormattedRAP(totalRAP)
 		ui.RAPLabel.Text = "Total RAP: " .. formattedRAP
 	end
@@ -538,9 +540,10 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 
 	local function updateInventoryCount()
 		local count = #inventory:GetChildren()
-			ui.InventoryTitle.Text = "INVENTORY (" .. NumberFormatter.FormatCount(count) .. " / " .. NumberFormatter.FormatCount(currentInventoryLimit) .. ")"
+		local currentLimit = getCurrentInventoryLimit()
+		ui.InventoryTitle.Text = "INVENTORY (" .. NumberFormatter.FormatCount(count) .. " / " .. NumberFormatter.FormatCount(currentLimit) .. ")"
 	
-	local isFull = count >= currentInventoryLimit
+		local isFull = count >= currentLimit
 		ui.WarningIcon.Visible = isFull
 		updateBoxPrompts(isFull)
 	end
@@ -1031,23 +1034,13 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	updateRAP()
 	
 	-- Connect to RAP changes
-	rapStat:GetPropertyChangedSignal("Value"):Connect(updateRAP)
+	LocalPlayer:GetAttributeChangedSignal("RAPValue"):Connect(updateRAP)
 	
-	-- Listen for upgrade updates to refresh inventory limit
+	-- Listen for upgrade updates to refresh inventory limit display
 	Remotes.UpgradeUpdated.OnClientEvent:Connect(function(upgradeId, newLevel)
 		if upgradeId == "InventorySlots" then
-			-- Update inventory limit
-			local success, upgradeData = pcall(function()
-				return Remotes.GetUpgradeData:InvokeServer()
-			end)
-			
-			if success and upgradeData and upgradeData.InventorySlots then
-				local inventoryUpgrade = upgradeData.InventorySlots
-				if inventoryUpgrade.effects and inventoryUpgrade.effects.CurrentSlots then
-					currentInventoryLimit = inventoryUpgrade.effects.CurrentSlots
-					updateInventoryCount() -- Refresh display
-				end
-			end
+			-- Refresh the inventory count display with new limit
+			updateInventoryCount()
 		end
 	end)
 	
