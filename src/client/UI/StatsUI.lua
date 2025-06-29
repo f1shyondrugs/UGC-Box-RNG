@@ -5,6 +5,7 @@ local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Shared = ReplicatedStorage.Shared
 local ItemValueCalculator = require(Shared.Modules.ItemValueCalculator)
+local NumberFormatter = require(Shared.Modules.NumberFormatter)
 
 local StatsUI = {}
 
@@ -216,25 +217,13 @@ end
 
 function StatsUI.UpdateStats(components, robux, rap, boxesOpened)
 	-- Update R$ with formatting (center display - no R$ prefix since icon shows it)
-	if robux >= 1000000 then
-		components.RobuxLabel.Text = string.format("%.1fM", robux / 1000000)
-	elseif robux >= 1000 then
-		components.RobuxLabel.Text = string.format("%.1fK", robux / 1000)
-	else
-		components.RobuxLabel.Text = string.format("%d", robux)
-	end
+	components.RobuxLabel.Text = NumberFormatter.FormatNumber(robux)
 	
 	-- Update RAP with formatting
-	components.RAPLabel.Text = "" .. ItemValueCalculator.GetFormattedRAP(rap)
+	components.RAPLabel.Text = ItemValueCalculator.GetFormattedRAP(rap)
 	
 	-- Update Boxes Opened with formatting
-	if boxesOpened >= 1000000 then
-		components.BoxesLabel.Text = string.format("%.1fM", boxesOpened / 1000000)
-	elseif boxesOpened >= 1000 then
-		components.BoxesLabel.Text = string.format("%.1fK", boxesOpened / 1000)
-	else
-		components.BoxesLabel.Text = string.format("%d", boxesOpened)
-	end
+	components.BoxesLabel.Text = NumberFormatter.FormatCount(boxesOpened)
 end
 
 return StatsUI 

@@ -6,11 +6,24 @@ local SoundConfig = require(ReplicatedStorage.Shared.Modules.SoundConfig)
 local SoundController = {}
 SoundController.__index = SoundController
 
+-- Reference to settings controller (will be set when initialized)
+local settingsController = nil
+
 function SoundController.new()
 	local self = setmetatable({}, SoundController)
 	self.sounds = {}
 	self:_preloadSounds()
 	return self
+end
+
+-- Set reference to settings controller
+function SoundController:setSettingsController(settings)
+	settingsController = settings
+end
+
+-- Check if effects are disabled
+local function areEffectsDisabled()
+	return settingsController and settingsController.AreEffectsDisabled() or false
 end
 
 function SoundController:_preloadSounds()
@@ -39,6 +52,8 @@ function SoundController:playMusic()
 end
 
 function SoundController:playUIClick()
+	if areEffectsDisabled() then return end
+	
 	local sound = Instance.new("Sound")
 	sound.SoundId = "rbxassetid://" .. self.sounds.UIClick
 	sound.Parent = SoundService
@@ -51,6 +66,8 @@ function SoundController:playUIClick()
 end
 
 function SoundController:playBoxLand()
+	if areEffectsDisabled() then return end
+	
 	local sound = Instance.new("Sound")
 	sound.SoundId = "rbxassetid://" .. self.sounds.BoxLand
 	sound.Parent = SoundService
@@ -63,6 +80,8 @@ function SoundController:playBoxLand()
 end
 
 function SoundController:playBoxOpen()
+	if areEffectsDisabled() then return end
+	
 	local sound = Instance.new("Sound")
 	sound.SoundId = "rbxassetid://" .. self.sounds.BoxOpen
 	sound.Parent = SoundService
@@ -75,6 +94,8 @@ function SoundController:playBoxOpen()
 end
 
 function SoundController:playSellItem()
+	if areEffectsDisabled() then return end
+	
 	local sound = Instance.new("Sound")
 	sound.SoundId = "rbxassetid://" .. self.sounds.SellItem
 	sound.Parent = SoundService
@@ -87,6 +108,8 @@ function SoundController:playSellItem()
 end
 
 function SoundController:playGrowingBox()
+	if areEffectsDisabled() then return end
+	
 	-- Stop any existing growing box sound
 	if self.currentGrowingBoxSound then
 		self.currentGrowingBoxSound:Stop()
@@ -108,6 +131,8 @@ function SoundController:stopGrowingBox()
 end
 
 function SoundController:playRewardSound(rarity)
+	if areEffectsDisabled() then return end
+	
 	local soundId = self.sounds[rarity]
 	if not soundId then
 		warn("No sound found for rarity:", rarity)

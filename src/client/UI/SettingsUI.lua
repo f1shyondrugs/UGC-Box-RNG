@@ -1,5 +1,5 @@
--- UpgradeUI.lua
--- Upgrade management interface matching Collection GUI style
+-- SettingsUI.lua
+-- Settings management interface matching Collection GUI style
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,10 +8,9 @@ local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
 local Shared = ReplicatedStorage.Shared
-local UpgradeConfig = require(Shared.Modules.UpgradeConfig)
-local NumberFormatter = require(Shared.Modules.NumberFormatter)
+local SettingsConfig = require(Shared.Modules.SettingsConfig)
 
-local UpgradeUI = {}
+local SettingsUI = {}
 
 -- Function to calculate appropriate UI scale based on screen size
 local function calculateUIScale()
@@ -45,11 +44,11 @@ local function calculateUIScale()
 	return scale
 end
 
-function UpgradeUI.Create(parentGui)
+function SettingsUI.Create(parentGui)
 	local components = {}
 	
 	local screenGui = Instance.new("ScreenGui")
-	screenGui.Name = "UpgradeGui"
+	screenGui.Name = "SettingsGui"
 	screenGui.ResetOnSpawn = false
 	screenGui.Parent = parentGui
 	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -62,12 +61,12 @@ function UpgradeUI.Create(parentGui)
 
 	-- Toggle Button
 	local toggleButton = Instance.new("TextButton")
-	toggleButton.Name = "UpgradeToggleButton"
+	toggleButton.Name = "SettingsToggleButton"
 	toggleButton.Size = UDim2.new(0, 50, 0, 50)
-	toggleButton.Position = UDim2.new(0, 15, 0.5, 90) -- Below collection button
-	toggleButton.BackgroundColor3 = Color3.fromRGB(88, 61, 33)
+	toggleButton.Position = UDim2.new(0, 15, 0.5, 150) -- Below upgrade button
+	toggleButton.BackgroundColor3 = Color3.fromRGB(33, 61, 88)
 	toggleButton.BorderSizePixel = 0
-	toggleButton.Text = "⚡"
+	toggleButton.Text = "⚙️"
 	toggleButton.Font = Enum.Font.SourceSansBold
 	toggleButton.TextScaled = true
 	toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -85,7 +84,7 @@ function UpgradeUI.Create(parentGui)
 
 	-- Main Frame (with margins from screen edges)
 	local mainFrame = Instance.new("Frame")
-	mainFrame.Name = "UpgradeMainFrame"
+	mainFrame.Name = "SettingsMainFrame"
 	mainFrame.Size = UDim2.new(1, -60, 1, -60) -- Add 30px margin on all sides
 	mainFrame.Position = UDim2.new(0, 30, 0, 30) -- Center with 30px offset
 	mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
@@ -138,7 +137,7 @@ function UpgradeUI.Create(parentGui)
 	title.Name = "Title"
 	title.Size = UDim2.new(1, -120, 1, 0)
 	title.Position = UDim2.new(0, 20, 0, 0)
-	title.Text = "⚡ UPGRADES"
+	title.Text = "⚙️ SETTINGS"
 	title.Font = Enum.Font.SourceSansBold
 	title.TextSize = 32
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -175,9 +174,9 @@ function UpgradeUI.Create(parentGui)
 	contentFrame.ZIndex = 51
 	contentFrame.Parent = mainFrame
 
-	-- Scrolling Frame for upgrades
+	-- Scrolling Frame for settings
 	local scrollingFrame = Instance.new("ScrollingFrame")
-	scrollingFrame.Name = "UpgradeScrollingFrame"
+	scrollingFrame.Name = "SettingsScrollingFrame"
 	scrollingFrame.Size = UDim2.new(1, 0, 1, 0)
 	scrollingFrame.Position = UDim2.new(0, 0, 0, 0)
 	scrollingFrame.BackgroundTransparency = 1
@@ -188,34 +187,36 @@ function UpgradeUI.Create(parentGui)
 	scrollingFrame.Parent = contentFrame
 	components.ScrollingFrame = scrollingFrame
 
-	-- Layout for upgrade items
-	local upgradeLayout = Instance.new("UIListLayout")
-	upgradeLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	upgradeLayout.Padding = UDim.new(0, 15)
-	upgradeLayout.Parent = scrollingFrame
+	-- Layout for setting items
+	local settingsLayout = Instance.new("UIListLayout")
+	settingsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	settingsLayout.Padding = UDim.new(0, 15)
+	settingsLayout.Parent = scrollingFrame
 
-	-- Store upgrade frames for updates
-	components.UpgradeFrames = {}
+	-- Store setting frames for updates
+	components.SettingFrames = {}
 
 	return components
 end
 
--- Create an individual upgrade frame
-function UpgradeUI.CreateUpgradeFrame(parent, upgradeId, upgradeData)
-	local upgrade = UpgradeConfig.Upgrades[upgradeId]
-	if not upgrade then return nil end
+-- Create an individual setting frame
+function SettingsUI.CreateSettingFrame(parent, settingId, value)
+	local setting = SettingsConfig.GetSetting(settingId)
+	if not setting then return nil end
+	
+	local isSlider = setting.Type == "Slider"
 
-	local upgradeFrame = Instance.new("Frame")
-	upgradeFrame.Name = upgradeId .. "Frame"
-	upgradeFrame.Size = UDim2.new(1, 0, 0, 120)
-	upgradeFrame.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
-	upgradeFrame.BorderSizePixel = 0
-	upgradeFrame.ZIndex = 53
-	upgradeFrame.Parent = parent
+	local settingFrame = Instance.new("Frame")
+	settingFrame.Name = settingId .. "Frame"
+	settingFrame.Size = UDim2.new(1, 0, 0, 120)
+	settingFrame.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
+	settingFrame.BorderSizePixel = 0
+	settingFrame.ZIndex = 53
+	settingFrame.Parent = parent
 
 	local frameCorner = Instance.new("UICorner")
 	frameCorner.CornerRadius = UDim.new(0, 12)
-	frameCorner.Parent = upgradeFrame
+	frameCorner.Parent = settingFrame
 
 	local frameGradient = Instance.new("UIGradient")
 	frameGradient.Color = ColorSequence.new{
@@ -223,20 +224,20 @@ function UpgradeUI.CreateUpgradeFrame(parent, upgradeId, upgradeData)
 		ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 30, 40))
 	}
 	frameGradient.Rotation = 90
-	frameGradient.Parent = upgradeFrame
+	frameGradient.Parent = settingFrame
 
 	-- Icon
 	local icon = Instance.new("TextLabel")
 	icon.Name = "Icon"
 	icon.Size = UDim2.new(0, 60, 0, 60)
 	icon.Position = UDim2.new(0, 15, 0, 15)
-	icon.Text = upgrade.Icon
+	icon.Text = setting.Icon
 	icon.Font = Enum.Font.SourceSansBold
 	icon.TextSize = 32
 	icon.TextColor3 = Color3.fromRGB(255, 255, 255)
 	icon.BackgroundColor3 = Color3.fromRGB(40, 45, 60)
 	icon.ZIndex = 54
-	icon.Parent = upgradeFrame
+	icon.Parent = settingFrame
 
 	local iconCorner = Instance.new("UICorner")
 	iconCorner.CornerRadius = UDim.new(0, 8)
@@ -247,133 +248,174 @@ function UpgradeUI.CreateUpgradeFrame(parent, upgradeId, upgradeData)
 	nameLabel.Name = "NameLabel"
 	nameLabel.Size = UDim2.new(0, 300, 0, 25)
 	nameLabel.Position = UDim2.new(0, 90, 0, 15)
-	nameLabel.Text = upgrade.Name
+	nameLabel.Text = setting.Name
 	nameLabel.Font = Enum.Font.SourceSansBold
 	nameLabel.TextSize = 18
 	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 	nameLabel.BackgroundTransparency = 1
 	nameLabel.ZIndex = 54
-	nameLabel.Parent = upgradeFrame
+	nameLabel.Parent = settingFrame
 
 	local descLabel = Instance.new("TextLabel")
 	descLabel.Name = "DescLabel"
 	descLabel.Size = UDim2.new(0, 300, 0, 20)
 	descLabel.Position = UDim2.new(0, 90, 0, 40)
-	descLabel.Text = upgrade.Description
+	descLabel.Text = setting.Description
 	descLabel.Font = Enum.Font.SourceSans
 	descLabel.TextSize = 14
 	descLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
 	descLabel.TextXAlignment = Enum.TextXAlignment.Left
 	descLabel.BackgroundTransparency = 1
 	descLabel.ZIndex = 54
-	descLabel.Parent = upgradeFrame
+	descLabel.Parent = settingFrame
 
-	-- Level and Effect Info
-	local levelLabel = Instance.new("TextLabel")
-	levelLabel.Name = "LevelLabel"
-	levelLabel.Size = UDim2.new(0, 150, 0, 20)
-	levelLabel.Position = UDim2.new(0, 90, 0, 65)
-	levelLabel.Text = "Level: " .. upgradeData.level .. "/" .. upgrade.MaxLevel
-	levelLabel.Font = Enum.Font.SourceSansBold
-	levelLabel.TextSize = 14
-	levelLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
-	levelLabel.TextXAlignment = Enum.TextXAlignment.Left
-	levelLabel.BackgroundTransparency = 1
-	levelLabel.ZIndex = 54
-	levelLabel.Parent = upgradeFrame
+	-- Category Label
+	local categoryLabel = Instance.new("TextLabel")
+	categoryLabel.Name = "CategoryLabel"
+	categoryLabel.Size = UDim2.new(0, 150, 0, 20)
+	categoryLabel.Position = UDim2.new(0, 90, 0, 65)
+	categoryLabel.Text = "Category: " .. setting.Category
+	categoryLabel.Font = Enum.Font.SourceSansBold
+	categoryLabel.TextSize = 14
+	categoryLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
+	categoryLabel.TextXAlignment = Enum.TextXAlignment.Left
+	categoryLabel.BackgroundTransparency = 1
+	categoryLabel.ZIndex = 54
+	categoryLabel.Parent = settingFrame
 
-	local effectLabel = Instance.new("TextLabel")
-	effectLabel.Name = "EffectLabel"
-	effectLabel.Size = UDim2.new(0, 200, 0, 20)
-	effectLabel.Position = UDim2.new(0, 90, 0, 85)
-	effectLabel.Font = Enum.Font.SourceSans
-	effectLabel.TextSize = 12
-	effectLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
-	effectLabel.TextXAlignment = Enum.TextXAlignment.Left
-	effectLabel.BackgroundTransparency = 1
-	effectLabel.ZIndex = 54
-	effectLabel.Parent = upgradeFrame
+	-- Status Label
+	local statusLabel = Instance.new("TextLabel")
+	statusLabel.Name = "StatusLabel"
+	statusLabel.Size = UDim2.new(0, 200, 0, 20)
+	statusLabel.Position = UDim2.new(0, 90, 0, 85)
+	statusLabel.Font = Enum.Font.SourceSans
+	statusLabel.TextSize = 12
+	statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+	statusLabel.BackgroundTransparency = 1
+	statusLabel.ZIndex = 54
+	statusLabel.Parent = settingFrame
 
-	-- Upgrade Button
-	local upgradeButton = Instance.new("TextButton")
-	upgradeButton.Name = "UpgradeButton"
-	upgradeButton.Size = UDim2.new(0, 120, 0, 40)
-	upgradeButton.Position = UDim2.new(1, -135, 0, 40)
-	upgradeButton.Font = Enum.Font.SourceSansBold
-	upgradeButton.TextSize = 14
-	upgradeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	upgradeButton.ZIndex = 54
-	upgradeButton.Parent = upgradeFrame
-
-	local buttonCorner = Instance.new("UICorner")
-	buttonCorner.CornerRadius = UDim.new(0, 8)
-	buttonCorner.Parent = upgradeButton
-
-	-- Store references for updates
 	local components = {
-		Frame = upgradeFrame,
-		LevelLabel = levelLabel,
-		EffectLabel = effectLabel,
-		UpgradeButton = upgradeButton
+		Frame = settingFrame,
+		StatusLabel = statusLabel
 	}
 
-	-- Update display based on upgrade data
-	UpgradeUI.UpdateUpgradeFrame(components, upgradeId, upgradeData)
+	if isSlider then
+		-- Create slider components
+		local sliderContainer = Instance.new("Frame")
+		sliderContainer.Name = "SliderContainer"
+		sliderContainer.Size = UDim2.new(0, 200, 0, 30)
+		sliderContainer.Position = UDim2.new(1, -220, 0, 45)
+		sliderContainer.BackgroundTransparency = 1
+		sliderContainer.ZIndex = 54
+		sliderContainer.Parent = settingFrame
+
+		-- Slider track
+		local sliderTrack = Instance.new("Frame")
+		sliderTrack.Name = "SliderTrack"
+		sliderTrack.Size = UDim2.new(1, -40, 0, 6)
+		sliderTrack.Position = UDim2.new(0, 20, 0.5, -3)
+		sliderTrack.BackgroundColor3 = Color3.fromRGB(60, 70, 85)
+		sliderTrack.BorderSizePixel = 0
+		sliderTrack.ZIndex = 54
+		sliderTrack.Parent = sliderContainer
+
+		local trackCorner = Instance.new("UICorner")
+		trackCorner.CornerRadius = UDim.new(0, 3)
+		trackCorner.Parent = sliderTrack
+
+		-- Slider knob
+		local sliderKnob = Instance.new("TextButton")
+		sliderKnob.Name = "SliderKnob"
+		sliderKnob.Size = UDim2.new(0, 20, 0, 20)
+		sliderKnob.Position = UDim2.new(0, 10, 0.5, -10)
+		sliderKnob.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
+		sliderKnob.BorderSizePixel = 0
+		sliderKnob.Text = ""
+		sliderKnob.ZIndex = 55
+		sliderKnob.Parent = sliderContainer
+
+		local knobCorner = Instance.new("UICorner")
+		knobCorner.CornerRadius = UDim.new(1, 0)
+		knobCorner.Parent = sliderKnob
+
+		-- Value label
+		local valueLabel = Instance.new("TextLabel")
+		valueLabel.Name = "ValueLabel"
+		valueLabel.Size = UDim2.new(0, 40, 0, 20)
+		valueLabel.Position = UDim2.new(1, -35, 0, 5)
+		valueLabel.Font = Enum.Font.SourceSansBold
+		valueLabel.TextSize = 12
+		valueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		valueLabel.TextXAlignment = Enum.TextXAlignment.Center
+		valueLabel.BackgroundTransparency = 1
+		valueLabel.ZIndex = 54
+		valueLabel.Parent = sliderContainer
+
+		components.SliderContainer = sliderContainer
+		components.SliderTrack = sliderTrack
+		components.SliderKnob = sliderKnob
+		components.ValueLabel = valueLabel
+	else
+		-- Toggle Button for boolean settings
+		local toggleButton = Instance.new("TextButton")
+		toggleButton.Name = "ToggleButton"
+		toggleButton.Size = UDim2.new(0, 120, 0, 40)
+		toggleButton.Position = UDim2.new(1, -135, 0, 40)
+		toggleButton.Font = Enum.Font.SourceSansBold
+		toggleButton.TextSize = 14
+		toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+		toggleButton.ZIndex = 54
+		toggleButton.Parent = settingFrame
+
+		local buttonCorner = Instance.new("UICorner")
+		buttonCorner.CornerRadius = UDim.new(0, 8)
+		buttonCorner.Parent = toggleButton
+
+		components.ToggleButton = toggleButton
+	end
+
+	-- Update display based on setting state
+	SettingsUI.UpdateSettingFrame(components, settingId, value)
 
 	return components
 end
 
--- Update an upgrade frame with current data
-function UpgradeUI.UpdateUpgradeFrame(components, upgradeId, upgradeData)
-	local upgrade = UpgradeConfig.Upgrades[upgradeId]
-	if not upgrade or not components then return end
+-- Update a setting frame with current state
+function SettingsUI.UpdateSettingFrame(components, settingId, value)
+	local setting = SettingsConfig.GetSetting(settingId)
+	if not setting or not components then return end
 
-	-- Update level display
-	components.LevelLabel.Text = "Level: " .. upgradeData.level .. "/" .. upgrade.MaxLevel
+	local isSlider = setting.Type == "Slider"
 
-	-- Update effect display
-	local effectText = ""
-	if upgradeData.isMaxLevel then
-		effectText = "MAX LEVEL REACHED"
-		components.EffectLabel.TextColor3 = Color3.fromRGB(255, 215, 0) -- Gold
+	if isSlider then
+		-- Update slider display
+		local normalizedValue = (value - setting.MinValue) / (setting.MaxValue - setting.MinValue)
+		normalizedValue = math.clamp(normalizedValue, 0, 1)
+		
+		-- Update knob position
+		local trackWidth = components.SliderTrack.AbsoluteSize.X
+		local knobPosition = 20 + (trackWidth - 20) * normalizedValue
+		components.SliderKnob.Position = UDim2.new(0, knobPosition - 10, 0.5, -10)
+		
+		-- Update value label
+		components.ValueLabel.Text = string.format("%.1f", value)
+		
+		-- Update status
+		components.StatusLabel.Text = string.format("Value: %.1f (%.0f%%)", value, normalizedValue * 100)
+		components.StatusLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
 	else
-		if upgradeId == "InventorySlots" then
-			effectText = "Current: " .. upgradeData.effects.CurrentSlots .. " → Next: " .. upgradeData.effects.NextSlots
-		elseif upgradeId == "MultiCrateOpening" then
-			effectText = "Current: " .. upgradeData.effects.CurrentBoxes .. " → Next: " .. upgradeData.effects.NextBoxes
-		elseif upgradeId == "FasterCooldowns" then
-			effectText = "Current: " .. upgradeData.effects.CurrentCooldown .. " → Next: " .. upgradeData.effects.NextCooldown
-		end
-		components.EffectLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
-	end
-	components.EffectLabel.Text = effectText
+		-- Update toggle display
+		local isEnabled = value
+		local statusText = "Status: " .. (isEnabled and "ENABLED" or "DISABLED")
+		components.StatusLabel.Text = statusText
+		components.StatusLabel.TextColor3 = isEnabled and Color3.fromRGB(150, 255, 150) or Color3.fromRGB(255, 150, 150)
 
-	-- Update button
-	if upgradeData.isMaxLevel then
-		components.UpgradeButton.Text = "MAX LEVEL"
-		components.UpgradeButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-		components.UpgradeButton.Active = false
-	else
-		components.UpgradeButton.Text = "Upgrade\n" .. NumberFormatter.FormatCurrency(upgradeData.cost or 0)
-		components.UpgradeButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-		components.UpgradeButton.Active = true
+		-- Update button
+		components.ToggleButton.Text = isEnabled and "DISABLE" or "ENABLE"
+		components.ToggleButton.BackgroundColor3 = isEnabled and Color3.fromRGB(150, 50, 50) or Color3.fromRGB(50, 150, 50)
 	end
 end
 
--- Update affordability based on player money
-function UpgradeUI.UpdateAffordability(ui, playerMoney)
-	for upgradeId, upgradeFrame in pairs(ui.UpgradeFrames) do
-		local button = upgradeFrame.UpgradeButton
-		if button.Active then
-			local cost = tonumber(string.match(button.Text, "(%d+)"))
-			if cost and playerMoney < cost then
-				button.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
-			else
-				button.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-			end
-		end
-	end
-end
-
-return UpgradeUI 
+return SettingsUI 

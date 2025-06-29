@@ -3,6 +3,19 @@ local Debris = game:GetService("Debris")
 
 local Notifier = {}
 
+-- Reference to settings controller (will be set from main client)
+local settingsController = nil
+
+-- Set reference to settings controller
+function Notifier.SetSettingsController(settings)
+	settingsController = settings
+end
+
+-- Check if effects are disabled
+local function areEffectsDisabled()
+	return settingsController and settingsController.AreEffectsDisabled() or false
+end
+
 local notificationFrame
 local textLabel
 
@@ -27,6 +40,22 @@ function Notifier.Start(parentGui)
 
     local Remotes = require(game:GetService("ReplicatedStorage").Shared.Remotes.Remotes)
     Remotes.Notify.OnClientEvent:Connect(function(message, messageType)
+        -- Skip animations if effects are disabled, but still show the message briefly
+        if areEffectsDisabled() then
+            textLabel.Text = message
+            if messageType == "Error" then
+                notificationFrame.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+            else
+                notificationFrame.BackgroundColor3 = Color3.fromRGB(50, 150, 200)
+            end
+            
+            -- Show message immediately without animation
+            notificationFrame.Position = UDim2.new(0, 0, 0, 0)
+            task.wait(2) -- Shorter display time without animation
+            notificationFrame.Position = UDim2.new(0, 0, -50, 0)
+            return
+        end
+        
         textLabel.Text = message
         if messageType == "Error" then
             notificationFrame.BackgroundColor3 = Color3.fromRGB(200, 50, 50)

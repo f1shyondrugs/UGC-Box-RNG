@@ -44,4 +44,8 @@ return {
 	UpgradeUpdated = createRemote("RemoteEvent", "UpgradeUpdated"),
 	MaxBoxesUpdated = createRemote("RemoteEvent", "MaxBoxesUpdated"),
 	CooldownUpdated = createRemote("RemoteEvent", "CooldownUpdated"),
+	
+	-- Settings Remotes
+	SaveSetting = createRemote("RemoteEvent", "SaveSetting"),
+	GetPlayerSettings = createRemote("RemoteFunction", "GetPlayerSettings"),
 } 

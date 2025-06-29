@@ -162,16 +162,28 @@ local function requestBox(player: Player, boxType: string)
 	Remotes.UpdateBoxCount:FireClient(player, playerBoxCount[player.UserId])
 end
 
-local function openBox(player: Player, boxPart: Part)
+local function openBox(player: Player, boxPart: BasePart)
 	local box = activeBoxes[boxPart]
 	if not box or box.Part ~= boxPart then
 		return
 	end
 	
-	-- Disable the prompt immediately to prevent double-opening
+	-- Check if this box is already being opened (prevent double opening)
+	if boxPart:GetAttribute("IsOpening") then
+		return -- Box is already being processed
+	end
+	
+	-- Mark the box as being opened immediately
+	boxPart:SetAttribute("IsOpening", true)
+	
+	-- Find and properly disable the prompt to prevent any further interactions
 	local prompt = boxPart:FindFirstChildOfClass("ProximityPrompt")
 	if prompt then
 		prompt.Enabled = false
+		prompt.MaxActivationDistance = 0
+		prompt.RequiresLineOfSight = true
+		prompt.ActionText = ""
+		prompt.ObjectText = ""
 	end
 
 	-- Check if inventory is full before opening (using upgrade system)
@@ -291,7 +303,7 @@ local function openBox(player: Player, boxPart: Part)
 				size = math.floor(size * 100) / 100 -- Round to 2 decimal places
 			end
 
-			-- Store the reward on the box part instead of awarding it immediately
+			-- Store reward info on the box part for granting when floating text appears
 			boxPart:SetAttribute("RewardItem", rewardItemName)
 			boxPart:SetAttribute("RewardSize", size)
 			if #mutations > 0 then
@@ -299,14 +311,22 @@ local function openBox(player: Player, boxPart: Part)
 				boxPart:SetAttribute("RewardMutations", HttpService:JSONEncode(mutations))
 			end
 
-			-- Save the player's data immediately after they receive an item
+			-- Save player data (inventory update will happen when floating text appears)
 			PlayerDataService.Save(player)
 		else
 			-- Inventory might be full now, notify the player.
 			Remotes.Notify:FireClient(player, "Inventory is full! Reward was lost.", "Error")
 		end
 
-		Remotes.PlayAnimation:FireClient(player, boxPart, rewardItemName, mutations, size)
+		-- Fire animation to the box opener
+		Remotes.PlayAnimation:FireClient(player, boxPart, rewardItemName, mutations, size, player.UserId, true)
+		
+		-- Fire animation to all other players (they'll decide whether to show it based on settings)
+		for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+			if otherPlayer ~= player then
+				Remotes.PlayAnimation:FireClient(otherPlayer, boxPart, rewardItemName, mutations, size, player.UserId, false)
+			end
+		end
 	else
 		-- This should not happen if chances are configured correctly, but as a fallback,
 		-- we MUST clean up the box properly to prevent ghost boxes.
@@ -323,7 +343,7 @@ local function openBox(player: Player, boxPart: Part)
 	end
 end
 
-local function onAnimationComplete(player: Player, boxPart: Part)
+local function onAnimationComplete(player: Player, boxPart: BasePart)
 	-- If the boxPart doesn't exist anymore, we can't do anything.
 	if not boxPart or not boxPart.Parent then return end
 
@@ -336,18 +356,11 @@ local function onAnimationComplete(player: Player, boxPart: Part)
 		return
 	end
 
-	-- Un-track the box now.
-	activeBoxes[boxPart] = nil
-	playerBoxCount[player.UserId] = (playerBoxCount[player.UserId] or 1) - 1
-	Remotes.UpdateBoxCount:FireClient(player, playerBoxCount[player.UserId])
-
-	-- Grant the item before destroying the box
+	-- Grant the item when floating text appears (this function is now called when text starts)
 	local rewardItemName = boxPart:GetAttribute("RewardItem")
 	if rewardItemName then
 		local inventory = player:FindFirstChild("Inventory")
-		local UpgradeService = require(script.Parent.UpgradeService)
-		local inventoryLimit = UpgradeService.GetPlayerInventoryLimit(player)
-		if inventory and #inventory:GetChildren() < inventoryLimit then
+		if inventory then
 			local item = Instance.new("StringValue")
 			-- Generate unique UUID for the item
 			local itemUUID = generateUUID()
@@ -376,6 +389,7 @@ local function onAnimationComplete(player: Player, boxPart: Part)
 				item:SetAttribute("Mutation", mutations[1])
 			end
 
+			-- Add the item to inventory when floating text appears
 			item.Parent = inventory
 
 			-- Update the player's collection with the new item
@@ -384,13 +398,22 @@ local function onAnimationComplete(player: Player, boxPart: Part)
 			-- Save the player's data immediately after they receive an item
 			PlayerDataService.Save(player)
 		else
-			-- Inventory might be full now, notify the player.
-			Remotes.Notify:FireClient(player, "Inventory is full! Reward was lost.", "Error")
+			-- This should rarely happen, but log it for debugging
+			warn("Player " .. player.Name .. " inventory not found when granting reward")
 		end
 	end
 
-	-- Finally, clean up the box instance.
-	box:Destroy()
+	-- Un-track the box and schedule cleanup after floating text finishes
+	activeBoxes[boxPart] = nil
+	playerBoxCount[player.UserId] = (playerBoxCount[player.UserId] or 1) - 1
+	Remotes.UpdateBoxCount:FireClient(player, playerBoxCount[player.UserId])
+
+	-- Destroy the box after a delay to let floating text finish
+	task.delay(4.5, function()
+		if box and box.Part and box.Part.Parent then
+			box:Destroy()
+		end
+	end)
 end
 
 function BoxService.Start()

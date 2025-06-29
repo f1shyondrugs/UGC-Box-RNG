@@ -18,6 +18,9 @@ local CollectionController = require(script.Parent.Controllers.CollectionControl
 local NameplateController = require(script.Parent.Controllers.NameplateController)
 local SoundController = require(script.Parent.Controllers.SoundController)
 local UpgradeController = require(script.Parent.Controllers.UpgradeController)
+local SettingsController = require(script.Parent.Controllers.SettingsController)
+local BoxAnimator = require(script.Parent.Controllers.BoxAnimator)
+local Notifier = require(script.Parent.Controllers.Notifier)
 local BuyButtonUI = require(script.Parent.UI.BuyButtonUI)
 local StatsUI = require(script.Parent.UI.StatsUI)
 
@@ -40,6 +43,13 @@ Notifier.Start(PlayerGui)
 InventoryController.Start(PlayerGui, openingBoxes, soundController)
 CollectionController.Start(PlayerGui, soundController)
 UpgradeController.Start(PlayerGui, soundController)
+SettingsController.Start(PlayerGui, soundController)
+
+-- Connect sound controller, box animator, and notifier to settings controller for effect checking
+soundController:setSettingsController(SettingsController)
+BoxAnimator.SetSettingsController(SettingsController)
+Notifier.SetSettingsController(SettingsController)
+
 NameplateController.Start()
 
 -- Create Stats UI at the top
@@ -54,18 +64,18 @@ BuyButtonUI.SetSelectedCrate(buyButtonGui, "StarterCrate")
 -- Setup stats monitoring
 local leaderstats = LocalPlayer:WaitForChild("leaderstats")
 local robuxStat = leaderstats:WaitForChild("R$")
-local rapStat = leaderstats:WaitForChild("RAP")
-local boxesStat = leaderstats:WaitForChild("Boxes Opened")
+local rapStat = leaderstats:WaitForChild("RAPValue")
+local boxesOpenedStat = leaderstats:WaitForChild("Boxes Opened")
 
 local function updateStatsDisplay()
-	StatsUI.UpdateStats(statsGui, robuxStat.Value, rapStat.Value, boxesStat.Value)
+	StatsUI.UpdateStats(statsGui, robuxStat.Value, rapStat.Value, boxesOpenedStat.Value)
 	BuyButtonUI.UpdateAffordability(buyButtonGui, robuxStat.Value)
 end
 
 -- Connect to stat changes
 robuxStat.Changed:Connect(updateStatsDisplay)
 rapStat.Changed:Connect(updateStatsDisplay)
-boxesStat.Changed:Connect(updateStatsDisplay)
+boxesOpenedStat.Changed:Connect(updateStatsDisplay)
 
 -- Initial update
 updateStatsDisplay()
@@ -212,15 +222,33 @@ updateButtonState()
 print("UGC Client Systems Initialized")
 
 local function onBoxAdded(boxPart)
-	if not boxPart:IsA("Part") then return end
+	if not boxPart:IsA("BasePart") then return end
 
 	local prompt = boxPart:FindFirstChildOfClass("ProximityPrompt")
 	if not prompt or boxPart:GetAttribute("Owner") ~= LocalPlayer.UserId then
 		return
 	end
 
+	-- Add a flag to prevent multiple triggers
+	local isTriggered = false
+
 	prompt.Triggered:Connect(function()
-		prompt.Enabled = false -- Prevent double clicks
+		-- Prevent multiple triggers
+		if isTriggered then
+			return
+		end
+		isTriggered = true
+		
+		-- Properly disable and remove the prompt 
+		prompt.Enabled = false
+		prompt.MaxActivationDistance = 0
+		prompt.RequiresLineOfSight = true
+		prompt.ActionText = ""
+		prompt.ObjectText = ""
+		
+		-- Mark the box as being opened
+		boxPart:SetAttribute("IsOpening", true)
+		
 		soundController:playBoxOpen()
 		Remotes.RequestOpen:FireServer(boxPart)
 	end)
@@ -248,7 +276,26 @@ else
 	end)
 end
 
-Remotes.PlayAnimation.OnClientEvent:Connect(function(boxPart, itemName, mutations, size)
+Remotes.PlayAnimation.OnClientEvent:Connect(function(boxPart, itemName, mutations, size, ownerUserId, isOwnCrate)
+	-- Handle backwards compatibility for old server calls
+	if ownerUserId == nil then
+		ownerUserId = LocalPlayer.UserId
+		isOwnCrate = true
+	end
+	
+	-- If this is someone else's crate, check if we should show it
+	if not isOwnCrate then
+		-- Check if the player wants to see other players' crates
+		if not SettingsController.GetSetting("ShowOthersCrates") then
+			return -- Don't show other players' crate animations
+		end
+		
+		-- Also check if other players are hidden
+		if SettingsController.GetSetting("HideOtherPlayers") then
+			return -- Don't show crates from hidden players
+		end
+	end
+	
 	openingBoxes[boxPart] = true
 
 	-- Get the full config tables before calling the animators
@@ -264,7 +311,7 @@ Remotes.PlayAnimation.OnClientEvent:Connect(function(boxPart, itemName, mutation
 		end
 	end
 
-	local duration = BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationNames, mutationConfigs, size, soundController)
+	local duration = BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationNames, mutationConfigs, size, soundController, isOwnCrate)
 
 	-- Remove early reward sound - it will now play when text appears
 	-- soundController:playRewardSound(itemConfig.Rarity)
@@ -272,8 +319,14 @@ Remotes.PlayAnimation.OnClientEvent:Connect(function(boxPart, itemName, mutation
 	task.delay(duration, function()
 		if boxPart then
 			openingBoxes[boxPart] = nil
-			BoxAnimator.AnimateFloatingText(boxPart.Position, itemName, itemConfig, mutationNames, mutationConfigs, size, soundController)
-			Remotes.AnimationComplete:FireServer(boxPart)
+			
+			-- Fire AnimationComplete when floating text starts (items get added to inventory now)
+			if isOwnCrate then
+				Remotes.AnimationComplete:FireServer(boxPart)
+			end
+			
+			-- Start the floating text animation
+			BoxAnimator.AnimateFloatingText(boxPart.Position, itemName, itemConfig, mutationNames, mutationConfigs, size, soundController, isOwnCrate)
 		end
 	end)
 end) 

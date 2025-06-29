@@ -12,6 +12,7 @@ local GameConfig = require(Shared.Modules.GameConfig)
 local InventoryUI = {}
 
 local ItemValueCalculator = require(game.ReplicatedStorage.Shared.Modules.ItemValueCalculator)
+local NumberFormatter = require(game.ReplicatedStorage.Shared.Modules.NumberFormatter)
 
 -- Function to calculate appropriate UI scale based on screen size
 local function calculateUIScale()
@@ -361,10 +362,10 @@ function InventoryUI.Create(parentGui)
 
 	-- RIGHT PANEL CONTENT
 	
-	-- Header container for title and search
+	-- Header container for title, search, and sorting
 	local headerContainer = Instance.new("Frame")
 	headerContainer.Name = "HeaderContainer"
-	headerContainer.Size = UDim2.new(1, -20, 0, 155) -- Increased height for filter controls
+	headerContainer.Size = UDim2.new(1, -20, 0, 120)
 	headerContainer.Position = UDim2.new(0, 10, 0, 8)
 	headerContainer.BackgroundTransparency = 1
 	headerContainer.ZIndex = 53
@@ -452,145 +453,88 @@ function InventoryUI.Create(parentGui)
 	clearButton.Parent = searchContainer
 	components.ClearButton = clearButton
 
-	-- Sorting and Filtering Container
-	local filterContainer = Instance.new("Frame")
-	filterContainer.Name = "FilterContainer"
-	filterContainer.Size = UDim2.new(1, 0, 0, 70)
-	filterContainer.Position = UDim2.new(0, 0, 0, 80)
-	filterContainer.BackgroundTransparency = 1
-	filterContainer.ZIndex = 53
-	filterContainer.Parent = headerContainer
+	-- Sorting container
+	local sortContainer = Instance.new("Frame")
+	sortContainer.Name = "SortContainer"
+	sortContainer.Size = UDim2.new(1, 0, 0, 35)
+	sortContainer.Position = UDim2.new(0, 0, 0, 80)
+	sortContainer.BackgroundTransparency = 1
+	sortContainer.ZIndex = 53
+	sortContainer.Parent = headerContainer
 	
 	-- Sort by dropdown
-	local sortFrame = Instance.new("Frame")
-	sortFrame.Name = "SortFrame"
-	sortFrame.Size = UDim2.new(0.48, 0, 0, 30)
-	sortFrame.Position = UDim2.new(0, 0, 0, 0)
-	sortFrame.BackgroundColor3 = Color3.fromRGB(35, 40, 50)
-	sortFrame.BorderSizePixel = 0
-	sortFrame.ZIndex = 54
-	sortFrame.Parent = filterContainer
+	local sortByFrame = Instance.new("Frame")
+	sortByFrame.Name = "SortByFrame"
+	sortByFrame.Size = UDim2.new(0.5, -5, 1, 0)
+	sortByFrame.Position = UDim2.new(0, 0, 0, 0)
+	sortByFrame.BackgroundColor3 = Color3.fromRGB(35, 40, 50)
+	sortByFrame.BorderSizePixel = 0
+	sortByFrame.ZIndex = 54
+	sortByFrame.Parent = sortContainer
 	
-	local sortCorner = Instance.new("UICorner")
-	sortCorner.CornerRadius = UDim.new(0, 6)
-	sortCorner.Parent = sortFrame
+	local sortByCorner = Instance.new("UICorner")
+	sortByCorner.CornerRadius = UDim.new(0, 6)
+	sortByCorner.Parent = sortByFrame
 	
-	local sortStroke = Instance.new("UIStroke")
-	sortStroke.Color = Color3.fromRGB(80, 90, 110)
-	sortStroke.Thickness = 1
-	sortStroke.Transparency = 0.5
-	sortStroke.Parent = sortFrame
+	local sortByStroke = Instance.new("UIStroke")
+	sortByStroke.Color = Color3.fromRGB(80, 90, 110)
+	sortByStroke.Thickness = 1
+	sortByStroke.Transparency = 0.5
+	sortByStroke.Parent = sortByFrame
 	
-	local sortButton = Instance.new("TextButton")
-	sortButton.Name = "SortButton"
-	sortButton.Size = UDim2.new(1, -6, 1, -6)
-	sortButton.Position = UDim2.new(0, 3, 0, 3)
-	sortButton.BackgroundTransparency = 1
-	sortButton.Text = "Sort: Name ↑"
-	sortButton.Font = Enum.Font.SourceSans
-	sortButton.TextSize = 12
-	sortButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	sortButton.TextXAlignment = Enum.TextXAlignment.Left
-	sortButton.ZIndex = 55
-	sortButton.Parent = sortFrame
-	components.SortButton = sortButton
+	local sortByButton = Instance.new("TextButton")
+	sortByButton.Name = "SortByButton"
+	sortByButton.Size = UDim2.new(1, -6, 1, -6)
+	sortByButton.Position = UDim2.new(0, 3, 0, 3)
+	sortByButton.Text = "Sort: Value ▼"
+	sortByButton.Font = Enum.Font.SourceSans
+	sortByButton.TextSize = 12
+	sortByButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	sortByButton.BackgroundTransparency = 1
+	sortByButton.TextXAlignment = Enum.TextXAlignment.Left
+	sortByButton.ZIndex = 55
+	sortByButton.Parent = sortByFrame
+	components.SortByButton = sortByButton
 	
-	-- Filter by rarity dropdown
-	local filterFrame = Instance.new("Frame")
-	filterFrame.Name = "FilterFrame"
-	filterFrame.Size = UDim2.new(0.48, 0, 0, 30)
-	filterFrame.Position = UDim2.new(0.52, 0, 0, 0)
-	filterFrame.BackgroundColor3 = Color3.fromRGB(35, 40, 50)
-	filterFrame.BorderSizePixel = 0
-	filterFrame.ZIndex = 54
-	filterFrame.Parent = filterContainer
+	-- Sort order toggle
+	local sortOrderFrame = Instance.new("Frame")
+	sortOrderFrame.Name = "SortOrderFrame"
+	sortOrderFrame.Size = UDim2.new(0.5, -5, 1, 0)
+	sortOrderFrame.Position = UDim2.new(0.5, 5, 0, 0)
+	sortOrderFrame.BackgroundColor3 = Color3.fromRGB(35, 40, 50)
+	sortOrderFrame.BorderSizePixel = 0
+	sortOrderFrame.ZIndex = 54
+	sortOrderFrame.Parent = sortContainer
 	
-	local filterCorner = Instance.new("UICorner")
-	filterCorner.CornerRadius = UDim.new(0, 6)
-	filterCorner.Parent = filterFrame
+	local sortOrderCorner = Instance.new("UICorner")
+	sortOrderCorner.CornerRadius = UDim.new(0, 6)
+	sortOrderCorner.Parent = sortOrderFrame
 	
-	local filterStroke = Instance.new("UIStroke")
-	filterStroke.Color = Color3.fromRGB(80, 90, 110)
-	filterStroke.Thickness = 1
-	filterStroke.Transparency = 0.5
-	filterStroke.Parent = filterFrame
+	local sortOrderStroke = Instance.new("UIStroke")
+	sortOrderStroke.Color = Color3.fromRGB(80, 90, 110)
+	sortOrderStroke.Thickness = 1
+	sortOrderStroke.Transparency = 0.5
+	sortOrderStroke.Parent = sortOrderFrame
 	
-	local filterButton = Instance.new("TextButton")
-	filterButton.Name = "FilterButton"
-	filterButton.Size = UDim2.new(1, -6, 1, -6)
-	filterButton.Position = UDim2.new(0, 3, 0, 3)
-	filterButton.BackgroundTransparency = 1
-	filterButton.Text = "Filter: All Rarities"
-	filterButton.Font = Enum.Font.SourceSans
-	filterButton.TextSize = 12
-	filterButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	filterButton.TextXAlignment = Enum.TextXAlignment.Left
-	filterButton.ZIndex = 55
-	filterButton.Parent = filterFrame
-	components.FilterButton = filterButton
-	
-	-- Filter toggles row
-	local togglesFrame = Instance.new("Frame")
-	togglesFrame.Name = "TogglesFrame"
-	togglesFrame.Size = UDim2.new(1, 0, 0, 30)
-	togglesFrame.Position = UDim2.new(0, 0, 0, 35)
-	togglesFrame.BackgroundTransparency = 1
-	togglesFrame.ZIndex = 54
-	togglesFrame.Parent = filterContainer
-	
-	local togglesLayout = Instance.new("UIListLayout")
-	togglesLayout.FillDirection = Enum.FillDirection.Horizontal
-	togglesLayout.Padding = UDim.new(0, 5)
-	togglesLayout.Parent = togglesFrame
-	
-	-- Create filter toggle buttons
-	local function createToggleButton(name, text)
-		local toggleButton = Instance.new("TextButton")
-		toggleButton.Name = name
-		toggleButton.Size = UDim2.new(0, 80, 1, 0)
-		toggleButton.BackgroundColor3 = Color3.fromRGB(45, 50, 60)
-		toggleButton.BorderSizePixel = 0
-		toggleButton.Text = text
-		toggleButton.Font = Enum.Font.SourceSans
-		toggleButton.TextSize = 11
-		toggleButton.TextColor3 = Color3.fromRGB(180, 180, 180)
-		toggleButton.ZIndex = 55
-		toggleButton.Parent = togglesFrame
-		
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 4)
-		corner.Parent = toggleButton
-		
-		return toggleButton
-	end
-	
-	components.LockedOnlyToggle = createToggleButton("LockedOnlyToggle", "🔒 Locked")
-	components.EquippedOnlyToggle = createToggleButton("EquippedOnlyToggle", "👤 Equipped")
-	components.MutatedOnlyToggle = createToggleButton("MutatedOnlyToggle", "✨ Mutated")
-	
-	-- Reset filters button
-	local resetButton = Instance.new("TextButton")
-	resetButton.Name = "ResetButton"
-	resetButton.Size = UDim2.new(0, 60, 1, 0)
-	resetButton.BackgroundColor3 = Color3.fromRGB(100, 60, 60)
-	resetButton.BorderSizePixel = 0
-	resetButton.Text = "Reset"
-	resetButton.Font = Enum.Font.SourceSansBold
-	resetButton.TextSize = 11
-	resetButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	resetButton.ZIndex = 55
-	resetButton.Parent = togglesFrame
-	components.ResetFiltersButton = resetButton
-	
-	local resetCorner = Instance.new("UICorner")
-	resetCorner.CornerRadius = UDim.new(0, 4)
-	resetCorner.Parent = resetButton
+	local sortOrderButton = Instance.new("TextButton")
+	sortOrderButton.Name = "SortOrderButton"
+	sortOrderButton.Size = UDim2.new(1, -6, 1, -6)
+	sortOrderButton.Position = UDim2.new(0, 3, 0, 3)
+	sortOrderButton.Text = "High to Low ↓"
+	sortOrderButton.Font = Enum.Font.SourceSans
+	sortOrderButton.TextSize = 12
+	sortOrderButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	sortOrderButton.BackgroundTransparency = 1
+	sortOrderButton.TextXAlignment = Enum.TextXAlignment.Center
+	sortOrderButton.ZIndex = 55
+	sortOrderButton.Parent = sortOrderFrame
+	components.SortOrderButton = sortOrderButton
 
-	-- Item list scroll frame (adjusted for new filter controls)
+	-- Item list scroll frame
 	local listPanel = Instance.new("ScrollingFrame")
 	listPanel.Name = "ListPanel"
-	listPanel.Size = UDim2.new(1, -20, 1, -170)
-	listPanel.Position = UDim2.new(0, 10, 0, 165)
+	listPanel.Size = UDim2.new(1, -20, 1, -140)
+	listPanel.Position = UDim2.new(0, 10, 0, 135)
 	listPanel.BackgroundTransparency = 1
 	listPanel.BorderSizePixel = 0
 	listPanel.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -603,7 +547,9 @@ function InventoryUI.Create(parentGui)
 
 	local listLayout = Instance.new("UIListLayout")
 	listLayout.Padding = UDim.new(0, 6)
+	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	listLayout.Parent = listPanel
+	components.ListLayout = listLayout
 
 	-- Parent the main GUI to the provided parent
 	screenGui.Parent = parentGui
@@ -718,16 +664,17 @@ function InventoryUI.CreateItemTemplate(itemInstance, itemName, itemConfig, rari
 	nameLabel.Name = "NameLabel"
 	nameLabel.Size = UDim2.new(1, 0, 0, 20)
 	nameLabel.Font = Enum.Font.SourceSansBold
-	nameLabel.Text = itemName
 	nameLabel.TextColor3 = rarityConfig and rarityConfig.Color or Color3.fromRGB(255, 255, 255)
 	
 	-- Handle multiple mutations for display name and color
 	local mutationNames = ItemValueCalculator.GetMutationNames(itemInstance)
 	local hasRainbow = false
+	local displayName = itemName
+	
 	if mutationConfigs and #mutationConfigs > 0 then
 		nameLabel.TextColor3 = mutationConfigs[1].Color or nameLabel.TextColor3
 		if #mutationNames > 0 then
-			nameLabel.Text = table.concat(mutationNames, " ") .. " " .. itemName
+			displayName = table.concat(mutationNames, " ") .. " " .. itemName
 			-- Check for Rainbow mutation
 			for _, mutationName in ipairs(mutationNames) do
 				if mutationName == "Rainbow" then
@@ -736,6 +683,14 @@ function InventoryUI.CreateItemTemplate(itemInstance, itemName, itemConfig, rari
 				end
 			end
 		end
+	end
+	
+	-- Add lock icon in front of name if item is locked
+	local isLocked = itemInstance:GetAttribute("Locked") or false
+	if isLocked then
+		nameLabel.Text = "🔒 " .. displayName
+	else
+		nameLabel.Text = displayName
 	end
 	nameLabel.TextSize = 14
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -780,7 +735,7 @@ function InventoryUI.CreateItemTemplate(itemInstance, itemName, itemConfig, rari
 	valueLabel.Name = "ValueLabel"
 	valueLabel.Size = UDim2.new(1, 0, 0, 16)
 	valueLabel.Font = Enum.Font.SourceSansBold
-	valueLabel.Text = value .. " • Size: " .. string.format("%.2f", size)
+	valueLabel.Text = value .. " • Size: " .. NumberFormatter.FormatSize(size)
 	valueLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
 	valueLabel.TextSize = 12
 	valueLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -802,53 +757,8 @@ function InventoryUI.CreateItemTemplate(itemInstance, itemName, itemConfig, rari
 	iconsLayout.Padding = UDim.new(0, 6)
 	iconsLayout.Parent = iconsContainer
 
-	-- Lock Icon - bigger and more prominent
-	local lockIcon = Instance.new("TextLabel")
-	lockIcon.Name = "LockIcon"
-	lockIcon.Size = UDim2.new(0, 32, 0, 32)
-	lockIcon.Text = "🔒"
-	lockIcon.Font = Enum.Font.SourceSansBold
-	lockIcon.TextSize = 20
-	lockIcon.BackgroundColor3 = Color3.fromRGB(255, 200, 50)
-	lockIcon.TextColor3 = Color3.fromRGB(0, 0, 0)
-	lockIcon.Visible = false
-	lockIcon.ZIndex = 56
-	lockIcon.Parent = iconsContainer
 
-	local lockCorner = Instance.new("UICorner")
-	lockCorner.CornerRadius = UDim.new(1, 0)
-	lockCorner.Parent = lockIcon
-	
-	-- Enhanced glow effect to lock icon
-	local lockStroke = Instance.new("UIStroke")
-	lockStroke.Color = Color3.fromRGB(255, 220, 100)
-	lockStroke.Thickness = 3
-	lockStroke.Transparency = 0.2
-	lockStroke.Parent = lockIcon
 
-	-- Equipped Icon
-	local equippedIcon = Instance.new("TextLabel")
-	equippedIcon.Name = "EquippedIcon"
-	equippedIcon.Size = UDim2.new(0, 32, 0, 32)
-	equippedIcon.Text = "⚡"
-	equippedIcon.Font = Enum.Font.SourceSansBold
-	equippedIcon.TextSize = 20
-	equippedIcon.BackgroundColor3 = Color3.fromRGB(76, 175, 80)
-	equippedIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-	equippedIcon.Visible = false
-	equippedIcon.ZIndex = 56
-	equippedIcon.Parent = iconsContainer
-
-	local equippedCorner = Instance.new("UICorner")
-	equippedCorner.CornerRadius = UDim.new(1, 0)
-	equippedCorner.Parent = equippedIcon
-	
-	-- Enhanced glow effect to equipped icon
-	local equippedStroke = Instance.new("UIStroke")
-	equippedStroke.Color = Color3.fromRGB(120, 255, 120)
-	equippedStroke.Thickness = 3
-	equippedStroke.Transparency = 0.2
-	equippedStroke.Parent = equippedIcon
 
 	-- Selection highlight
 	local selectionHighlight = Instance.new("Frame")

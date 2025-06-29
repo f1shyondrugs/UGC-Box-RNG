@@ -3,8 +3,10 @@ local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DataStoreService = game:GetService("DataStoreService")
 local HttpService = game:GetService("HttpService")
+local InsertService = game:GetService("InsertService")
 
 local ItemValueCalculator = require(ReplicatedStorage.Shared.Modules.ItemValueCalculator)
+local GameConfig = require(ReplicatedStorage.Shared.Modules.GameConfig)
 local rapLeaderboardStore = DataStoreService:GetOrderedDataStore("RAPLeaderboard_V1")
 
 local LeaderboardService = {}
@@ -132,6 +134,279 @@ local function createLeaderboardGUI()
 	statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 	statusLabel.BackgroundTransparency = 1
 	statusLabel.LayoutOrder = 1
+end
+
+-- Function to apply equipped cosmetics to a rig
+local function applyEquippedItemsToRig(rig, userId, playerName)
+	-- Try to get player if they're online
+	local onlinePlayer = Players:GetPlayerByUserId(userId)
+	local equippedItems = {}
+	
+	if onlinePlayer then
+		-- Player is online, get their current equipped items
+		local SharedAvatarService = require(ReplicatedStorage.Shared.Services.AvatarService)
+		equippedItems = SharedAvatarService.GetEquippedItems(onlinePlayer)
+	else
+		-- Player is offline, try to get their saved equipped items from datastore
+		local playerDataStore = DataStoreService:GetDataStore("PlayerData_UGC_V1")
+		local success, data = pcall(function()
+			return playerDataStore:GetAsync("Player_" .. userId)
+		end)
+		
+		if success and data and data.equippedItems then
+			-- Convert saved UUIDs back to item data
+			for itemType, itemUUID in pairs(data.equippedItems) do
+				-- Find the item data in their saved inventory
+				if data.inventory then
+					for _, itemData in ipairs(data.inventory) do
+						if itemData.uuid == itemUUID or itemData.name == itemUUID then
+							-- Create a mock item instance for the equipped item
+							local mockItem = {
+								GetAttribute = function(self, attr)
+									if attr == "ItemName" then return itemData.name
+									elseif attr == "Size" then return itemData.size or 1
+									elseif attr == "Mutations" then 
+										if itemData.mutations then
+											return HttpService:JSONEncode(itemData.mutations)
+										end
+									elseif attr == "Mutation" then return itemData.mutation
+									end
+									return nil
+								end,
+								Name = itemData.uuid or itemData.name
+							}
+							equippedItems[itemType] = mockItem
+							break
+						end
+					end
+				end
+			end
+		end
+	end
+	
+	-- Apply each equipped item to the rig
+	local humanoid = rig:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+	
+	for itemType, itemInstance in pairs(equippedItems) do
+		local itemName = itemInstance:GetAttribute("ItemName") or itemInstance.Name
+		local itemConfig = GameConfig.Items[itemName]
+		
+		if itemConfig and itemConfig.AssetId then
+			task.spawn(function()
+				local success, asset = pcall(function()
+					return InsertService:LoadAsset(itemConfig.AssetId)
+				end)
+				
+				if success and asset then
+					-- Apply the cosmetic item to the rig
+					if asset:IsA("Accessory") then
+						-- Scale the accessory based on item size
+						local size = itemInstance:GetAttribute("Size") or 1
+						local handle = asset:FindFirstChild("Handle")
+						if handle then
+							local mesh = handle:FindFirstChildOfClass("SpecialMesh")
+							if mesh then
+								mesh.Scale = mesh.Scale * size
+							else
+								handle.Size = handle.Size * size
+							end
+						end
+						
+						humanoid:AddAccessory(asset)
+						
+						-- Apply basic mutation effects
+						local mutationsJson = itemInstance:GetAttribute("Mutations")
+						if mutationsJson then
+							local success, mutations = pcall(function()
+								return HttpService:JSONDecode(mutationsJson)
+							end)
+							if success and mutations then
+								local handle = asset:FindFirstChild("Handle")
+								if handle then
+									for _, mutationName in ipairs(mutations) do
+										local mutationConfig = GameConfig.Mutations[mutationName]
+										if mutationConfig then
+											-- Apply simple visual effects based on mutation
+											if mutationName == "Glowing" then
+												local light = Instance.new("PointLight")
+												light.Color = mutationConfig.Color or Color3.fromRGB(255, 255, 0)
+												light.Brightness = 2
+												light.Range = 12
+												light.Parent = handle
+											elseif mutationName == "Shiny" then
+												handle.Material = Enum.Material.Neon
+												handle.Color = mutationConfig.Color or Color3.fromRGB(255, 255, 255)
+											end
+										end
+									end
+								end
+							end
+						end
+						
+					elseif asset:IsA("Shirt") or asset:IsA("Pants") or asset:IsA("TShirt") then
+						asset.Parent = rig
+					elseif asset:IsA("Model") then
+						local accessoryInModel = asset:FindFirstChildOfClass("Accessory")
+						if accessoryInModel then
+							accessoryInModel.Parent = nil
+							humanoid:AddAccessory(accessoryInModel)
+							asset:Destroy()
+						end
+					end
+					
+					print("Applied " .. itemName .. " (" .. itemType .. ") to leaderboard rig " .. rig.Name)
+				else
+					warn("Failed to load cosmetic asset " .. itemConfig.AssetId .. " for " .. itemName)
+				end
+			end)
+		end
+	end
+end
+
+-- Function to clear and update a leaderboard rig with a player's avatar
+local function updateLeaderboardRig(rigNumber, userId, playerName, rapValue)
+	local leaderboardsFolder = Workspace:FindFirstChild("leaderboards")
+	if not leaderboardsFolder then
+		warn("No leaderboards folder found in Workspace")
+		return
+	end
+	
+	local rig = leaderboardsFolder:FindFirstChild(tostring(rigNumber))
+	if not rig then
+		warn("No rig found for position " .. rigNumber)
+		return
+	end
+	
+	-- Don't update if it's the same player already
+	if rig:GetAttribute("CurrentUserId") == userId then
+		return
+	end
+	
+	-- Clear existing avatar items and cosmetics
+	for _, child in pairs(rig:GetChildren()) do
+		if child:IsA("Accessory") or child:IsA("Shirt") or child:IsA("Pants") or child:IsA("TShirt") then
+			child:Destroy()
+		end
+	end
+	
+	-- Mark this rig as being updated
+	rig:SetAttribute("CurrentUserId", userId)
+	rig:SetAttribute("PlayerName", playerName)
+	rig:SetAttribute("RAP", rapValue)
+	
+	-- Load player's avatar asynchronously
+	task.spawn(function()
+		local success, result = pcall(function()
+			return Players:GetCharacterAppearanceAsync(userId)
+		end)
+		
+		if success and result then
+			-- Apply the avatar items to the rig
+			for _, item in pairs(result:GetChildren()) do
+				if item:IsA("Accessory") or item:IsA("Shirt") or item:IsA("Pants") or item:IsA("TShirt") then
+					local clonedItem = item:Clone()
+					clonedItem.Parent = rig
+					
+					-- For accessories, weld them to the correct body part
+					if clonedItem:IsA("Accessory") then
+						local handle = clonedItem:FindFirstChild("Handle")
+						local humanoid = rig:FindFirstChildOfClass("Humanoid")
+						if handle and humanoid then
+							humanoid:AddAccessory(clonedItem)
+						end
+					end
+				end
+			end
+			
+			-- Apply equipped cosmetics from the game
+			applyEquippedItemsToRig(rig, userId, playerName)
+			
+			-- Clear any existing nameplate
+			local head = rig:FindFirstChild("Head")
+			if head then
+				local existingGui = head:FindFirstChild("LeaderboardInfo")
+				if existingGui then
+					existingGui:Destroy()
+				end
+			end
+			
+			print("Updated leaderboard rig " .. rigNumber .. " with " .. playerName .. "'s avatar and cosmetics")
+		else
+			warn("Failed to load avatar for user " .. userId .. ": " .. tostring(result))
+		end
+	end)
+end
+
+-- Function to update all leaderboard rigs
+local function updateLeaderboardRigs()
+	if not leaderboardData or #leaderboardData == 0 then
+		-- Clear all rigs if no data
+		for i = 1, 3 do
+			local leaderboardsFolder = Workspace:FindFirstChild("leaderboards")
+			if leaderboardsFolder then
+				local rig = leaderboardsFolder:FindFirstChild(tostring(i))
+				if rig then
+					rig:SetAttribute("CurrentUserId", nil)
+					rig:SetAttribute("PlayerName", "")
+					rig:SetAttribute("RAP", 0)
+					
+					-- Clear avatar items and cosmetics
+					for _, child in pairs(rig:GetChildren()) do
+						if child:IsA("Accessory") or child:IsA("Shirt") or child:IsA("Pants") or child:IsA("TShirt") then
+							child:Destroy()
+						end
+					end
+					
+
+				end
+			end
+		end
+		return
+	end
+	
+	-- Update top 3 rigs with player data
+	local numPlayersToShow = math.min(3, #leaderboardData)
+	
+	for i = 1, numPlayersToShow do
+		local entry = leaderboardData[i]
+		local userId = tonumber(entry.key)
+		local rapValue = entry.value
+		
+		-- Get player name
+		local playerName = "[Deleted User]"
+		local success, result = pcall(function()
+			return Players:GetNameFromUserIdAsync(userId)
+		end)
+		if success then
+			playerName = result
+		end
+		
+		-- Update the rig
+		updateLeaderboardRig(i, userId, playerName, rapValue)
+	end
+	
+	-- Clear unused rig positions if there are fewer than 3 players
+	for i = numPlayersToShow + 1, 3 do
+		local leaderboardsFolder = Workspace:FindFirstChild("leaderboards")
+		if leaderboardsFolder then
+			local rig = leaderboardsFolder:FindFirstChild(tostring(i))
+			if rig then
+				rig:SetAttribute("CurrentUserId", nil)
+				rig:SetAttribute("PlayerName", "")
+				rig:SetAttribute("RAP", 0)
+				
+				-- Clear avatar items and cosmetics
+				for _, child in pairs(rig:GetChildren()) do
+					if child:IsA("Accessory") or child:IsA("Shirt") or child:IsA("Pants") or child:IsA("TShirt") then
+						child:Destroy()
+					end
+				end
+				
+
+			end
+		end
+	end
 end
 
 local function updateLeaderboard()
@@ -281,15 +556,20 @@ local function updateLeaderboard()
 		local headerHeight = listFrame:FindFirstChild("Header").Size.Y.Offset
 		listFrame.CanvasSize = UDim2.new(0, 0, 0, headerHeight + (numEntries * padding) + totalContentHeight)
 	end
+	
+	-- Update leaderboard rigs with top 3 players
+	updateLeaderboardRigs()
 end
-
 
 function LeaderboardService.Start()
 	createLeaderboardGUI()
 	
-	-- Initial update
-	task.wait(5) -- Wait a bit for players to load in
-	updateLeaderboard()
+	-- Initial update - removed the 5 second delay for faster startup
+	task.spawn(function()
+		-- Small delay to ensure player data is loaded
+		task.wait(1)
+		pcall(updateLeaderboard)
+	end)
 
 	-- Periodic updates
 	task.spawn(function()

@@ -1,5 +1,5 @@
 local Config = {}
-
+-- 106523725468780 - anime girl huzz 
 Config.Rarities = {
     Common = { Color = Color3.fromRGB(150, 150, 150) },
     Uncommon = { Color = Color3.fromRGB(50, 200, 50) },
@@ -12,6 +12,14 @@ Config.Rarities = {
     Transcendent = { Color = Color3.fromRGB(255, 100, 255) },
     Ethereal = { Color = Color3.fromRGB(220, 220, 255) },
     Quantum = { Color = Color3.fromRGB(50, 20, 80) },
+    Godly = { Color = Color3.fromRGB(255, 215, 0) },
+    
+    -- Ultra-Premium Limited Rarities
+    Limited = { Color = Color3.fromRGB(255, 20, 147) },      -- Deep Pink - For classic limiteds
+    Vintage = { Color = Color3.fromRGB(184, 134, 11) },     -- Antique Gold - For vintage items
+    Exclusive = { Color = Color3.fromRGB(138, 43, 226) },   -- Blue Violet - For exclusive limiteds
+    Ultimate = { Color = Color3.fromRGB(255, 0, 0) },       -- Pure Red - For ultimate limiteds
+    Dominus = { Color = Color3.fromRGB(0, 0, 0) },          -- Pure Black - For Dominus items only
 }
 
 Config.Items = {
@@ -26,14 +34,14 @@ Config.Items = {
     ["Plain T-Shirt"] = { 
         Rarity = "Common", 
         Value = 15, 
-        AssetId = 7867838611,
+        AssetId = 15960290658,
         Type = "Shirt",
         Description = "A basic t-shirt in classic white."
     },
     ["Simple Pants"] = { 
         Rarity = "Common", 
         Value = 20, 
-        AssetId = 1804739,
+        AssetId = 12331810734,
         Type = "Pants",
         Description = "Comfortable everyday pants."
     },
@@ -216,7 +224,7 @@ Config.Items = {
     ["Time Boots"] = { 
         Rarity = "Legendary", 
         Value = 16000, 
-        AssetId = 100378706924256,
+        AssetId = 18426584193,
         Type = "Shoes",
         Description = "Boots that allow the wearer to manipulate time."
     },
@@ -386,35 +394,35 @@ Config.Items = {
     -- Ethereal UGC Items (R$ 30,000,000 - 150,000,000)
     ["The First Omen"] = { 
         Rarity = "Ethereal", 
-        Value = 30000000, 
-        AssetId = 14814064596,
+        Value = 10000000, 
+        AssetId = 132480258038179,
         Type = "Hat",
         Description = "The first sign of the coming digital apocalypse."
     },
     ["Crown of the Silent King"] = { 
         Rarity = "Ethereal", 
-        Value = 50000000, 
+        Value = 13000000, 
         AssetId = 146083020,
         Type = "Hat",
         Description = "A crown that speaks without words."
     },
     ["Aetherium Blade"] = { 
         Rarity = "Ethereal", 
-        Value = 75000000, 
+        Value = 16000000, 
         AssetId = 86216026118611,
         Type = "Front",
         Description = "A blade forged from pure aetherium energy."
     },
     ["Mantle of the Architect"] = { 
         Rarity = "Ethereal", 
-        Value = 110000000, 
+        Value = 22000000, 
         AssetId = 95824173117693,
         Type = "Shirt",
         Description = "The mantle worn by the architect of existence."
     },
     ["The Unseen Hand"] = { 
         Rarity = "Ethereal", 
-        Value = 150000000, 
+        Value = 35000000, 
         AssetId = 12725518393,
         Type = "Front",
         Description = "A hand that shapes destiny from the shadows."
@@ -423,7 +431,7 @@ Config.Items = {
     -- Quantum UGC Items (R$ 200,000,000 - 1,000,000,000)
     ["Fragment of Creation"] = { 
         Rarity = "Quantum", 
-        Value = 200000000, 
+        Value = 60000000, 
         AssetId = 8782356060,
         Type = "Front",
         Description = "A fragment from the moment of universal creation."
@@ -442,6 +450,13 @@ Config.Items = {
         Type = "Back",
         Description = "The boundary beyond which nothing can return."
     },
+    ["Wings of Doom"] = { 
+        Rarity = "Quantum", 
+        Value = 500000000, 
+        AssetId = 132275193556412,
+        Type = "Back",
+        Description = "Wings that grant the power of the void."
+    },
     ["Glimpse of Infinity"] = { 
         Rarity = "Quantum", 
         Value = 750000000, 
@@ -455,6 +470,113 @@ Config.Items = {
         AssetId = 17720934054,
         Type = "Hat",
         Description = "The ultimate expression of what it means to be Robloxian."
+    },
+
+    -- Limited Items (Authentic Roblox Catalog Limiteds) - Ultra-Premium Rarities
+    ["Red Banded Top Hat"] = { 
+        Rarity = "Limited", 
+        Value = 50000000, 
+        AssetId = 2972302,
+        Type = "Hat",
+        Description = "An elegant top hat with a distinguished red band."
+    },
+    ["Sparkle Time Fedora"] = { 
+        Rarity = "Limited", 
+        Value = 100000000, 
+        AssetId = 1285307,
+        Type = "Hat",
+        Description = "A dazzling fedora that sparkles with limited edition magic."
+    },
+    ["ROBLOX Visor"] = { 
+        Rarity = "Vintage", 
+        Value = 200000000, 
+        AssetId = 607700713,
+        Type = "Hat",
+        Description = "The iconic ROBLOX visor from the golden age."
+    },
+    ["Workclock Headphones"] = { 
+        Rarity = "Vintage", 
+        Value = 300000000, 
+        AssetId = 172309919,
+        Type = "Hat",
+        Description = "Vintage headphones from the early days of Roblox."
+    },
+    ["Clockwork's Shades"] = { 
+        Rarity = "Vintage", 
+        Value = 500000000, 
+        AssetId = 11748356,
+        Type = "Hat",
+        Description = "The legendary shades worn by Clockwork himself."
+    },
+    ["Brighteyes' Bloxy Cola Hat"] = { 
+        Rarity = "Exclusive", 
+        Value = 750000000, 
+        AssetId = 24114402,
+        Type = "Hat",
+        Description = "Brighteyes' exclusive Bloxy Cola promotional hat."
+    },
+    ["Green Bow Tie"] = { 
+        Rarity = "Exclusive", 
+        Value = 1000000000, 
+        AssetId = 1031429,
+        Type = "Hat",
+        Description = "A sophisticated green bow tie of limited availability."
+    },
+    ["Kleos Aphthiton"] = { 
+        Rarity = "Exclusive", 
+        Value = 1500000000, 
+        AssetId = 1365767,
+        Type = "Hat",
+        Description = "Eternal glory incarnate in headwear form."
+    },
+    ["Adurite Antlers"] = { 
+        Rarity = "Ultimate", 
+        Value = 2000000000, 
+        AssetId = 162066057,
+        Type = "Hat",
+        Description = "Mystical antlers forged from pure adurite."
+    },
+    ["Dominus Empyreus"] = { 
+        Rarity = "Dominus", 
+        Value = 3000000000, 
+        AssetId = 21070012,
+        Type = "Hat",
+        Description = "The legendary golden Dominus of the heavens."
+    },
+    ["Dominus Messor"] = { 
+        Rarity = "Dominus", 
+        Value = 5000000000, 
+        AssetId = 64444871,
+        Type = "Hat",
+        Description = "The harvester Dominus that reaps souls."
+    },
+    ["Dominus Frigidus"] = { 
+        Rarity = "Dominus", 
+        Value = 7500000000, 
+        AssetId = 48545806,
+        Type = "Hat",
+        Description = "An icy cold Dominus of unparalleled rarity."
+    },
+    ["Dominus Vespertilio"] = { 
+        Rarity = "Dominus", 
+        Value = 10000000000, 
+        AssetId = 96103379,
+        Type = "Hat",
+        Description = "The bat-winged Dominus of eternal night."
+    },
+    ["Dominus Infernus"] = { 
+        Rarity = "Dominus", 
+        Value = 15000000000, 
+        AssetId = 31101391,
+        Type = "Hat",
+        Description = "The infernal Dominus wreathed in hellfire."
+    },
+    ["Dominus Aureus"] = { 
+        Rarity = "Dominus", 
+        Value = 25000000000, 
+        AssetId = 138932314,
+        Type = "Hat",
+        Description = "The golden Dominus forged from pure aurum."
     },
 }
 
@@ -470,126 +592,139 @@ Config.Mutations = {
 
 Config.Boxes = {
     ["StarterCrate"] = {
-        Name = "Starter Crate",
-        Price = 25,
+        Name = "📦 Starter Crate",
+        Price = 20,
         Rewards = {
-            ["Basic Cap"] = 35,
-            ["Plain T-Shirt"] = 30,
-            ["Simple Pants"] = 20,
-            ["Basic Glasses"] = 10,
-            ["School Backpack"] = 4,
-            ["White Sneakers"] = 1,
+            ["Basic Cap"] = 75,      -- 10 value (loss)
+            ["Plain T-Shirt"] = 20,  -- 15 value (loss but better)
+            ["Basic Glasses"] = 3,   -- 25 value (win)
+            ["School Backpack"] = 2, -- 30 value (jackpot)
         },
     },
     ["PremiumCrate"] = {
-        Name = "Premium Crate",
-        Price = 150,
+        Name = "⭐ Premium Crate",
+        Price = 100,
         Rewards = {
-            -- Removed low-value items, added a Rare item for better value
-            ["Cool Hoodie"] = 40,       -- R$ 75 value
-            ["Designer Jeans"] = 25,    -- R$ 90 value
-            ["Sunglasses"] = 15,        -- R$ 110 value
-            ["Sports Watch"] = 10,      -- R$ 150 value (break-even)
-            ["Leather Jacket"] = 7,     -- R$ 200 value (profit)
-            ["Gaming Headset"] = 3,     -- R$ 260 value (big profit!)
+            ["Cool Hoodie"] = 75,       -- 75 value (loss)
+            ["Designer Jeans"] = 20,    -- 90 value (loss but close)
+            ["Sunglasses"] = 3,         -- 110 value (win)
+            ["Sports Watch"] = 1.5,     -- 150 value (win)
+            ["Gaming Headset"] = 0.5,   -- 260 value (jackpot)
         },
     },
     ["LegendaryCrate"] = {
-        Name = "Legendary Crate",
-        Price = 1000,
+        Name = "🌟 Legendary Crate",
+        Price = 600,
         Rewards = {
-            -- Focused on high-value Rares, added an Epic for jackpot
-            ["Neon Jacket"] = 35,           -- R$ 350 value
-            ["Cargo Pants"] = 25,           -- R$ 450 value
-            ["VR Goggles"] = 20,            -- R$ 600 value
-            ["Holographic Visor"] = 12,     -- R$ 800 value
-            ["Jetpack"] = 6,                -- R$ 1000 value (break-even)
-            ["Crown"] = 2,                  -- R$ 1200 value (profit!)
+            ["Neon Jacket"] = 75,           -- 350 value (loss)
+            ["Cargo Pants"] = 20,           -- 450 value (loss)
+            ["VR Goggles"] = 3,             -- 600 value (break-even)
+            ["Holographic Visor"] = 1.5,    -- 800 value (win)
+            ["Crown"] = 0.5,                -- 1200 value (jackpot)
         },
     },
     ["MythicalCrate"] = {
-        Name = "Mythical Crate",
-        Price = 5000,
+        Name = "🐉 Mythical Crate",
+        Price = 3000,
         Rewards = {
-            -- High-value Epics, added a Legendary for profit chance
-            ["Dragon Robe"] = 35,       -- R$ 1800 value
-            ["Knight Armor"] = 25,      -- R$ 2500 value
-            ["Angel Wings"] = 20,       -- R$ 3500 value
-            ["Wizard Hat"] = 12,        -- R$ 4200 value
-            ["Power Gauntlet"] = 6,     -- R$ 5000 value (break-even)
-            ["Diamond Crown"] = 2,      -- R$ 6000 value (profit!)
+            ["Dragon Robe"] = 75,       -- 1800 value (loss)
+            ["Knight Armor"] = 20,      -- 2500 value (loss)
+            ["Angel Wings"] = 3,        -- 3500 value (win)
+            ["Wizard Hat"] = 1.5,       -- 4200 value (win)
+            ["Diamond Crown"] = 0.5,    -- 6000 value (jackpot)
         },
     },
     ["CelestialCrate"] = {
-        Name = "Celestial Crate",
-        Price = 25000,
+        Name = "🌌 Celestial Crate",
+        Price = 15000,
         Rewards = {
-            -- Good Legendaries, added a Mythical for profit chance
-            ["Void Cloak"] = 30,        -- R$ 12000 value
-            ["Time Boots"] = 25,        -- R$ 16000 value
-            ["Crystal Sword"] = 20,     -- R$ 20000 value
-            ["Celestial Armor"] = 15,   -- R$ 25000 value (break-even)
-            ["God's Halo"] = 10,        -- R$ 30000 value (profit!)
+            ["Void Cloak"] = 75,        -- 12000 value (loss)
+            ["Time Boots"] = 20,        -- 16000 value (win)
+            ["Crystal Sword"] = 3,      -- 20000 value (win)
+            ["Celestial Armor"] = 1.5,  -- 25000 value (win)
+            ["God's Halo"] = 0.5,       -- 30000 value (jackpot)
         },
     },
     ["DivineCrate"] = {
-        Name = "Divine Crate",
-        Price = 100000,
+        Name = "👑 Divine Crate",
+        Price = 80000,
         Rewards = {
-            -- Great Mythicals, added a Celestial for profit chance
-            ["Infinity Cloak"] = 35,    -- R$ 65000 value
-            ["Cosmic Crown"] = 30,      -- R$ 80000 value
-            ["Singularity Staff"] = 25, -- R$ 100000 value (break-even)
-            ["Galaxy Wings"] = 10,      -- R$ 120000 value (profit!)
+            ["Infinity Cloak"] = 75,    -- 65000 value (loss)
+            ["Cosmic Crown"] = 20,      -- 80000 value (break-even)
+            ["Singularity Staff"] = 3,  -- 100000 value (win)
+            ["Galaxy Wings"] = 1.5,     -- 120000 value (win)
+            ["Nebula Armor"] = 0.5,     -- 180000 value (jackpot)
         },
     },
     ["TranscendentCrate"] = {
-        Name = "Transcendent Crate",
-        Price = 750000,
+        Name = "✨ Transcendent Crate",
+        Price = 400000,
         Rewards = {
-            -- High-value Celestials, added a Divine for profit chance
-            ["Stardust Pauldrons"] = 35,    -- R$ 250000 value
-            ["Supernova Helmet"] = 30,      -- R$ 350000 value
-            ["Black Hole Blade"] = 25,      -- R$ 500000 value
-            ["Aura of the Gods"] = 10,      -- R$ 600000 value
+            ["Stardust Pauldrons"] = 75,    -- 250000 value (loss)
+            ["Supernova Helmet"] = 20,      -- 350000 value (loss)
+            ["Black Hole Blade"] = 3,       -- 500000 value (win)
+            ["Aura of the Gods"] = 1.5,     -- 600000 value (win)
+            ["Creator's Cape"] = 0.5,       -- 850000 value (jackpot)
         },
     },
     ["EtherealCrate"] = {
-        Name = "Ethereal Crate",
-        Price = 5000000,
+        Name = "💫 Ethereal Crate",
+        Price = 2500000,
         Rewards = {
-            -- Top Divine items, added a Transcendent for profit chance
-            ["Dominus Astra"] = 50,            -- R$ 1800000 value
-            ["Valkyrie of the Metaverse"] = 35, -- R$ 2500000 value
-            ["Rift Walker's Scythe"] = 15,     -- R$ 5000000 value (break-even!)
+            ["Dominus Astra"] = 75,            -- 1800000 value (loss)
+            ["Valkyrie of the Metaverse"] = 20, -- 2500000 value (break-even)
+            ["Rift Walker's Scythe"] = 3,     -- 5000000 value (win)
+            ["Chronomancer's Crown"] = 1.5,   -- 8000000 value (win)
+            ["Echoes of the Void"] = 0.5,     -- 12000000 value (jackpot)
         },
     },
     ["QuantumCrate"] = {
-        Name = "Quantum Crate",
-        Price = 30000000,
+        Name = "⚛️ Quantum Crate",
+        Price = 20000000,
         Rewards = {
-            -- All items are now worth the price of the crate or more!
-            ["The First Omen"] = 40,            -- R$ 30,000,000 value (break-even)
-            ["Crown of the Silent King"] = 25,  -- R$ 50,000,000 value
-            ["Aetherium Blade"] = 15,           -- R$ 75,000,000 value
-            ["Mantle of the Architect"] = 10,   -- R$ 110,000,000 value
-            ["The Unseen Hand"] = 7,            -- R$ 150,000,000 value
-            ["Fragment of Creation"] = 2,       -- R$ 200,000,000 value
-            ["The Final Shape"] = 0.5,          -- R$ 350,000,000 value
-            ["Event Horizon"] = 0.3,            -- R$ 500,000,000 value
-            ["Glimpse of Infinity"] = 0.15,     -- R$ 750,000,000 value
-            ["The Robloxian"] = 0.05,           -- R$ 1,000,000,000 value
+            ["The First Omen"] = 75,            -- 10000000 value (loss)
+            ["Crown of the Silent King"] = 20,  -- 13000000 value (loss)
+            ["Aetherium Blade"] = 3,            -- 16000000 value (win)
+            ["Mantle of the Architect"] = 1.5,  -- 22000000 value (win)
+            ["Fragment of Creation"] = 0.5,     -- 60000000 value (jackpot)
+        },
+    },
+    ["LimitedCrate"] = {
+        Name = "🏆 Limited Crate",
+        Price = 500000000,
+        Rewards = {
+            ["Red Banded Top Hat"] = 15,                -- 50,000,000 value (loss)
+            ["Sparkle Time Fedora"] = 15,               -- 100,000,000 value (loss)
+            ["ROBLOX Visor"] = 15,                       -- 200,000,000 value (loss)
+            ["Workclock Headphones"] = 15,             -- 300,000,000 value (loss)
+            ["Clockwork's Shades"] = 15,               -- 500,000,000 value (break-even)
+            ["Brighteyes' Bloxy Cola Hat"] = 15,      -- 750,000,000 value (win)
+            ["Green Bow Tie"] = 6,                   -- 1,000,000,000 value (win)
+            ["Kleos Aphthiton"] = 3.5,                 -- 1,500,000,000 value (jackpot)
+            ["Adurite Antlers"] = 0.5,                 -- 2,000,000,000 value (jackpot)
+        },
+    },
+    ["DominusCrate"] = {
+        Name = "👑 Dominus Crate",
+        Price = 10000000000,
+        Rewards = {
+            ["Dominus Empyreus"] = 50,            -- 3,000,000,000 value (loss)
+            ["Dominus Messor"] = 25,              -- 5,000,000,000 value (loss)
+            ["Dominus Frigidus"] = 10,            -- 7,500,000,000 value (loss)
+            ["Dominus Vespertilio"] = 10,          -- 10,000,000,000 value (break-even)
+            ["Dominus Infernus"] = 3.5,            -- 15,000,000,000 value (win)
+            ["Dominus Aureus"] = 1.5,              -- 25,000,000,000 value (jackpot)
         },
     },
     ["FreeCrate"] = {
-        Name = "Free Crate",
+        Name = "🎁 Free Crate",
         Price = 0,
         Cooldown = 60,
         Rewards = {
-            ["Basic Cap"] = 40,
-            ["Plain T-Shirt"] = 35,
-            ["Simple Pants"] = 20,
-            ["Basic Glasses"] = 5,
+            ["Basic Cap"] = 75,         -- 10 value
+            ["Plain T-Shirt"] = 20,     -- 15 value
+            ["Simple Pants"] = 4,       -- 20 value
+            ["Basic Glasses"] = 1,      -- 25 value
         },
     },
 }

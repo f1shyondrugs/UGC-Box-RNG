@@ -1,3 +1,5 @@
+local NumberFormatter = require(script.Parent.NumberFormatter)
+
 local ItemValueCalculator = {}
 
 function ItemValueCalculator.GetValue(itemConfig, mutationConfigs, size)
@@ -33,7 +35,7 @@ end
 
 function ItemValueCalculator.GetFormattedValue(itemConfig, mutationConfigs, size)
     local value = ItemValueCalculator.GetValue(itemConfig, mutationConfigs, size)
-    return string.format("R$%d", value)
+    return NumberFormatter.FormatCurrency(value)
 end
 
 -- Calculate RAP (Recent Average Price) for a collection of items
@@ -55,19 +57,7 @@ function ItemValueCalculator.CalculateRAP(inventory)
 end
 
 function ItemValueCalculator.GetFormattedRAP(totalValue)
-	if totalValue >= 1e15 then
-		return string.format("R$%.1fQ", totalValue / 1e15)
-	elseif totalValue >= 1e12 then
-		return string.format("R$%.1fT", totalValue / 1e12)
-	elseif totalValue >= 1e9 then
-		return string.format("R$%.1fB", totalValue / 1e9)
-	elseif totalValue >= 1e6 then
-		return string.format("R$%.1fM", totalValue / 1e6)
-	elseif totalValue >= 1e3 then
-		return string.format("R$%.1fK", totalValue / 1e3)
-	else
-		return string.format("R$%d", totalValue)
-	end
+	return NumberFormatter.FormatCurrency(totalValue)
 end
 
 -- Helper function to get mutation configs from an item instance

@@ -45,7 +45,7 @@ This is a box-opening RNG game created for Roblox and managed with Rojo.
 2.  Start a playtest session.
 3.  The UI will appear on your screen to buy boxes.
 4.  An inventory panel will show your items.
-5.  Enjoy the game!
+5.  Enjoy the game! 
 
 # RNG Simulator
 

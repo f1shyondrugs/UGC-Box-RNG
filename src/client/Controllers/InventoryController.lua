@@ -12,6 +12,7 @@ local Remotes = require(Shared.Remotes.Remotes)
 local GameConfig = require(Shared.Modules.GameConfig)
 local InventoryUI = require(script.Parent.Parent.UI.InventoryUI)
 local ItemValueCalculator = require(Shared.Modules.ItemValueCalculator)
+local NumberFormatter = require(Shared.Modules.NumberFormatter)
 
 local InventoryController = {}
 local DEFAULT_INVENTORY_LIMIT = 50
@@ -96,7 +97,7 @@ end
 function InventoryController.Start(parentGui, openingBoxes, soundController)
 	local inventory = LocalPlayer:WaitForChild("Inventory")
 	local leaderstats = LocalPlayer:WaitForChild("leaderstats")
-	local rapStat = leaderstats:WaitForChild("RAP")
+	local rapStat = leaderstats:WaitForChild("RAPValue") -- Use the numeric value for calculations
 	
 	-- Get current inventory limit from upgrades
 	local currentInventoryLimit = DEFAULT_INVENTORY_LIMIT
@@ -115,68 +116,9 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	
 	local itemEntries = {} -- itemInstance -> { Template, LockIcon, Connection }
 	local searchText = ""
-	
-	-- Sorting and filtering state
-	local currentSort = "name" -- name, rarity, value, type, size
-	local sortAscending = true
-	local currentRarityFilter = "all" -- all, common, uncommon, rare, etc.
-	local lockedOnlyFilter = false
-	local equippedOnlyFilter = false
-	local mutatedOnlyFilter = false
-
-	-- Get sorting value for an item
-	local function getSortValue(itemInstance, sortType)
-		local itemName = itemInstance:GetAttribute("ItemName") or itemInstance.Name
-		local itemConfig = GameConfig.Items[itemName]
-		if not itemConfig then return "" end
-		
-		if sortType == "name" then
-			local mutationNames = ItemValueCalculator.GetMutationNames(itemInstance)
-			if #mutationNames > 0 then
-				return table.concat(mutationNames, " ") .. " " .. itemName
-			end
-			return itemName
-		elseif sortType == "rarity" then
-			local rarityOrder = {Common = 1, Uncommon = 2, Rare = 3, Epic = 4, Legendary = 5, Mythical = 6, Celestial = 7, Divine = 8, Transcendent = 9, Ethereal = 10, Quantum = 11}
-			return rarityOrder[itemConfig.Rarity] or 0
-		elseif sortType == "value" then
-			local mutationConfigs = ItemValueCalculator.GetMutationConfigs(itemInstance)
-			local size = itemInstance:GetAttribute("Size") or 1
-			return ItemValueCalculator.GetValue(itemConfig, mutationConfigs, size)
-		elseif sortType == "type" then
-			return itemConfig.Type or "Unknown"
-		elseif sortType == "size" then
-			return itemInstance:GetAttribute("Size") or 1
-		end
-		return ""
-	end
-	
-	-- Sort items in the inventory
-	local function sortInventory()
-		local sortedItems = {}
-		for itemInstance, _ in pairs(itemEntries) do
-			table.insert(sortedItems, itemInstance)
-		end
-		
-		table.sort(sortedItems, function(a, b)
-			local valueA = getSortValue(a, currentSort)
-			local valueB = getSortValue(b, currentSort)
-			
-			if sortAscending then
-				return valueA < valueB
-			else
-				return valueA > valueB
-			end
-		end)
-		
-		-- Update layout orders
-		for i, itemInstance in ipairs(sortedItems) do
-			local entry = itemEntries[itemInstance]
-			if entry and entry.Template then
-				entry.Template.LayoutOrder = i
-			end
-		end
-	end
+	local sortBy = "Value" -- Default sort type
+	local sortOrder = "desc" -- "asc" or "desc"
+	local sortOptions = {"Value", "Name", "Size", "Rarity"}
 
 	local function matchesSearch(itemInstance, searchQuery)
 		if not searchQuery or searchQuery == "" then
@@ -221,269 +163,170 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		
 		return false
 	end
-	
-	-- Enhanced filtering with all criteria
-	local function matchesFilters(itemInstance)
-		-- Search text filter
-		if not matchesSearch(itemInstance, searchText) then
-			return false
-		end
-		
+
+	-- Rarity order mapping for sorting
+	local rarityOrder = {
+		Common = 1,
+		Uncommon = 2,
+		Rare = 3,
+		Epic = 4,
+		Legendary = 5,
+		Mythical = 6,
+		Godly = 7,
+		Celestial = 8,
+		Divine = 9,
+		Transcendent = 10,
+		Ethereal = 11,
+		Quantum = 12,
+		Limited = 13,
+		Vintage = 14,
+		Exclusive = 15,
+		Ultimate = 16,
+		Dominus = 17
+	}
+
+	local function getSortValue(itemInstance, sortType)
 		local itemName = itemInstance:GetAttribute("ItemName") or itemInstance.Name
 		local itemConfig = GameConfig.Items[itemName]
-		if not itemConfig then return false end
 		
-		-- Rarity filter
-		if currentRarityFilter ~= "all" and itemConfig.Rarity ~= currentRarityFilter then
-			return false
-		end
-		
-		-- Locked filter
-		if lockedOnlyFilter then
-			local isLocked = itemInstance:GetAttribute("Locked") or false
-			if not isLocked then
-				return false
-			end
-		end
-		
-		-- Equipped filter
-		if equippedOnlyFilter then
-			local success, equippedItems = pcall(function()
-				return Remotes.GetEquippedItems:InvokeServer()
+		if sortType == "Value" then
+			if not itemConfig then return 0 end
+			local mutationConfigs = ItemValueCalculator.GetMutationConfigs(itemInstance)
+			local size = itemInstance:GetAttribute("Size") or 1
+			local success, value = pcall(function()
+				return ItemValueCalculator.GetValue(itemConfig, mutationConfigs, size)
 			end)
-			local isEquipped = false
-			if success and equippedItems and itemConfig.Type then
-				for _, equippedItem in pairs(equippedItems) do
-					if equippedItem == itemInstance then
-						isEquipped = true
-						break
-					end
-				end
+			return success and value or 0
+		elseif sortType == "Name" then
+			return itemName or ""
+		elseif sortType == "Size" then
+			return itemInstance:GetAttribute("Size") or 1
+		elseif sortType == "Rarity" then
+			if itemConfig and itemConfig.Rarity then
+				return rarityOrder[itemConfig.Rarity] or 0
 			end
-			if not isEquipped then
-				return false
-			end
+			return 0
 		end
 		
-		-- Mutated filter
-		if mutatedOnlyFilter then
-			local mutationNames = ItemValueCalculator.GetMutationNames(itemInstance)
-			if #mutationNames == 0 then
-				return false
-			end
-		end
-		
-		return true
+		return 0
 	end
 
-	local function filterAndSortInventory()
-		-- Filter items
+	local function sortInventory()
+		-- Get all items with their sort values
+		local allItems = {}
 		for itemInstance, entry in pairs(itemEntries) do
 			if entry.Template then
-				local visible = matchesFilters(itemInstance)
+				table.insert(allItems, {
+					instance = itemInstance,
+					template = entry.Template,
+					sortValue = getSortValue(itemInstance, sortBy),
+					isVisible = entry.Template.Visible
+				})
+			end
+		end
+		
+
+		
+		-- Sort all items
+		table.sort(allItems, function(a, b)
+			if sortBy == "Name" then
+				-- String comparison
+				if sortOrder == "desc" then
+					return tostring(a.sortValue) > tostring(b.sortValue)
+				else
+					return tostring(a.sortValue) < tostring(b.sortValue)
+				end
+			else
+				-- Numeric comparison
+				if sortOrder == "desc" then
+					return tonumber(a.sortValue) > tonumber(b.sortValue)
+				else
+					return tonumber(a.sortValue) < tonumber(b.sortValue)
+				end
+			end
+		end)
+		
+		-- Update layout order for all items (visible items will be grouped at top)
+		local visibleOrder = 1
+		local hiddenOrder = 1000
+		local visibleCount = 0
+		
+		for _, item in ipairs(allItems) do
+			if item.isVisible then
+				item.template.LayoutOrder = visibleOrder
+				visibleOrder = visibleOrder + 1
+				visibleCount = visibleCount + 1
+			else
+				item.template.LayoutOrder = hiddenOrder
+				hiddenOrder = hiddenOrder + 1
+			end
+		end
+		
+
+	end
+
+	local function filterInventory()
+		-- First apply search filter
+		for itemInstance, entry in pairs(itemEntries) do
+			if entry.Template then
+				local visible = matchesSearch(itemInstance, searchText)
 				entry.Template.Visible = visible
 			end
 		end
 		
-		-- Sort visible items
+		-- Then sort visible items
 		sortInventory()
-	end
-
-	-- Update sort button text
-	local function updateSortButtonText()
-		local sortNames = {
-			name = "Name",
-			rarity = "Rarity", 
-			value = "Value",
-			type = "Type",
-			size = "Size"
-		}
-		local arrow = sortAscending and "↑" or "↓"
-		ui.SortButton.Text = "Sort: " .. sortNames[currentSort] .. " " .. arrow
-	end
-	
-	-- Update filter button text
-	local function updateFilterButtonText()
-		if currentRarityFilter == "all" then
-			ui.FilterButton.Text = "Filter: All Rarities"
-		else
-			ui.FilterButton.Text = "Filter: " .. currentRarityFilter
-		end
-	end
-	
-	-- Update toggle button appearance
-	local function updateToggleButton(button, active)
-		if active then
-			button.BackgroundColor3 = Color3.fromRGB(76, 175, 80)
-			button.TextColor3 = Color3.fromRGB(255, 255, 255)
-		else
-			button.BackgroundColor3 = Color3.fromRGB(45, 50, 60)
-			button.TextColor3 = Color3.fromRGB(180, 180, 180)
-		end
-	end
-	
-	-- Show sort dropdown menu
-	local function showSortMenu()
-		-- Create dropdown menu
-		local menu = Instance.new("Frame")
-		menu.Name = "SortMenu"
-		menu.Size = UDim2.new(0, 120, 0, 150)
-		-- Calculate position relative to ScreenGui
-		local buttonPos = ui.SortButton.AbsolutePosition
-		local buttonSize = ui.SortButton.AbsoluteSize
-		local screenSize = ui.ScreenGui.AbsoluteSize
-		menu.Position = UDim2.new(0, buttonPos.X, 0, buttonPos.Y + buttonSize.Y + 5)
-		menu.BackgroundColor3 = Color3.fromRGB(35, 40, 50)
-		menu.BorderSizePixel = 0
-		menu.ZIndex = 200
-		menu.Parent = ui.ScreenGui
-		
-		local menuCorner = Instance.new("UICorner")
-		menuCorner.CornerRadius = UDim.new(0, 6)
-		menuCorner.Parent = menu
-		
-		local menuStroke = Instance.new("UIStroke")
-		menuStroke.Color = Color3.fromRGB(80, 90, 110)
-		menuStroke.Thickness = 1
-		menuStroke.Parent = menu
-		
-		local layout = Instance.new("UIListLayout")
-		layout.Padding = UDim.new(0, 2)
-		layout.Parent = menu
-		
-		local sortOptions = {
-			{key = "name", text = "Name"},
-			{key = "rarity", text = "Rarity"},
-			{key = "value", text = "Value"},
-			{key = "type", text = "Type"},
-			{key = "size", text = "Size"}
-		}
-		
-		for _, option in ipairs(sortOptions) do
-			local button = Instance.new("TextButton")
-			button.Size = UDim2.new(1, 0, 0, 25)
-			button.BackgroundColor3 = (currentSort == option.key) and Color3.fromRGB(76, 175, 80) or Color3.fromRGB(25, 30, 40)
-			button.BorderSizePixel = 0
-			button.Text = option.text
-			button.Font = Enum.Font.SourceSans
-			button.TextSize = 12
-			button.TextColor3 = Color3.fromRGB(255, 255, 255)
-			button.ZIndex = 201
-			button.Parent = menu
-			
-			button.MouseButton1Click:Connect(function()
-				if currentSort == option.key then
-					-- Toggle sort direction
-					sortAscending = not sortAscending
-				else
-					-- Change sort type
-					currentSort = option.key
-					sortAscending = true
-				end
-				updateSortButtonText()
-				filterAndSortInventory()
-				menu:Destroy()
-			end)
-		end
-		
-		-- Click outside to close
-		local connection
-		connection = UserInputService.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then
-				local mousePosition = UserInputService:GetMouseLocation()
-				local guiPosition = menu.AbsolutePosition
-				local guiSize = menu.AbsoluteSize
-				
-				if mousePosition.X < guiPosition.X or mousePosition.X > guiPosition.X + guiSize.X or
-				   mousePosition.Y < guiPosition.Y or mousePosition.Y > guiPosition.Y + guiSize.Y then
-					menu:Destroy()
-					connection:Disconnect()
-				end
-			end
-		end)
-	end
-	
-	-- Show rarity filter menu
-	local function showRarityFilterMenu()
-		local menu = Instance.new("Frame")
-		menu.Name = "RarityFilterMenu"
-		menu.Size = UDim2.new(0, 120, 0, 250)
-		-- Calculate position relative to ScreenGui
-		local buttonPos = ui.FilterButton.AbsolutePosition
-		local buttonSize = ui.FilterButton.AbsoluteSize
-		menu.Position = UDim2.new(0, buttonPos.X, 0, buttonPos.Y + buttonSize.Y + 5)
-		menu.BackgroundColor3 = Color3.fromRGB(35, 40, 50)
-		menu.BorderSizePixel = 0
-		menu.ZIndex = 200
-		menu.Parent = ui.ScreenGui
-		
-		local menuCorner = Instance.new("UICorner")
-		menuCorner.CornerRadius = UDim.new(0, 6)
-		menuCorner.Parent = menu
-		
-		local menuStroke = Instance.new("UIStroke")
-		menuStroke.Color = Color3.fromRGB(80, 90, 110)
-		menuStroke.Thickness = 1
-		menuStroke.Parent = menu
-		
-		local layout = Instance.new("UIListLayout")
-		layout.Padding = UDim.new(0, 2)
-		layout.Parent = menu
-		
-		local rarityOptions = {
-			{key = "all", text = "All Rarities"},
-			{key = "Common", text = "Common"},
-			{key = "Uncommon", text = "Uncommon"},
-			{key = "Rare", text = "Rare"},
-			{key = "Epic", text = "Epic"},
-			{key = "Legendary", text = "Legendary"},
-			{key = "Mythical", text = "Mythical"},
-			{key = "Celestial", text = "Celestial"},
-			{key = "Divine", text = "Divine"},
-			{key = "Transcendent", text = "Transcendent"}
-		}
-		
-		for _, option in ipairs(rarityOptions) do
-			local button = Instance.new("TextButton")
-			button.Size = UDim2.new(1, 0, 0, 22)
-			button.BackgroundColor3 = (currentRarityFilter == option.key) and Color3.fromRGB(76, 175, 80) or Color3.fromRGB(25, 30, 40)
-			button.BorderSizePixel = 0
-			button.Text = option.text
-			button.Font = Enum.Font.SourceSans
-			button.TextSize = 11
-			button.TextColor3 = Color3.fromRGB(255, 255, 255)
-			button.ZIndex = 201
-			button.Parent = menu
-			
-			button.MouseButton1Click:Connect(function()
-				currentRarityFilter = option.key
-				updateFilterButtonText()
-				filterAndSortInventory()
-				menu:Destroy()
-			end)
-		end
-		
-		-- Click outside to close
-		local connection
-		connection = UserInputService.InputBegan:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseButton1 then
-				local mousePosition = UserInputService:GetMouseLocation()
-				local guiPosition = menu.AbsolutePosition
-				local guiSize = menu.AbsoluteSize
-				
-				if mousePosition.X < guiPosition.X or mousePosition.X > guiPosition.X + guiSize.X or
-				   mousePosition.Y < guiPosition.Y or mousePosition.Y > guiPosition.Y + guiSize.Y then
-					menu:Destroy()
-					connection:Disconnect()
-				end
-			end
-		end)
 	end
 
 	local function onSearchChanged()
 		searchText = ui.SearchBox.Text
 		ui.ClearButton.Visible = searchText ~= ""
-		filterAndSortInventory()
+		filterInventory()
+	end
+
+	-- Update sort UI text
+	local function updateSortUI()
+		ui.SortByButton.Text = "Sort: " .. sortBy .. " ▼"
+		if sortOrder == "desc" then
+			if sortBy == "Name" then
+				ui.SortOrderButton.Text = "Z to A ↓"
+			else
+				ui.SortOrderButton.Text = "High to Low ↓"
+			end
+		else
+			if sortBy == "Name" then
+				ui.SortOrderButton.Text = "A to Z ↑"
+			else
+				ui.SortOrderButton.Text = "Low to High ↑"
+			end
+		end
+	end
+
+	-- Sort by button cycling
+	local function cycleSortBy()
+		local currentIndex = 1
+		for i, option in ipairs(sortOptions) do
+			if option == sortBy then
+				currentIndex = i
+				break
+			end
+		end
+		
+		currentIndex = currentIndex + 1
+		if currentIndex > #sortOptions then
+			currentIndex = 1
+		end
+		
+		sortBy = sortOptions[currentIndex]
+		updateSortUI()
+		filterInventory()
+	end
+
+	-- Sort order toggle
+	local function toggleSortOrder()
+		sortOrder = sortOrder == "desc" and "asc" or "desc"
+		updateSortUI()
+		filterInventory()
 	end
 
 	-- Connect search functionality
@@ -493,54 +336,19 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		ui.SearchBox:CaptureFocus()
 	end)
 	
-	-- Connect sorting and filtering controls
-	ui.SortButton.MouseButton1Click:Connect(showSortMenu)
-	ui.FilterButton.MouseButton1Click:Connect(showRarityFilterMenu)
-	
-	-- Connect toggle buttons
-	ui.LockedOnlyToggle.MouseButton1Click:Connect(function()
-		lockedOnlyFilter = not lockedOnlyFilter
-		updateToggleButton(ui.LockedOnlyToggle, lockedOnlyFilter)
-		filterAndSortInventory()
+	-- Connect sort functionality
+	ui.SortByButton.MouseButton1Click:Connect(function()
+		soundController:playUIClick()
+		cycleSortBy()
 	end)
 	
-	ui.EquippedOnlyToggle.MouseButton1Click:Connect(function()
-		equippedOnlyFilter = not equippedOnlyFilter
-		updateToggleButton(ui.EquippedOnlyToggle, equippedOnlyFilter)
-		filterAndSortInventory()
+	ui.SortOrderButton.MouseButton1Click:Connect(function()
+		soundController:playUIClick()
+		toggleSortOrder()
 	end)
 	
-	ui.MutatedOnlyToggle.MouseButton1Click:Connect(function()
-		mutatedOnlyFilter = not mutatedOnlyFilter
-		updateToggleButton(ui.MutatedOnlyToggle, mutatedOnlyFilter)
-		filterAndSortInventory()
-	end)
-	
-	-- Reset filters button
-	ui.ResetFiltersButton.MouseButton1Click:Connect(function()
-		-- Reset all filters and sorting to defaults
-		currentSort = "name"
-		sortAscending = true
-		currentRarityFilter = "all"
-		lockedOnlyFilter = false
-		equippedOnlyFilter = false
-		mutatedOnlyFilter = false
-		searchText = ""
-		
-		-- Update UI
-		ui.SearchBox.Text = ""
-		updateSortButtonText()
-		updateFilterButtonText()
-		updateToggleButton(ui.LockedOnlyToggle, lockedOnlyFilter)
-		updateToggleButton(ui.EquippedOnlyToggle, equippedOnlyFilter)
-		updateToggleButton(ui.MutatedOnlyToggle, mutatedOnlyFilter)
-		
-		filterAndSortInventory()
-	end)
-	
-	-- Initialize UI text
-	updateSortButtonText()
-	updateFilterButtonText()
+	-- Initialize sort UI
+	updateSortUI()
 
 	
 
@@ -714,10 +522,11 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		if not boxesFolder then return end
 
 		for _, boxPart in ipairs(boxesFolder:GetChildren()) do
-			if boxPart:IsA("Part") and boxPart:GetAttribute("Owner") == LocalPlayer.UserId then
+			if boxPart:IsA("BasePart") and boxPart:GetAttribute("Owner") == LocalPlayer.UserId then
 				local prompt = boxPart:FindFirstChildOfClass("ProximityPrompt")
 				if prompt then
-					if isFull or openingBoxes[boxPart] then
+					-- Check if box is already being opened or if inventory is full
+					if isFull or openingBoxes[boxPart] or boxPart:GetAttribute("IsOpening") then
 						prompt.Enabled = false
 					else
 						prompt.Enabled = true
@@ -729,7 +538,7 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 
 	local function updateInventoryCount()
 		local count = #inventory:GetChildren()
-			ui.InventoryTitle.Text = string.format("INVENTORY (%d / %d)", count, currentInventoryLimit)
+			ui.InventoryTitle.Text = "INVENTORY (" .. NumberFormatter.FormatCount(count) .. " / " .. NumberFormatter.FormatCount(currentInventoryLimit) .. ")"
 	
 	local isFull = count >= currentInventoryLimit
 		ui.WarningIcon.Visible = isFull
@@ -858,7 +667,7 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 			ui.DetailItemMutation.Text = "Mutations: None"
 		end
 		
-		ui.DetailItemSize.Text = string.format("Size: %.2f", size)
+		ui.DetailItemSize.Text = "Size: " .. NumberFormatter.FormatSize(size)
 		
 		local value = ItemValueCalculator.GetValue(itemConfig, mutationConfigs, size)
 		local formattedValue = ItemValueCalculator.GetFormattedValue(itemConfig, mutationConfigs, size)
@@ -912,14 +721,10 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 			setup3DItemPreview(itemViewport3D, itemConfig)
 		end
 		
-		local lockIcon = template:FindFirstChild("LockIcon")
-		local equippedIcon = template:FindFirstChild("EquippedIcon")
+		local iconsContainer = template:FindFirstChild("IconsContainer")
 
 		local function updateItemStatus()
 			local isLocked = itemInstance:GetAttribute("Locked") or false
-			if lockIcon then
-				lockIcon.Visible = isLocked
-			end
 			
 			-- Check equipped status
 			local success, equippedItems = pcall(function()
@@ -930,8 +735,27 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 				isEquipped = true
 			end
 			
-			if equippedIcon then
-				equippedIcon.Visible = isEquipped
+			-- Update name label to include lock and/or equipped icons
+			local infoContainer = template:FindFirstChild("InfoContainer")
+			local nameLabel = infoContainer and infoContainer:FindFirstChild("NameLabel")
+			if nameLabel then
+				local mutationNames = ItemValueCalculator.GetMutationNames(itemInstance)
+				local displayName = itemName
+				
+				if #mutationNames > 0 then
+					displayName = table.concat(mutationNames, " ") .. " " .. itemName
+				end
+				
+				-- Build prefix with status icons
+				local prefix = ""
+				if isEquipped then
+					prefix = prefix .. "⚡ "
+				end
+				if isLocked then
+					prefix = prefix .. "🔒 "
+				end
+				
+				nameLabel.Text = prefix .. displayName
 			end
 			
 			-- Add visual indication for equipped items - only equipped gets background change
@@ -966,6 +790,12 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 			if selectedItem == itemInstance then
 				updateDetails(itemInstance, template) -- Refresh details if this item is selected
 			end
+			
+			-- Re-sort when item attributes change that affect sorting (debounced)
+			task.wait(0.1) -- Small delay to avoid spam
+			if itemEntries[itemInstance] then -- Make sure item still exists
+				filterInventory()
+			end
 		end
 
 		local connection = itemInstance:GetAttributeChangedSignal("Locked"):Connect(updateItemStatus)
@@ -993,11 +823,19 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 			end
 		end)
 		
+		-- Set initial layout order to prevent items from being hidden
+		template.LayoutOrder = #inventory:GetChildren()
+		
 		updateInventoryCount()
 		updateItemStatus() -- Set initial state
 		
-		-- Apply filters and sorting to new item
-		filterAndSortInventory()
+		-- Apply search filter and sorting to new item (with small delay)
+		task.spawn(function()
+			task.wait(0.1)
+			if itemEntries[itemInstance] then
+				filterInventory()
+			end
+		end)
 	end
 
 	local function removeItemEntry(itemInstance)
@@ -1178,8 +1016,11 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		addItemEntry(itemInstance)
 	end
 	
-	-- Apply initial filters and sorting
-	filterAndSortInventory()
+	-- Apply initial search filter and sorting with delay to ensure all items are added
+	task.spawn(function()
+		task.wait(0.2) -- Wait for all items to be processed
+		filterInventory()
+	end)
 
 	inventory.ChildAdded:Connect(addItemEntry)
 	inventory.ChildRemoved:Connect(removeItemEntry)

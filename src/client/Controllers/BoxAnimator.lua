@@ -8,7 +8,105 @@ local CameraShaker = require(script.Parent.CameraShaker)
 
 local BoxAnimator = {}
 
-function BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationNames, mutationConfigs, size, soundController)
+-- Reference to settings controller (will be set from main client)
+local settingsController = nil
+
+-- Helper function to properly color any BasePart (including UnionParts)
+local function setPartColor(part, color, useLight)
+	-- Enable UsePartColor for UnionOperations
+	if part:IsA("UnionOperation") then
+		part.UsePartColor = true
+	end
+	
+	-- Try to set the direct color first
+	local success, error = pcall(function()
+		part.Color = color
+	end)
+	
+	-- If direct color setting failed or we want enhanced lighting effects
+	if not success or useLight then
+		-- Create or update a colored light for visual effect
+		local existingLight = part:FindFirstChild("ColorLight")
+		if not existingLight then
+			existingLight = Instance.new("PointLight")
+			existingLight.Name = "ColorLight"
+			existingLight.Range = 8
+			existingLight.Brightness = 1.5
+			existingLight.Parent = part
+		end
+		existingLight.Color = color
+		
+		-- Also try to set the material to Neon for better color visibility
+		pcall(function()
+			part.Material = Enum.Material.Neon
+		end)
+	end
+end
+
+-- Helper function to create a color tween that works with any BasePart
+local function createColorTween(part, tweenInfo, targetColor, useLight)
+	-- Enable UsePartColor for UnionOperations
+	if part:IsA("UnionOperation") then
+		part.UsePartColor = true
+	end
+	
+	if useLight or part:IsA("UnionOperation") then
+		-- For UnionParts or when we want enhanced effects, use lighting
+		local light = part:FindFirstChild("ColorLight")
+		if not light then
+			light = Instance.new("PointLight")
+			light.Name = "ColorLight"
+			light.Range = 8
+			light.Brightness = 0
+			light.Parent = part
+		end
+		
+		-- Set material for better effect
+		pcall(function()
+			part.Material = Enum.Material.Neon
+		end)
+		
+		-- Tween the light color and brightness
+		local lightTween = TweenService:Create(light, tweenInfo, {
+			Color = targetColor,
+			Brightness = 1.5
+		})
+		
+		-- Also try to tween the part color directly as backup
+		local colorTween = TweenService:Create(part, tweenInfo, {Color = targetColor})
+		
+		-- Play both tweens
+		lightTween:Play()
+		colorTween:Play()
+		
+		return lightTween -- Return the light tween as primary
+	else
+		-- For regular Parts, use normal color tweening
+		return TweenService:Create(part, tweenInfo, {Color = targetColor})
+	end
+end
+
+-- Set reference to settings controller
+function BoxAnimator.SetSettingsController(settings)
+	settingsController = settings
+end
+
+-- Check if effects are disabled
+local function areEffectsDisabled()
+	return settingsController and settingsController.AreEffectsDisabled() or false
+end
+
+function BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationNames, mutationConfigs, size, soundController, isOwnCrate)
+	-- Skip animation if effects are disabled
+	if areEffectsDisabled() then
+		return 0.1 -- Return minimal duration
+	end
+	
+	-- Default to own crate if not specified (backwards compatibility)
+	if isOwnCrate == nil then
+		isOwnCrate = true
+	end
+	
 	-- Check for special mutations in the array
 	local isShiny = false
 	local isRainbow = false
@@ -93,7 +191,7 @@ function BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationNames, 
 			rainbowTween = coroutine.create(function()
 				while true do
 					local hue = tick() % 5 / 5
-					boxPart.Color = Color3.fromHSV(hue, 1, 1)
+					setPartColor(boxPart, Color3.fromHSV(hue, 1, 1), true)
 					task.wait(0.1)
 				end
 			end)
@@ -119,7 +217,8 @@ function BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationNames, 
 		for i = 1, pulses do
 			local pulseTargetSize = startSize + sizeStep * i
 			local tweenUp = TweenService:Create(boxPart, TweenInfo.new(pulseDuration, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {Size = pulseTargetSize})
-			if size >= 2.5 then
+			if size >= 2.5 and isOwnCrate then
+				-- Only shake camera for own crates to avoid disrupting other players
 				CameraShaker.Shake(pulseDuration + 0.2, 0.05 + (size / 250) * (i / pulses))
 			end
 			soundController:playGrowingBox() -- Play growing sound
@@ -153,11 +252,14 @@ function BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationNames, 
 
 			-- Don't override rainbow color during rarity roulette
 			if not isRainbow then
-				local colorTween = TweenService:Create(boxPart, TweenInfo.new(flashDuration), {Color = color})
+				local colorTween = createColorTween(boxPart, TweenInfo.new(flashDuration), color, true)
 				colorTween:Play()
 			end
 			
+			-- Only shake camera for own crates
+			if isOwnCrate then
 			CameraShaker.Shake(flashDuration, 0.1 + (i * 0.05))
+			end
 			
 			local genericParticles = Instance.new("ParticleEmitter")
 			genericParticles.Rate = 0
@@ -176,7 +278,8 @@ function BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationNames, 
 		task.wait(0.2)
 	
 		if mutationConfigs and #mutationConfigs > 0 then
-			if size >= 2.5 then
+			if size >= 2.5 and isOwnCrate then
+				-- Only shake camera for own crates during mutation effects
 				CameraShaker.Shake(0.5 + size / 100, 0.4 + size / 80)
 			end
 			if isShiny then
@@ -195,7 +298,7 @@ function BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationNames, 
 	
 			-- Don't override rainbow color during mutation flash
 			if not isRainbow then
-				local mutationFlash = TweenService:Create(boxPart, TweenInfo.new(0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, 5, true), {Color = mutationConfigs[1].Color})
+				local mutationFlash = createColorTween(boxPart, TweenInfo.new(0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, 5, true), mutationConfigs[1].Color, true)
 				mutationFlash:Play()
 				task.wait(0.4)
 				mutationFlash:Cancel()
@@ -217,7 +320,10 @@ function BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationNames, 
 
 		task.wait(0.1) -- Hang time
 
+		-- Only do the big explosion shake for own crates
+		if isOwnCrate then
 		CameraShaker.Shake(0.5, 1.2) -- The big explosion shake!
+		end
 
 		if isShiny then
 			light.Brightness = 100
@@ -231,6 +337,12 @@ function BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationNames, 
 		particleEmitter:Emit(250)
 		
 		boxPart.Transparency = 1 -- Vanish within the explosion
+		
+		-- Clean up the ColorLight if it exists
+		local colorLight = boxPart:FindFirstChild("ColorLight")
+		if colorLight then
+			colorLight:Destroy()
+		end
 	end)
 
 	-- Recalculate duration to match new sequence
@@ -241,7 +353,17 @@ function BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationNames, 
 	return duration
 end
 
-function BoxAnimator.AnimateFloatingText(position, itemName, itemConfig, mutationNames, mutationConfigs, size, soundController)
+function BoxAnimator.AnimateFloatingText(position, itemName, itemConfig, mutationNames, mutationConfigs, size, soundController, isOwnCrate)
+	-- Skip animation if effects are disabled
+	if areEffectsDisabled() then
+		return -- Exit early
+	end
+	
+	-- Default to own crate if not specified (backwards compatibility)
+	if isOwnCrate == nil then
+		isOwnCrate = true
+	end
+	
 	size = size or 1 -- Default size to 1 if nil
 	local rarityName = itemConfig.Rarity
 	local rarityConfig = GameConfig.Rarities[rarityName]
@@ -322,11 +444,17 @@ function BoxAnimator.AnimateFloatingText(position, itemName, itemConfig, mutatio
 		itemTypeEmoji = "🛡️"
 	end
 	
-	local fullText = string.format("═══ %s ═══\n💰 %s • 📏 %.2fx", 
+	local fullText
+	if isOwnCrate then
+		fullText = string.format("═══ %s ═══\n💰 %s • 📏 %.2fx", 
 		itemDisplayName,
 		valueText,
 		size
 	)
+	else
+		-- For other players' crates, show a more subtle format without full stats
+		fullText = string.format("👁️ %s", itemDisplayName)
+	end
 	
 	-- Determine color and size
 	local textColor = (mutationConfigs and mutationConfigs[1] and mutationConfigs[1].Color) or rarityConfig.Color
@@ -350,9 +478,19 @@ function BoxAnimator.AnimateFloatingText(position, itemName, itemConfig, mutatio
 	local sizeMultiplier = 1 + math.log(size) / 2.5
 	local mutationMultiplier = (mutationNames and #mutationNames > 0) and (1.2 + (#mutationNames - 1) * 0.1) or 1
 	
-	local finalSize = baseSize * sizeMultiplier * mutationMultiplier
+	-- Reduce size for other players' crates to be less intrusive
+	local otherPlayerMultiplier = isOwnCrate and 1 or 0.6
+	
+	-- Apply floating text size setting
+	local textSizeMultiplier = 1.0
+	if settingsController and settingsController.GetFloatingTextSize then
+		textSizeMultiplier = settingsController.GetFloatingTextSize()
+	end
+	
+	local finalSize = baseSize * sizeMultiplier * mutationMultiplier * otherPlayerMultiplier * textSizeMultiplier
 
-	if size >= 2.5 then
+	if size >= 2.5 and isOwnCrate then
+		-- Only shake camera for own crates during floating text
 		local shakeStrength = math.clamp((size - 2.5) / 50, 0.1, 2)
 		CameraShaker.Shake(0.7 + shakeStrength, shakeStrength)
 	end
@@ -366,7 +504,7 @@ function BoxAnimator.AnimateFloatingText(position, itemName, itemConfig, mutatio
 	itemPart.Name = "ItemPart"
 	itemPart.Anchored = true
 	itemPart.CanCollide = false
-	itemPart.Size = Vector3.new(2, 2, 2) * size -- Apply size scaling
+	itemPart.Size = Vector3.new(2, 2, 2) * size * textSizeMultiplier -- Apply size and text size scaling
 	itemPart.Position = position + Vector3.new(0, 3, 0) -- Start slightly above the box
 	itemPart.Shape = Enum.PartType.Block
 	itemPart.Material = Enum.Material.Neon
@@ -396,10 +534,10 @@ function BoxAnimator.AnimateFloatingText(position, itemName, itemConfig, mutatio
 			if handle:FindFirstChild("Mesh") or handle:FindFirstChild("SpecialMesh") then
 				local mesh = handle:FindFirstChild("Mesh") or handle:FindFirstChild("SpecialMesh")
 				if mesh then
-					mesh.Scale = mesh.Scale * size
+					mesh.Scale = mesh.Scale * size * textSizeMultiplier
 				end
 			else
-				handle.Size = handle.Size * size
+				handle.Size = handle.Size * size * textSizeMultiplier
 			end
 			
 			displayPart = handle
@@ -417,17 +555,20 @@ function BoxAnimator.AnimateFloatingText(position, itemName, itemConfig, mutatio
 		itemPart.Material = Enum.Material.Plastic
 		itemPart.Color = textColor
 		
+		-- Combined scaling for fallback items
+		local combinedScale = size * textSizeMultiplier
+		
 		if itemType == "Hat" then
 			-- Create a hat-like shape with multiple parts
 			itemPart.Shape = Enum.PartType.Cylinder
-			itemPart.Size = Vector3.new(0.3, 1.8, 1.8) * size
+			itemPart.Size = Vector3.new(0.3, 1.8, 1.8) * combinedScale
 			itemPart.CFrame = CFrame.new(itemPart.Position) * CFrame.Angles(math.rad(90), 0, 0)
 			
 			-- Add a brim
 			local brim = Instance.new("Part")
 			brim.Shape = Enum.PartType.Cylinder
-			brim.Size = Vector3.new(0.1, 2.2, 2.2) * size
-			brim.Position = itemPart.Position + Vector3.new(0, -0.2 * size, 0)
+			brim.Size = Vector3.new(0.1, 2.2, 2.2) * combinedScale
+			brim.Position = itemPart.Position + Vector3.new(0, -0.2 * combinedScale, 0)
 			brim.CFrame = CFrame.new(brim.Position) * CFrame.Angles(math.rad(90), 0, 0)
 			brim.Material = Enum.Material.Plastic
 			brim.Color = textColor
@@ -438,14 +579,14 @@ function BoxAnimator.AnimateFloatingText(position, itemName, itemConfig, mutatio
 		elseif itemType == "Shirt" then
 			-- Create a shirt-like shape with sleeves
 			itemPart.Shape = Enum.PartType.Block
-			itemPart.Size = Vector3.new(2.2, 2.8, 0.8) * size
+			itemPart.Size = Vector3.new(2.2, 2.8, 0.8) * combinedScale
 			
 			-- Add sleeves
 			for i = -1, 1, 2 do
 				local sleeve = Instance.new("Part")
 				sleeve.Shape = Enum.PartType.Block
-				sleeve.Size = Vector3.new(0.6, 1.5, 0.6) * size
-				sleeve.Position = itemPart.Position + Vector3.new(i * 1.4 * size, 0.3 * size, 0)
+				sleeve.Size = Vector3.new(0.6, 1.5, 0.6) * combinedScale
+				sleeve.Position = itemPart.Position + Vector3.new(i * 1.4 * combinedScale, 0.3 * combinedScale, 0)
 				sleeve.Material = Enum.Material.Plastic
 				sleeve.Color = textColor
 				sleeve.Anchored = true
@@ -456,14 +597,14 @@ function BoxAnimator.AnimateFloatingText(position, itemName, itemConfig, mutatio
 		elseif itemType == "Pants" then
 			-- Create pants with legs
 			itemPart.Shape = Enum.PartType.Block
-			itemPart.Size = Vector3.new(2, 1.5, 1) * size
+			itemPart.Size = Vector3.new(2, 1.5, 1) * combinedScale
 			
 			-- Add legs
 			for i = -1, 1, 2 do
 				local leg = Instance.new("Part")
 				leg.Shape = Enum.PartType.Block
-				leg.Size = Vector3.new(0.8, 2, 0.8) * size
-				leg.Position = itemPart.Position + Vector3.new(i * 0.6 * size, -1.75 * size, 0)
+				leg.Size = Vector3.new(0.8, 2, 0.8) * combinedScale
+				leg.Position = itemPart.Position + Vector3.new(i * 0.6 * combinedScale, -1.75 * combinedScale, 0)
 				leg.Material = Enum.Material.Plastic
 				leg.Color = textColor
 				leg.Anchored = true
@@ -476,8 +617,8 @@ function BoxAnimator.AnimateFloatingText(position, itemName, itemConfig, mutatio
 			for i = -1, 1, 2 do
 				local shoe = Instance.new("Part")
 				shoe.Shape = Enum.PartType.Block
-				shoe.Size = Vector3.new(1.2, 0.6, 2.5) * size
-				shoe.Position = itemPart.Position + Vector3.new(i * 0.7 * size, 0, 0)
+				shoe.Size = Vector3.new(1.2, 0.6, 2.5) * combinedScale
+				shoe.Position = itemPart.Position + Vector3.new(i * 0.7 * combinedScale, 0, 0)
 				shoe.Material = Enum.Material.Plastic
 				shoe.Color = textColor
 				shoe.Anchored = true
@@ -489,14 +630,14 @@ function BoxAnimator.AnimateFloatingText(position, itemName, itemConfig, mutatio
 		elseif itemType == "Face" then
 			-- Create glasses/face accessory
 			itemPart.Shape = Enum.PartType.Block
-			itemPart.Size = Vector3.new(2, 0.4, 0.6) * size
+			itemPart.Size = Vector3.new(2, 0.4, 0.6) * combinedScale
 			
 			-- Add lenses
 			for i = -1, 1, 2 do
 				local lens = Instance.new("Part")
 				lens.Shape = Enum.PartType.Ball
-				lens.Size = Vector3.new(0.6, 0.6, 0.2) * size
-				lens.Position = itemPart.Position + Vector3.new(i * 0.5 * size, 0, 0.2 * size)
+				lens.Size = Vector3.new(0.6, 0.6, 0.2) * combinedScale
+				lens.Position = itemPart.Position + Vector3.new(i * 0.5 * combinedScale, 0, 0.2 * combinedScale)
 				lens.Material = Enum.Material.Neon
 				lens.Color = textColor
 				lens.Transparency = 0.3
@@ -508,14 +649,14 @@ function BoxAnimator.AnimateFloatingText(position, itemName, itemConfig, mutatio
 		elseif itemType == "Back" then
 			-- Create a backpack
 			itemPart.Shape = Enum.PartType.Block
-			itemPart.Size = Vector3.new(1.8, 2.2, 1.2) * size
+			itemPart.Size = Vector3.new(1.8, 2.2, 1.2) * combinedScale
 			
 			-- Add straps
 			for i = -1, 1, 2 do
 				local strap = Instance.new("Part")
 				strap.Shape = Enum.PartType.Block
-				strap.Size = Vector3.new(0.2, 1.5, 0.2) * size
-				strap.Position = itemPart.Position + Vector3.new(i * 0.6 * size, 0.5 * size, -0.7 * size)
+				strap.Size = Vector3.new(0.2, 1.5, 0.2) * combinedScale
+				strap.Position = itemPart.Position + Vector3.new(i * 0.6 * combinedScale, 0.5 * combinedScale, -0.7 * combinedScale)
 				strap.Material = Enum.Material.Plastic
 				strap.Color = textColor
 				strap.Anchored = true
@@ -526,13 +667,13 @@ function BoxAnimator.AnimateFloatingText(position, itemName, itemConfig, mutatio
 		elseif itemType == "Front" then
 			-- Create a tool/weapon
 			itemPart.Shape = Enum.PartType.Block
-			itemPart.Size = Vector3.new(0.4, 2.5, 0.4) * size
+			itemPart.Size = Vector3.new(0.4, 2.5, 0.4) * combinedScale
 			
 			-- Add a blade/head
 			local head = Instance.new("Part")
 			head.Shape = Enum.PartType.Wedge
-			head.Size = Vector3.new(0.6, 1, 0.6) * size
-			head.Position = itemPart.Position + Vector3.new(0, 1.75 * size, 0)
+			head.Size = Vector3.new(0.6, 1, 0.6) * combinedScale
+			head.Position = itemPart.Position + Vector3.new(0, 1.75 * combinedScale, 0)
 			head.Material = Enum.Material.Plastic
 			head.Color = textColor
 			head.Anchored = true
@@ -547,8 +688,8 @@ function BoxAnimator.AnimateFloatingText(position, itemName, itemConfig, mutatio
 			-- Add some orbiting particles
 			local orbit = Instance.new("Part")
 			orbit.Shape = Enum.PartType.Ball
-			orbit.Size = Vector3.new(0.2, 0.2, 0.2) * size
-			orbit.Position = itemPart.Position + Vector3.new(1.5 * size, 0, 0)
+			orbit.Size = Vector3.new(0.2, 0.2, 0.2) * combinedScale
+			orbit.Position = itemPart.Position + Vector3.new(1.5 * combinedScale, 0, 0)
 			orbit.Material = Enum.Material.Neon
 			orbit.Color = textColor
 			orbit.Anchored = true

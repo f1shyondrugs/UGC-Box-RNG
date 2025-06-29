@@ -22,7 +22,7 @@ local function createNameplateForCharacter(player, character)
 
 	local head = character:WaitForChild("Head")
 	local leaderstats = player:WaitForChild("leaderstats")
-	local rapStat = leaderstats:WaitForChild("RAP")
+	local rapStat = leaderstats:WaitForChild("RAPValue") -- Use the numeric value for calculations
 	
 	-- Create the UI
 	local uiComponents = NameplateUI.Create(player)

@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage.Shared
 local GameConfig = require(Shared.Modules.GameConfig)
 local ItemValueCalculator = require(Shared.Modules.ItemValueCalculator)
+local NumberFormatter = require(Shared.Modules.NumberFormatter)
 local Remotes = require(Shared.Remotes.Remotes)
 
 -- It's good practice to have a unique key for your datastore
@@ -18,6 +19,9 @@ local DataService = {}
 local updateQueue = {}
 local isUpdating = false
 local DEBOUNCE_INTERVAL = 5 -- seconds
+
+-- Batch loading configuration
+local INVENTORY_BATCH_SIZE = 20 -- Process inventory items in batches of 20
 
 local function processUpdateQueue()
 	if isUpdating then return end
@@ -32,18 +36,21 @@ local function processUpdateQueue()
 	if #playersToUpdate > 0 then
 		print("Processing leaderboard updates for " .. #playersToUpdate .. " players.")
 		for _, player in ipairs(playersToUpdate) do
-			local leaderstats = player:FindFirstChild("leaderstats")
-			if leaderstats then
-				local rapStat = leaderstats:FindFirstChild("RAP")
-				if rapStat then
-					local success, err = pcall(function()
-						rapLeaderboardStore:SetAsync(tostring(player.UserId), rapStat.Value)
-					end)
-					if not success then
-						warn("Failed to update RAP for " .. player.Name .. " in leaderboard: " .. tostring(err))
+			task.spawn(function() -- Make leaderboard updates async to prevent blocking
+				local leaderstats = player:FindFirstChild("leaderstats")
+				if leaderstats then
+					-- Use the hidden IntValue for the leaderboard ranking
+					local rapStat = leaderstats:FindFirstChild("RAPValue")
+					if rapStat then
+						local success, err = pcall(function()
+							rapLeaderboardStore:SetAsync(tostring(player.UserId), rapStat.Value)
+						end)
+						if not success then
+							warn("Failed to update RAP for " .. player.Name .. " in leaderboard: " .. tostring(err))
+						end
 					end
 				end
-			end
+			end)
 		end
 	end
 
@@ -86,18 +93,84 @@ local function calculatePlayerRAP(player)
 	return ItemValueCalculator.CalculateRAP(inventoryData)
 end
 
+-- Custom StringValue for formatted RAP display
+local function createFormattedRAPStat(leaderstats, initialValue)
+	-- Create the IntValue for internal calculations (hidden from leaderboard)
+	local rapValue = Instance.new("IntValue")
+	rapValue.Name = "RAPValue" -- Different name so it doesn't show in leaderboard
+	rapValue.Value = initialValue
+	rapValue.Parent = leaderstats
+	
+	-- Create a StringValue for the formatted display in leaderboard
+	local rapDisplay = Instance.new("StringValue")
+	rapDisplay.Name = "RAP"
+	rapDisplay.Value = NumberFormatter.FormatCurrency(initialValue)
+	rapDisplay.Parent = leaderstats
+	
+	-- Connect to update the display when the value changes
+	rapValue.Changed:Connect(function(newValue)
+		rapDisplay.Value = NumberFormatter.FormatCurrency(newValue)
+	end)
+	
+	return rapValue, rapDisplay
+end
+
 local function updatePlayerRAP(player)
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if not leaderstats then return end
 	
-	local rapStat = leaderstats:FindFirstChild("RAP")
+	-- Use the hidden IntValue for calculations
+	local rapStat = leaderstats:FindFirstChild("RAPValue")
 	if rapStat then
 		local totalRAP = calculatePlayerRAP(player)
-		rapStat.Value = totalRAP
+		rapStat.Value = totalRAP -- This will automatically update the StringValue display
 		
 		-- Queue the leaderboard update instead of calling directly
 		updateQueue[player.UserId] = player
 	end
+end
+
+-- Optimized inventory loading function
+local function loadInventoryBatch(inventory, itemDataList, startIndex, batchSize)
+	local endIndex = math.min(startIndex + batchSize - 1, #itemDataList)
+	
+	for i = startIndex, endIndex do
+		local itemData = itemDataList[i]
+		local item = Instance.new("StringValue")
+		
+		-- Use UUID if available, otherwise fall back to legacy name-based system
+		if itemData.uuid then
+			item.Name = itemData.uuid
+			item:SetAttribute("ItemName", itemData.name)
+		else
+			-- Legacy support: generate UUID for old items
+			local HttpService = game:GetService("HttpService")
+			local uuid = HttpService:GenerateGUID(false)
+			item.Name = uuid
+			item:SetAttribute("ItemName", itemData.name)
+		end
+		
+		item:SetAttribute("Size", itemData.size)
+		if itemData.mutations then
+			-- New multiple mutations format
+			local HttpService = game:GetService("HttpService")
+			item:SetAttribute("Mutations", HttpService:JSONEncode(itemData.mutations))
+			-- Keep backward compatibility with single Mutation attribute
+			item:SetAttribute("Mutation", itemData.mutations[1])
+		elseif itemData.mutation then
+			-- Legacy single mutation format
+			item:SetAttribute("Mutation", itemData.mutation)
+			-- Also store in new format for consistency
+			local HttpService = game:GetService("HttpService")
+			item:SetAttribute("Mutations", HttpService:JSONEncode({itemData.mutation}))
+		end
+		if itemData.locked then
+			item:SetAttribute("Locked", itemData.locked)
+		end
+		item.Parent = inventory
+	end
+	
+	return endIndex >= #itemDataList
 end
 
 local function onPlayerAdded(player: Player)
@@ -109,9 +182,8 @@ local function onPlayerAdded(player: Player)
 	robux.Name = "R$"
 	robux.Parent = leaderstats
 
-	local rap = Instance.new("IntValue")
-	rap.Name = "RAP"
-	rap.Parent = leaderstats
+	-- Use custom formatted RAP display
+	local rapValue, rapDisplay = createFormattedRAPStat(leaderstats, 0)
 
 	local boxesOpened = Instance.new("IntValue")
 	boxesOpened.Name = "Boxes Opened"
@@ -124,109 +196,120 @@ local function onPlayerAdded(player: Player)
 	local userId = player.UserId
 	local key = "Player_" .. userId
 
-	local data
-	local success, err = pcall(function()
-		data = playerDataStore:GetAsync(key)
-	end)
+	-- Load data asynchronously
+	task.spawn(function()
+		local data
+		local success, err = pcall(function()
+			data = playerDataStore:GetAsync(key)
+		end)
 
-	if success and data then
-		-- Player has data, load it
-		robux.Value = data.robux or GameConfig.Currency.StartingAmount
-		boxesOpened.Value = data.boxesOpened or 0
-		
-		if data.inventory then
-			for _, itemData in ipairs(data.inventory) do
-				local item = Instance.new("StringValue")
-				-- Use UUID if available, otherwise fall back to legacy name-based system
-				if itemData.uuid then
-					item.Name = itemData.uuid
-					item:SetAttribute("ItemName", itemData.name)
-				else
-					-- Legacy support: generate UUID for old items
-					local HttpService = game:GetService("HttpService")
-					local uuid = HttpService:GenerateGUID(false)
-					item.Name = uuid
-					item:SetAttribute("ItemName", itemData.name)
-				end
+		if success and data then
+			-- Player has data, load it
+			robux.Value = data.robux or GameConfig.Currency.StartingAmount
+			boxesOpened.Value = data.boxesOpened or 0
+			
+			-- Load inventory in batches to prevent lag
+			if data.inventory and #data.inventory > 0 then
+				print(string.format("Loading %d inventory items for %s in batches...", #data.inventory, player.Name))
 				
-				item:SetAttribute("Size", itemData.size)
-				if itemData.mutations then
-					-- New multiple mutations format
-					local HttpService = game:GetService("HttpService")
-					item:SetAttribute("Mutations", HttpService:JSONEncode(itemData.mutations))
-					-- Keep backward compatibility with single Mutation attribute
-					item:SetAttribute("Mutation", itemData.mutations[1])
-				elseif itemData.mutation then
-					-- Legacy single mutation format
-					item:SetAttribute("Mutation", itemData.mutation)
-					-- Also store in new format for consistency
-					local HttpService = game:GetService("HttpService")
-					item:SetAttribute("Mutations", HttpService:JSONEncode({itemData.mutation}))
-				end
-				if itemData.locked then
-					item:SetAttribute("Locked", itemData.locked)
-				end
-				item.Parent = inventory
-			end
-		end
-		
-		-- Load upgrade data
-		local UpgradeService = require(script.Parent.UpgradeService)
-		if data.upgrades then
-			for upgradeId, level in pairs(data.upgrades) do
-				UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, level)
-			end
-		end
-		
-		-- Load equipped items
-		if data.equippedItems then
-			-- Apply equipped items after character spawns
-			local function onCharacterAdded()
-				task.wait(1) -- Wait for character to load
-				-- Lazy load AvatarService to avoid circular dependencies
-				if not AvatarService then
-					AvatarService = require(script.Parent.AvatarService)
-				end
-				
-				for itemType, itemUUID in pairs(data.equippedItems) do
-					-- Find the item instance by UUID in player's inventory
-					local inventory = player:FindFirstChild("Inventory")
-					if inventory then
-						local itemInstance = inventory:FindFirstChild(itemUUID)
-						if itemInstance then
-							local itemName = itemInstance:GetAttribute("ItemName") or itemInstance.Name
-							-- Use the shared service directly to avoid circular dependency
-							local SharedAvatarService = require(game.ReplicatedStorage.Shared.Services.AvatarService)
-							SharedAvatarService.EquipItem(player, itemName, itemUUID)
+				local currentIndex = 1
+				local function loadNextBatch()
+					if currentIndex > #data.inventory then
+						-- All inventory loaded, now load other systems
+						print("Inventory loading complete for " .. player.Name)
+						
+						-- Load upgrade data
+						local UpgradeService = require(script.Parent.UpgradeService)
+						if data.upgrades then
+							for upgradeId, level in pairs(data.upgrades) do
+								UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, level)
+							end
 						end
+						
+						-- Load settings data
+						if data.settings then
+							-- Store settings in player object for quick access
+							player:SetAttribute("GameSettings", game:GetService("HttpService"):JSONEncode(data.settings))
+						end
+						
+						-- Load equipped items
+						if data.equippedItems then
+							-- Apply equipped items after character spawns
+							local function onCharacterAdded()
+								task.wait(1) -- Wait for character to load
+								-- Lazy load AvatarService to avoid circular dependencies
+								if not AvatarService then
+									AvatarService = require(script.Parent.AvatarService)
+								end
+								
+								for itemType, itemUUID in pairs(data.equippedItems) do
+									-- Find the item instance by UUID in player's inventory
+									local inventory = player:FindFirstChild("Inventory")
+									if inventory then
+										local itemInstance = inventory:FindFirstChild(itemUUID)
+										if itemInstance then
+											local itemName = itemInstance:GetAttribute("ItemName") or itemInstance.Name
+											-- Use the shared service directly to avoid circular dependency
+											local SharedAvatarService = require(game.ReplicatedStorage.Shared.Services.AvatarService)
+											SharedAvatarService.EquipItem(player, itemName, itemUUID)
+										end
+									end
+								end
+							end
+							
+							if player.Character then
+								onCharacterAdded()
+							else
+								player.CharacterAdded:Connect(onCharacterAdded)
+							end
+						end
+						
+						-- Calculate and set RAP
+						updatePlayerRAP(player)
+						
+						-- Update collection with existing inventory items
+						DataService.UpdatePlayerCollection(player)
+						
+						print("Player data fully loaded for " .. player.Name)
+						return
+					end
+					
+					-- Load batch
+					local isComplete = loadInventoryBatch(inventory, data.inventory, currentIndex, INVENTORY_BATCH_SIZE)
+					currentIndex = currentIndex + INVENTORY_BATCH_SIZE
+					
+					if not isComplete then
+						-- Schedule next batch
+						task.wait(0.1) -- Small delay between batches
+						loadNextBatch()
+					else
+						-- Complete loading
+						loadNextBatch()
 					end
 				end
-			end
-			
-			if player.Character then
-				onCharacterAdded()
+				
+				loadNextBatch()
 			else
-				player.CharacterAdded:Connect(onCharacterAdded)
+				-- No inventory to load, proceed immediately
+				-- Calculate and set RAP
+				updatePlayerRAP(player)
+				
+				-- Update collection with existing inventory items
+				DataService.UpdatePlayerCollection(player)
+				
+				print("Player data loaded for " .. player.Name)
+			end
+		else
+			-- New player or data load failed
+			robux.Value = GameConfig.Currency.StartingAmount
+			boxesOpened.Value = 0
+			rapValue.Value = 0
+			print("No data found for " .. player.Name .. ". Creating new profile.")
+			if err then
+				warn("Error loading data for " .. player.Name .. ": " .. tostring(err))
 			end
 		end
-		
-		-- Calculate and set RAP
-		updatePlayerRAP(player)
-		
-		-- Update collection with existing inventory items
-		DataService.UpdatePlayerCollection(player)
-		
-		print("Player data loaded for " .. player.Name)
-	else
-		-- New player or data load failed
-		robux.Value = GameConfig.Currency.StartingAmount
-		boxesOpened.Value = 0
-		rap.Value = 0
-		print("No data found for " .. player.Name .. ". Creating new profile.")
-		if err then
-			warn("Error loading data for " .. player.Name .. ": " .. tostring(err))
-		end
-	end
+	end)
 	
 	-- Connect to inventory changes to update RAP
 	inventory.ChildAdded:Connect(function()
@@ -304,6 +387,17 @@ local function saveData(player: Player)
 	-- Save upgrade data
 	local UpgradeService = require(script.Parent.UpgradeService)
 	dataToSave.upgrades = UpgradeService.GetPlayerUpgrades(player)
+	
+	-- Save settings data
+	local settingsJson = player:GetAttribute("GameSettings")
+	if settingsJson then
+		local success, settings = pcall(function()
+			return game:GetService("HttpService"):JSONDecode(settingsJson)
+		end)
+		if success and settings then
+			dataToSave.settings = settings
+		end
+	end
 
 	-- Retry logic for DataStore operations
 	local attempts = 0
@@ -348,6 +442,15 @@ function DataService.Start()
 	-- Connect remote functions
 	Remotes.GetPlayerCollection.OnServerInvoke = function(player)
 		return DataService.GetPlayerCollection(player)
+	end
+	
+	-- Connect settings remotes
+	Remotes.SaveSetting.OnServerEvent:Connect(function(player, settingId, value)
+		DataService.SavePlayerSetting(player, settingId, value)
+	end)
+	
+	Remotes.GetPlayerSettings.OnServerInvoke = function(player)
+		return DataService.GetPlayerSettings(player)
 	end
 
 	-- Save data on server shutdown
@@ -532,6 +635,37 @@ function DataService.GiveItem(player, itemName, mutations, size)
 	item.Parent = inventory
 	
 	return item
+end
+
+-- Settings management functions
+function DataService.GetPlayerSettings(player)
+	local settingsJson = player:GetAttribute("GameSettings")
+	if settingsJson then
+		local success, settings = pcall(function()
+			return game:GetService("HttpService"):JSONDecode(settingsJson)
+		end)
+		if success and settings then
+			return settings
+		end
+	end
+	return {} -- Return empty table if no settings found
+end
+
+function DataService.SavePlayerSetting(player, settingId, value)
+	-- Get current settings
+	local currentSettings = DataService.GetPlayerSettings(player)
+	
+	-- Update the specific setting
+	currentSettings[settingId] = value
+	
+	-- Save back to player attribute
+	local HttpService = game:GetService("HttpService")
+	player:SetAttribute("GameSettings", HttpService:JSONEncode(currentSettings))
+	
+	-- Trigger immediate save to DataStore
+	task.spawn(saveData, player)
+	
+	print("Saved setting '" .. settingId .. "' = " .. tostring(value) .. " for " .. player.Name)
 end
 
 return DataService 

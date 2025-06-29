@@ -9,6 +9,7 @@ local LocalPlayer = Players.LocalPlayer
 local Shared = ReplicatedStorage.Shared
 local GameConfig = require(Shared.Modules.GameConfig)
 local ItemValueCalculator = require(Shared.Modules.ItemValueCalculator)
+local NumberFormatter = require(Shared.Modules.NumberFormatter)
 
 local CollectionUI = {}
 
@@ -393,19 +394,7 @@ end
 
 -- Format drop chance for display
 local function formatDropChance(chance)
-	if chance >= 10 then
-		return string.format("%.1f%%", chance)
-	elseif chance >= 1 then
-		return string.format("%.2f%%", chance)
-	elseif chance >= 0.1 then
-		return string.format("%.3f%%", chance)
-	elseif chance >= 0.01 then
-		return string.format("%.4f%%", chance)
-	elseif chance >= 0.001 then
-		return string.format("%.5f%%", chance)
-	else
-		return string.format("%.6f%%", chance)
-	end
+	return NumberFormatter.FormatPercentage(chance)
 end
 
 -- Create item card for collection display

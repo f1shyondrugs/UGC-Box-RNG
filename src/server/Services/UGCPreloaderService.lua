@@ -14,83 +14,122 @@ ugcFolder.Parent = ReplicatedStorage
 local preloadedItems = {}
 local loadingComplete = false
 
+-- Batch loading configuration
+local BATCH_SIZE = 5 -- Load 5 items at a time
+local BATCH_DELAY = 0.5 -- Wait 0.5 seconds between batches
+
 function UGCPreloaderService.Start()
 	print("Starting UGC Preloader Service...")
 	
-	-- Count total items for progress tracking
-	local totalItems = 0
-	for _, _ in pairs(GameConfig.Items) do
-		totalItems = totalItems + 1
+	-- Convert items to array for batch processing
+	local itemsToLoad = {}
+	for itemName, itemConfig in pairs(GameConfig.Items) do
+		if itemConfig.AssetId then
+			table.insert(itemsToLoad, {name = itemName, config = itemConfig})
+		end
 	end
 	
+	local totalItems = #itemsToLoad
 	local loadedCount = 0
 	local failedCount = 0
 	
-	-- Load all UGC items
-	for itemName, itemConfig in pairs(GameConfig.Items) do
-		if itemConfig.AssetId then
-			-- Use spawn to load items in parallel for faster startup
-			task.spawn(function()
-				local success, asset = pcall(function()
-					return InsertService:LoadAsset(itemConfig.AssetId)
-				end)
-				
-				if success and asset then
-					-- Look for an Accessory in the loaded asset
-					local accessory = asset:FindFirstChildOfClass("Accessory")
-					if not accessory then
-						-- Sometimes the accessory is nested deeper
-						for _, child in ipairs(asset:GetDescendants()) do
-							if child:IsA("Accessory") then
-								accessory = child
-								break
-							end
-						end
-					end
+	print(string.format("🔄 Starting batch loading of %d UGC items (%d per batch)", totalItems, BATCH_SIZE))
+	
+	-- Process items in batches
+	task.spawn(function()
+		for i = 1, totalItems, BATCH_SIZE do
+			local batchEnd = math.min(i + BATCH_SIZE - 1, totalItems)
+			local batchItems = {}
+			
+			-- Prepare batch
+			for j = i, batchEnd do
+				table.insert(batchItems, itemsToLoad[j])
+			end
+			
+			-- Load batch in parallel
+			local batchCoroutines = {}
+			for _, itemData in ipairs(batchItems) do
+				local coro = coroutine.create(function()
+					local itemName = itemData.name
+					local itemConfig = itemData.config
 					
-					if accessory then
-						-- Clean up scripts for security
-						for _, descendant in pairs(accessory:GetDescendants()) do
-							if descendant:IsA("Script") or descendant:IsA("LocalScript") or descendant:IsA("ModuleScript") then
-								descendant:Destroy()
+					local success, asset = pcall(function()
+						return InsertService:LoadAsset(itemConfig.AssetId)
+					end)
+					
+					if success and asset then
+						-- Look for an Accessory in the loaded asset
+						local accessory = asset:FindFirstChildOfClass("Accessory")
+						if not accessory then
+							-- Sometimes the accessory is nested deeper
+							for _, child in ipairs(asset:GetDescendants()) do
+								if child:IsA("Accessory") then
+									accessory = child
+									break
+								end
 							end
 						end
 						
-						-- Store the accessory
-						accessory.Name = itemName
-						accessory.Parent = ugcFolder
-						preloadedItems[itemName] = accessory
+						if accessory then
+							-- Clean up scripts for security
+							for _, descendant in pairs(accessory:GetDescendants()) do
+								if descendant:IsA("Script") or descendant:IsA("LocalScript") or descendant:IsA("ModuleScript") then
+									descendant:Destroy()
+								end
+							end
+							
+							-- Store the accessory
+							accessory.Name = itemName
+							accessory.Parent = ugcFolder
+							preloadedItems[itemName] = accessory
+							
+							loadedCount = loadedCount + 1
+						else
+							failedCount = failedCount + 1
+							warn(string.format("❌ No accessory found in asset for: %s (ID: %s)", itemName, tostring(itemConfig.AssetId)))
+						end
 						
-						loadedCount = loadedCount + 1
-						print(string.format("✅ Loaded UGC: %s (%d/%d)", itemName, loadedCount + failedCount, totalItems))
+						asset:Destroy() -- Clean up the original asset
 					else
 						failedCount = failedCount + 1
-						warn(string.format("❌ No accessory found in asset for: %s (ID: %s) (%d/%d)", itemName, tostring(itemConfig.AssetId), loadedCount + failedCount, totalItems))
+						warn(string.format("❌ Failed to load UGC: %s (ID: %s) - %s", itemName, tostring(itemConfig.AssetId), tostring(asset)))
 					end
-					
-					asset:Destroy() -- Clean up the original asset
-				else
-					failedCount = failedCount + 1
-					warn(string.format("❌ Failed to load UGC: %s (ID: %s) - %s (%d/%d)", itemName, tostring(itemConfig.AssetId), tostring(asset), loadedCount + failedCount, totalItems))
-				end
+				end)
 				
-				-- Check if all items have been processed
-				if loadedCount + failedCount >= totalItems then
-					loadingComplete = true
-					print(string.format("🎯 UGC Preloading Complete! ✅ %d loaded, ❌ %d failed, 📦 %d total", loadedCount, failedCount, totalItems))
-				end
-			end)
-		else
-			failedCount = failedCount + 1
-			warn(string.format("❌ No AssetId for item: %s (%d/%d)", itemName, loadedCount + failedCount, totalItems))
+				table.insert(batchCoroutines, coro)
+			end
 			
-			-- Check if all items have been processed
-			if loadedCount + failedCount >= totalItems then
-				loadingComplete = true
-				print(string.format("🎯 UGC Preloading Complete! ✅ %d loaded, ❌ %d failed, 📦 %d total", loadedCount, failedCount, totalItems))
+			-- Run batch
+			for _, coro in ipairs(batchCoroutines) do
+				coroutine.resume(coro)
+			end
+			
+			-- Wait for batch to complete
+			local allComplete = false
+			while not allComplete do
+				allComplete = true
+				for _, coro in ipairs(batchCoroutines) do
+					if coroutine.status(coro) ~= "dead" then
+						allComplete = false
+						break
+					end
+				end
+				if not allComplete then
+					task.wait(0.1)
+				end
+			end
+			
+			print(string.format("📦 Batch %d-%d complete (%d/%d total)", i, batchEnd, loadedCount + failedCount, totalItems))
+			
+			-- Delay between batches to prevent overwhelming the system
+			if batchEnd < totalItems then
+				task.wait(BATCH_DELAY)
 			end
 		end
-	end
+		
+		loadingComplete = true
+		print(string.format("🎯 UGC Preloading Complete! ✅ %d loaded, ❌ %d failed, 📦 %d total", loadedCount, failedCount, totalItems))
+	end)
 end
 
 -- Function for other services to get a preloaded UGC item

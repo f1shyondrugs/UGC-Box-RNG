@@ -13,15 +13,43 @@ local Remotes = require(Shared.Remotes.Remotes)
 local GameConfig = require(Shared.Modules.GameConfig)
 local CollectionUI = require(script.Parent.Parent.UI.CollectionUI)
 local ItemValueCalculator = require(Shared.Modules.ItemValueCalculator)
+local NumberFormatter = require(Shared.Modules.NumberFormatter)
 
 local CollectionController = {}
 
 -- State management
 local isAnimating = false
-local currentTab = "StarterCrate"
+local currentTab = nil -- Will be set dynamically to the cheapest crate
 local hiddenUIs = {}
 local collectionData = {}
 local ANIMATION_TIME = 0.3
+
+-- Initialize currentTab to the cheapest crate
+local function initializeCurrentTab()
+	if currentTab then return end -- Already initialized
+	
+	local cratesWithPrice = {}
+	for crateName, crateConfig in pairs(GameConfig.Boxes) do
+		-- Include all crates, treating FreeCrate as price 0
+		local price = crateConfig.Price or 0
+		table.insert(cratesWithPrice, {
+			name = crateName,
+			price = price
+		})
+	end
+	
+	-- Sort by price (cheapest first)
+	table.sort(cratesWithPrice, function(a, b)
+		return a.price < b.price
+	end)
+	
+	-- Set to cheapest crate, or fallback to StarterCrate if none found
+	if #cratesWithPrice > 0 then
+		currentTab = cratesWithPrice[1].name
+	else
+		currentTab = "StarterCrate" -- Fallback
+	end
+end
 
 local function hideOtherUIs(show)
 	local playerGui = LocalPlayer:WaitForChild("PlayerGui")
@@ -82,7 +110,8 @@ local function getItemsByCrate()
 			local rarityOrder = {
 				Common = 1, Uncommon = 2, Rare = 3, Epic = 4, 
 				Legendary = 5, Mythical = 6, Celestial = 7, 
-				Divine = 8, Transcendent = 9, Ethereal = 10, Quantum = 11
+				Divine = 8, Transcendent = 9, Ethereal = 10, Quantum = 11,
+				Limited = 12, Vintage = 13, Exclusive = 14, Ultimate = 15, Dominus = 16
 			}
 			local aRarity = rarityOrder[a.Config.Rarity] or 0
 			local bRarity = rarityOrder[b.Config.Rarity] or 0
@@ -128,19 +157,7 @@ end
 
 -- Format drop chance for display
 local function formatDropChance(chance)
-	if chance >= 10 then
-		return string.format("%.1f%%", chance)
-	elseif chance >= 1 then
-		return string.format("%.2f%%", chance)
-	elseif chance >= 0.1 then
-		return string.format("%.3f%%", chance)
-	elseif chance >= 0.01 then
-		return string.format("%.4f%%", chance)
-	elseif chance >= 0.001 then
-		return string.format("%.5f%%", chance)
-	else
-		return string.format("%.6f%%", chance)
-	end
+	return NumberFormatter.FormatPercentage(chance)
 end
 
 -- Create tooltip content
@@ -285,6 +302,9 @@ end
 
 -- Create crate tabs
 local function createTabs(ui)
+	-- Ensure currentTab is initialized
+	initializeCurrentTab()
+	
 	-- Clear existing tabs
 	for _, child in ipairs(ui.TabsContainer:GetChildren()) do
 		if child:IsA("TextButton") then
@@ -292,26 +312,53 @@ local function createTabs(ui)
 		end
 	end
 	
-	local crateOrder = {
-		"StarterCrate", "PremiumCrate", "LegendaryCrate", "MythicalCrate",
-		"CelestialCrate", "DivineCrate", "TranscendentCrate", "EtherealCrate", "QuantumCrate"
-	}
+	-- Dynamically get all crates from GameConfig and sort by price
+	local cratesWithPrice = {}
+	for crateName, crateConfig in pairs(GameConfig.Boxes) do
+		-- Include all crates, treating FreeCrate as price 0
+		local price = crateConfig.Price or 0
+		table.insert(cratesWithPrice, {
+			name = crateName,
+			config = crateConfig,
+			price = price
+		})
+	end
 	
-	for i, crateName in ipairs(crateOrder) do
-		local crateConfig = GameConfig.Boxes[crateName]
-		if crateConfig then
-			local isActive = (crateName == currentTab)
-			local tab = CollectionUI.CreateCrateTab(crateConfig.Name, isActive)
-			tab.LayoutOrder = i
-			tab.Parent = ui.TabsContainer
-			
-			tab.MouseButton1Click:Connect(function()
-				if currentTab ~= crateName then
-					currentTab = crateName
-					createTabs(ui) -- Refresh tabs to show active state
-					displayItems(ui, crateName)
-				end
-			end)
+	-- Sort by price (cheapest first)
+	table.sort(cratesWithPrice, function(a, b)
+		return a.price < b.price
+	end)
+	
+	-- Create tabs in sorted order
+	for i, crateData in ipairs(cratesWithPrice) do
+		local crateName = crateData.name
+		local crateConfig = crateData.config
+		local isActive = (crateName == currentTab)
+		local tab = CollectionUI.CreateCrateTab(crateConfig.Name, isActive)
+		tab.LayoutOrder = i
+		tab.Parent = ui.TabsContainer
+		
+		tab.MouseButton1Click:Connect(function()
+			if currentTab ~= crateName then
+				currentTab = crateName
+				createTabs(ui) -- Refresh tabs to show active state
+				displayItems(ui, crateName)
+			end
+		end)
+	end
+	
+	-- If current tab is not valid (e.g., was FreeCrate or doesn't exist), set to first available crate
+	if #cratesWithPrice > 0 then
+		local validTab = false
+		for _, crateData in ipairs(cratesWithPrice) do
+			if crateData.name == currentTab then
+				validTab = true
+				break
+			end
+		end
+		if not validTab then
+			currentTab = cratesWithPrice[1].name
+			createTabs(ui) -- Refresh to show correct active state
 		end
 	end
 end
@@ -391,6 +438,7 @@ function CollectionController.Start(parentGui, soundController)
 	end)
 	
 	-- Initialize UI
+	initializeCurrentTab() -- Set currentTab to cheapest crate
 	createTabs(ui)
 	updateProgressInfo(ui)
 	displayItems(ui, currentTab)
