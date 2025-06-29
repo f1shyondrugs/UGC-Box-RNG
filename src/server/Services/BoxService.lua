@@ -223,10 +223,51 @@ local function openBox(player: Player, boxPart: BasePart)
 		boxConfig = GameConfig.Boxes["StarterCrate"] -- Fallback
 	end
 
+	-- Premium Booster: 10% more luck for Roblox Premium users
+	local isPremium = false
+	if player.MembershipType and player.MembershipType == Enum.MembershipType.Premium then
+		isPremium = true
+	end
+
 	-- Determine reward using a more robust method for fractional chances
 	local rewardItemName = nil
 	local totalChance = 0
 	for _, chance in pairs(boxConfig.Rewards) do
+		totalChance = totalChance + chance
+	end
+
+	-- If Premium, boost the chance for rarer items by 10%
+	local adjustedRewards = {}
+	if isPremium then
+		-- Find the highest rarity in this box
+		local rarities = {}
+		for itemName, _ in pairs(boxConfig.Rewards) do
+			local itemConfig = GameConfig.Items and GameConfig.Items[itemName]
+			if itemConfig and itemConfig.Rarity then
+				rarities[itemConfig.Rarity] = true
+			end
+		end
+		-- Sort rarities by assumed order (common < rare < epic < legendary < godly)
+		local rarityOrder = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Godly"}
+		local rarityBoost = {}
+		for i, rarity in ipairs(rarityOrder) do
+			rarityBoost[rarity] = 1 + (0.1 * i / #rarityOrder) -- scale boost by rarity
+		end
+		for itemName, chance in pairs(boxConfig.Rewards) do
+			local itemConfig = GameConfig.Items and GameConfig.Items[itemName]
+			if itemConfig and itemConfig.Rarity and rarityBoost[itemConfig.Rarity] then
+				adjustedRewards[itemName] = chance * rarityBoost[itemConfig.Rarity]
+			else
+				adjustedRewards[itemName] = chance
+			end
+		end
+	else
+		adjustedRewards = boxConfig.Rewards
+	end
+
+	-- Recalculate totalChance for adjusted rewards
+	totalChance = 0
+	for _, chance in pairs(adjustedRewards) do
 		totalChance = totalChance + chance
 	end
 
@@ -236,7 +277,7 @@ local function openBox(player: Player, boxPart: BasePart)
 		
 		-- Create a sorted array for deterministic reward selection
 		local rewardsArray = {}
-		for name, chance in pairs(boxConfig.Rewards) do
+		for name, chance in pairs(adjustedRewards) do
 			table.insert(rewardsArray, {name = name, chance = chance})
 		end
 		table.sort(rewardsArray, function(a,b) return a.name < b.name end)

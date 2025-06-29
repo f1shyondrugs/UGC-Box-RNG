@@ -26,6 +26,7 @@ local BoxAnimator = require(script.Parent.Controllers.BoxAnimator)
 local Notifier = require(script.Parent.Controllers.Notifier)
 local BuyButtonUI = require(script.Parent.UI.BuyButtonUI)
 local StatsUI = require(script.Parent.UI.StatsUI)
+local BoostersController = require(script.Parent.Controllers.BoostersController)
 
 -- Constants (will be updated by upgrades)
 local MAX_BOXES = 1 -- Default, will be updated by upgrade system
@@ -69,6 +70,9 @@ local statsGui = StatsUI.Create(PlayerGui)
 
 -- Create and manage the Buy UGC Crate button with dropdown
 local buyButtonGui = BuyButtonUI.Create(PlayerGui)
+
+-- Create Boosters UI in the bottom left
+BoostersController.Start(PlayerGui)
 
 -- Set default crate
 BuyButtonUI.SetSelectedCrate(buyButtonGui, "StarterCrate")

@@ -196,6 +196,7 @@ function EnchanterUI.Create(parentGui)
 	searchBox.Size = UDim2.new(1, -30, 0, 28)
 	searchBox.Position = UDim2.new(0, 15, 0, 35)
 	searchBox.PlaceholderText = "Search items..."
+	searchBox.Text = ""
 	searchBox.Font = Enum.Font.SourceSans
 	searchBox.TextSize = 16
 	searchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
