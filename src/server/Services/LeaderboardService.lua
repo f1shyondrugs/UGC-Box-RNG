@@ -274,7 +274,13 @@ local function updateLeaderboardRig(rigNumber, userId, playerName, rapValue)
 	
 	local rig = leaderboardsFolder:FindFirstChild(tostring(rigNumber))
 	if not rig then
-		warn("No rig found for position " .. rigNumber)
+		warn("No rig found for position " .. rigNumber .. " in Workspace.leaderboards")
+		return
+	end
+	
+	-- Additional safety check to ensure rig has GetChildren method
+	if not rig.GetChildren then
+		warn("Rig " .. rigNumber .. " is not a valid instance with GetChildren method")
 		return
 	end
 	
@@ -283,11 +289,18 @@ local function updateLeaderboardRig(rigNumber, userId, playerName, rapValue)
 		return
 	end
 	
-	-- Clear existing avatar items and cosmetics
-	for _, child in pairs(rig:GetChildren()) do
-		if child:IsA("Accessory") or child:IsA("Shirt") or child:IsA("Pants") or child:IsA("TShirt") then
-			child:Destroy()
+	-- Clear existing avatar items and cosmetics with safety check
+	local success, err = pcall(function()
+		for _, child in pairs(rig:GetChildren()) do
+			if child:IsA("Accessory") or child:IsA("Shirt") or child:IsA("Pants") or child:IsA("TShirt") then
+				child:Destroy()
+			end
 		end
+	end)
+	
+	if not success then
+		warn("Error clearing rig " .. rigNumber .. " items: " .. tostring(err))
+		return
 	end
 	
 	-- Mark this rig as being updated
@@ -340,26 +353,31 @@ end
 
 -- Function to update all leaderboard rigs
 local function updateLeaderboardRigs()
+	local leaderboardsFolder = Workspace:FindFirstChild("leaderboards")
+	if not leaderboardsFolder then
+		warn("No leaderboards folder found in Workspace - skipping rig updates")
+		return
+	end
+	
 	if not leaderboardData or #leaderboardData == 0 then
 		-- Clear all rigs if no data
 		for i = 1, 3 do
-			local leaderboardsFolder = Workspace:FindFirstChild("leaderboards")
-			if leaderboardsFolder then
-				local rig = leaderboardsFolder:FindFirstChild(tostring(i))
-				if rig then
-					rig:SetAttribute("CurrentUserId", nil)
-					rig:SetAttribute("PlayerName", "")
-					rig:SetAttribute("RAP", 0)
-					
-					-- Clear avatar items and cosmetics
+			local rig = leaderboardsFolder:FindFirstChild(tostring(i))
+			if rig then
+				rig:SetAttribute("CurrentUserId", nil)
+				rig:SetAttribute("PlayerName", "")
+				rig:SetAttribute("RAP", 0)
+				
+				-- Clear avatar items and cosmetics with safety check
+				pcall(function()
 					for _, child in pairs(rig:GetChildren()) do
 						if child:IsA("Accessory") or child:IsA("Shirt") or child:IsA("Pants") or child:IsA("TShirt") then
 							child:Destroy()
 						end
 					end
-					
-
-				end
+				end)
+			else
+				warn("Leaderboard rig " .. i .. " not found in Workspace.leaderboards")
 			end
 		end
 		return
@@ -382,29 +400,33 @@ local function updateLeaderboardRigs()
 			playerName = result
 		end
 		
-		-- Update the rig
-		updateLeaderboardRig(i, userId, playerName, rapValue)
+		-- Update the rig with safety check
+		local rig = leaderboardsFolder:FindFirstChild(tostring(i))
+		if rig then
+			updateLeaderboardRig(i, userId, playerName, rapValue)
+		else
+			warn("Leaderboard rig " .. i .. " not found in Workspace.leaderboards")
+		end
 	end
 	
 	-- Clear unused rig positions if there are fewer than 3 players
 	for i = numPlayersToShow + 1, 3 do
-		local leaderboardsFolder = Workspace:FindFirstChild("leaderboards")
-		if leaderboardsFolder then
-			local rig = leaderboardsFolder:FindFirstChild(tostring(i))
-			if rig then
-				rig:SetAttribute("CurrentUserId", nil)
-				rig:SetAttribute("PlayerName", "")
-				rig:SetAttribute("RAP", 0)
-				
-				-- Clear avatar items and cosmetics
+		local rig = leaderboardsFolder:FindFirstChild(tostring(i))
+		if rig then
+			rig:SetAttribute("CurrentUserId", nil)
+			rig:SetAttribute("PlayerName", "")
+			rig:SetAttribute("RAP", 0)
+			
+			-- Clear avatar items and cosmetics with safety check
+			pcall(function()
 				for _, child in pairs(rig:GetChildren()) do
 					if child:IsA("Accessory") or child:IsA("Shirt") or child:IsA("Pants") or child:IsA("TShirt") then
 						child:Destroy()
 					end
 				end
-				
-
-			end
+			end)
+		else
+			warn("Leaderboard rig " .. i .. " not found in Workspace.leaderboards")
 		end
 	end
 end

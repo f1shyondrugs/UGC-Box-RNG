@@ -105,6 +105,17 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	local sortBy = "Value" -- Default sort type
 	local sortOrder = "desc" -- "asc" or "desc"
 	local sortOptions = {"Value", "Name", "Size", "Rarity"}
+	
+	-- Performance caches
+	local equippedItemsCache = nil
+	local equippedItemsCacheTime = 0
+	local EQUIPPED_CACHE_DURATION = 2 -- Cache for 2 seconds
+	local loadingBatch = false
+	local pendingItems = {}
+	
+	-- Batch loading configuration
+	local ITEM_BATCH_SIZE = 10
+	local BATCH_DELAY = 0.05
 
 	-- Function to get current inventory limit dynamically
 	local function getCurrentInventoryLimit()
@@ -121,6 +132,58 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		
 		return DEFAULT_INVENTORY_LIMIT -- Fallback to default
 	end
+	
+	-- Cached equipped items getter
+	local function getCachedEquippedItems()
+		local currentTime = tick()
+		if equippedItemsCache and currentTime - equippedItemsCacheTime < EQUIPPED_CACHE_DURATION then
+			return equippedItemsCache
+		end
+		
+		local success, equippedItems = pcall(function()
+			return Remotes.GetEquippedItems:InvokeServer()
+		end)
+		
+		if success then
+			equippedItemsCache = equippedItems
+			equippedItemsCacheTime = currentTime
+			return equippedItems
+		end
+		
+		return equippedItemsCache or {}
+	end
+	
+	-- Lazy 3D preview setup - only when needed
+	local function setup3DPreviewLazy(viewport, itemConfig)
+		if not viewport or not itemConfig then
+			return
+		end
+		
+		-- Check if already loaded
+		if viewport:GetAttribute("PreviewLoaded") then
+			return
+		end
+		
+		-- Mark as loading to prevent duplicate calls
+		viewport:SetAttribute("PreviewLoaded", true)
+		
+		task.spawn(function()
+			-- Quick check if viewport still exists
+			if not viewport.Parent then 
+				viewport:SetAttribute("PreviewLoaded", false)
+				return 
+			end
+			
+			local success = pcall(function()
+				setup3DItemPreview(viewport, itemConfig)
+			end)
+			
+			if not success then
+				-- Reset flag on failure so it can be retried
+				viewport:SetAttribute("PreviewLoaded", false)
+			end
+		end)
+	end
 
 	local function matchesSearch(itemInstance, searchQuery)
 		if not searchQuery or searchQuery == "" then
@@ -135,25 +198,30 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 			return true
 		end
 		
-		-- Check item config properties
-		local itemConfig = GameConfig.Items[itemName]
-		if itemConfig then
-			-- Check rarity
-			if itemConfig.Rarity and string.find(string.lower(itemConfig.Rarity), searchQuery) then
-				return true
+		-- Use cached data for better performance
+		local entry = itemEntries[itemInstance]
+		if entry then
+			local itemConfig = entry.ItemConfig
+			if itemConfig then
+				-- Check rarity
+				if itemConfig.Rarity and string.find(string.lower(itemConfig.Rarity), searchQuery) then
+					return true
+				end
+				
+				-- Check type
+				if itemConfig.Type and string.find(string.lower(itemConfig.Type), searchQuery) then
+					return true
+				end
 			end
 			
-			-- Check type
-			if itemConfig.Type and string.find(string.lower(itemConfig.Type), searchQuery) then
-				return true
-			end
-		end
-		
-		-- Check mutations
-		local mutationNames = ItemValueCalculator.GetMutationNames(itemInstance)
-		for _, mutationName in ipairs(mutationNames) do
-			if string.find(string.lower(mutationName), searchQuery) then
-				return true
+			-- Check cached mutations
+			local mutationNames = entry.MutationNames
+			if mutationNames then
+				for _, mutationName in ipairs(mutationNames) do
+					if string.find(string.lower(mutationName), searchQuery) then
+						return true
+					end
+				end
 			end
 		end
 		
@@ -188,12 +256,16 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	}
 
 	local function getSortValue(itemInstance, sortType)
+		-- Use cached data from itemEntries for better performance
+		local entry = itemEntries[itemInstance]
+		if not entry then return 0 end
+		
 		local itemName = itemInstance:GetAttribute("ItemName") or itemInstance.Name
-		local itemConfig = GameConfig.Items[itemName]
+		local itemConfig = entry.ItemConfig -- Use cached config
 		
 		if sortType == "Value" then
 			if not itemConfig then return 0 end
-			local mutationConfigs = ItemValueCalculator.GetMutationConfigs(itemInstance)
+			local mutationConfigs = entry.MutationConfigs -- Use cached mutations
 			local size = itemInstance:GetAttribute("Size") or 1
 			local success, value = pcall(function()
 				return ItemValueCalculator.GetValue(itemConfig, mutationConfigs, size)
@@ -602,14 +674,18 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 			highlight.Visible = true
 		end
 		
-		-- Get the actual item name from attribute (UUID system)
+		-- Use cached data for better performance
+		local entry = itemEntries[itemInstance]
+		if not entry then return end
+		
 		local itemName = itemInstance:GetAttribute("ItemName") or itemInstance.Name
-		local itemConfig = GameConfig.Items[itemName]
+		local itemConfig = entry.ItemConfig
+		local mutationNames = entry.MutationNames
+		local mutationConfigs = entry.MutationConfigs
+		
 		if not itemConfig then return end
 		
 		local rarityConfig = GameConfig.Rarities[itemConfig.Rarity]
-		local mutationNames = ItemValueCalculator.GetMutationNames(itemInstance)
-		local mutationConfigs = ItemValueCalculator.GetMutationConfigs(itemInstance)
 		local size = itemInstance:GetAttribute("Size") or 1
 		local isLocked = itemInstance:GetAttribute("Locked") or false
 
@@ -680,7 +756,7 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		ui.SellButton.Text = "Sell for " .. formattedValue
 		
 		-- Check if item is currently equipped
-		local equippedItems = Remotes.GetEquippedItems:InvokeServer()
+		local equippedItems = getCachedEquippedItems()
 		local isEquipped = false
 		if itemConfig.Type and equippedItems[itemConfig.Type] == itemInstance then
 			isEquipped = true
@@ -718,23 +794,22 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		local template = InventoryUI.CreateItemTemplate(itemInstance, itemName, itemConfig, rarityConfig, mutationConfigs)
 		template.Parent = ui.ListPanel
 		
-		-- Setup 3D preview for the item in its template
+		-- Setup 3D preview for the item in its template (simplified approach)
 		local itemViewport3D = template:FindFirstChild("ItemViewport3D")
 		if itemViewport3D then
-			setup3DItemPreview(itemViewport3D, itemConfig)
+			-- Load 3D preview immediately but asynchronously to avoid blocking
+			task.spawn(function()
+				setup3DItemPreview(itemViewport3D, itemConfig)
+			end)
 		end
-		
-		local iconsContainer = template:FindFirstChild("IconsContainer")
 
 		local function updateItemStatus()
 			local isLocked = itemInstance:GetAttribute("Locked") or false
 			
-			-- Check equipped status
-			local success, equippedItems = pcall(function()
-				return Remotes.GetEquippedItems:InvokeServer()
-			end)
+			-- Use cached equipped items instead of individual server calls
+			local equippedItems = getCachedEquippedItems()
 			local isEquipped = false
-			if success and itemConfig and itemConfig.Type and equippedItems[itemConfig.Type] == itemInstance then
+			if itemConfig and itemConfig.Type and equippedItems[itemConfig.Type] == itemInstance then
 				isEquipped = true
 			end
 			
@@ -742,7 +817,6 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 			local infoContainer = template:FindFirstChild("InfoContainer")
 			local nameLabel = infoContainer and infoContainer:FindFirstChild("NameLabel")
 			if nameLabel then
-				local mutationNames = ItemValueCalculator.GetMutationNames(itemInstance)
 				local displayName = itemName
 				
 				if #mutationNames > 0 then
@@ -782,28 +856,27 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 			else
 				-- Reset to default rarity-based appearance for all non-equipped items
 				if stroke then
-					local rarityConfig = GameConfig.Rarities[itemConfig.Rarity]
 					stroke.Color = rarityConfig and rarityConfig.Color or Color3.fromRGB(100, 100, 100)
 					stroke.Thickness = 1
 					stroke.Transparency = 0.7
 				end
-				-- Reset gradient to original rarity colors (this is handled in the template creation)
 			end
 			
 			if selectedItem == itemInstance then
 				updateDetails(itemInstance, template) -- Refresh details if this item is selected
 			end
-			
-			-- Re-sort when item attributes change that affect sorting (debounced)
-			task.wait(0.1) -- Small delay to avoid spam
-			if itemEntries[itemInstance] then -- Make sure item still exists
-				filterInventory()
-			end
 		end
 
 		local connection = itemInstance:GetAttributeChangedSignal("Locked"):Connect(updateItemStatus)
 		
-		itemEntries[itemInstance] = { Template = template, Connection = connection, UpdateStatus = updateItemStatus }
+		itemEntries[itemInstance] = { 
+			Template = template, 
+			Connection = connection, 
+			UpdateStatus = updateItemStatus,
+			ItemConfig = itemConfig, -- Cache for performance
+			MutationNames = mutationNames, -- Cache for performance
+			MutationConfigs = mutationConfigs -- Cache for performance
+		}
 
 		template.MouseButton1Click:Connect(function()
 			if isAnimating then return end
@@ -829,16 +902,19 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		-- Set initial layout order to prevent items from being hidden
 		template.LayoutOrder = #inventory:GetChildren()
 		
-		updateInventoryCount()
-		updateItemStatus() -- Set initial state
-		
-		-- Apply search filter and sorting to new item (with small delay)
-		task.spawn(function()
-			task.wait(0.1)
-			if itemEntries[itemInstance] then
-				filterInventory()
-			end
-		end)
+		-- PERFORMANCE: Only update status if not in batch loading mode
+		if not loadingBatch then
+			updateInventoryCount()
+			updateItemStatus() -- Set initial state
+			
+			-- Apply search filter and sorting to new item (with small delay)
+			task.spawn(function()
+				task.wait(0.1)
+				if itemEntries[itemInstance] then
+					filterInventory()
+				end
+			end)
+		end
 	end
 
 	local function removeItemEntry(itemInstance)
@@ -860,7 +936,73 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		if selectedItem == itemInstance then
 			resetDetailsPanel()
 		end
-		updateInventoryCount()
+		
+		-- Only update count if not in batch loading mode
+		if not loadingBatch then
+			updateInventoryCount()
+		end
+	end
+
+	-- Batch processing for initial inventory load
+	local function processPendingItems()
+		if #pendingItems == 0 then
+			loadingBatch = false
+			-- After all items are loaded, update everything once
+			updateInventoryCount()
+			task.wait(0.1)
+			filterInventory()
+			-- Invalidate equipped items cache to refresh all statuses
+			equippedItemsCache = nil
+			-- Update all item statuses with fresh data
+			for itemInstance, entry in pairs(itemEntries) do
+				if entry.UpdateStatus then
+					entry.UpdateStatus()
+				end
+			end
+			print("Inventory loading complete - " .. #inventory:GetChildren() .. " items loaded")
+			return
+		end
+		
+		-- Process next batch
+		local batchEnd = math.min(ITEM_BATCH_SIZE, #pendingItems)
+		local itemsToProcess = {}
+		
+		-- Extract items for this batch
+		for i = 1, batchEnd do
+			table.insert(itemsToProcess, pendingItems[i])
+		end
+		
+		-- Process the batch
+		for _, itemInstance in ipairs(itemsToProcess) do
+			addItemEntry(itemInstance)
+		end
+		
+		-- Remove processed items from the front of the array
+		for i = batchEnd, 1, -1 do
+			table.remove(pendingItems, 1)
+		end
+		
+		print("Processed batch of " .. batchEnd .. " items, " .. #pendingItems .. " remaining")
+		
+		-- Schedule next batch
+		task.wait(BATCH_DELAY)
+		task.spawn(processPendingItems)
+	end
+	
+	-- Fast initial inventory population
+	local function loadInventoryBatched()
+		loadingBatch = true
+		pendingItems = {}
+		
+		-- Queue all items for batch processing
+		for _, itemInstance in ipairs(inventory:GetChildren()) do
+			table.insert(pendingItems, itemInstance)
+		end
+		
+		print("Starting batch inventory loading - " .. #pendingItems .. " items queued")
+		
+		-- Start batch processing
+		task.spawn(processPendingItems)
 	end
 
 	local function toggleInventory(visible)
@@ -998,6 +1140,8 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	end)
 
 	local function refreshAllItemStatuses()
+		-- Invalidate cache first
+		equippedItemsCache = nil
 		-- Update all item templates to show equipped status
 		for itemInstance, entry in pairs(itemEntries) do
 			if entry.UpdateStatus then
@@ -1014,18 +1158,15 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		end
 	end)
 
-	-- Initial population and search setup
-	for _, itemInstance in ipairs(inventory:GetChildren()) do
-		addItemEntry(itemInstance)
-	end
-	
-	-- Apply initial search filter and sorting with delay to ensure all items are added
-	task.spawn(function()
-		task.wait(0.2) -- Wait for all items to be processed
-		filterInventory()
-	end)
+	-- FAST LOADING: Use batch processing instead of individual item processing
+	loadInventoryBatched()
 
-	inventory.ChildAdded:Connect(addItemEntry)
+	inventory.ChildAdded:Connect(function(itemInstance)
+		-- Handle new items immediately (not in batch mode)
+		if not loadingBatch then
+			addItemEntry(itemInstance)
+		end
+	end)
 	inventory.ChildRemoved:Connect(removeItemEntry)
 	
 	-- Initialize UI state

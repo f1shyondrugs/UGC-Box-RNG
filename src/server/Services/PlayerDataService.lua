@@ -102,6 +102,26 @@ local function createFormattedRAPStat(player, leaderstats, initialValue)
 	return rapDisplay
 end
 
+-- Custom StringValue for formatted R$ display
+local function createFormattedRobuxStat(player, leaderstats, initialValue)
+	player:SetAttribute("RobuxValue", initialValue)
+	local robuxDisplay = Instance.new("StringValue")
+	robuxDisplay.Name = "R$"
+	robuxDisplay.Value = NumberFormatter.FormatCurrency(initialValue)
+	robuxDisplay.Parent = leaderstats
+	return robuxDisplay
+end
+
+-- Custom StringValue for formatted Boxes Opened display
+local function createFormattedBoxesStat(player, leaderstats, initialValue)
+	player:SetAttribute("BoxesOpenedValue", initialValue)
+	local boxesDisplay = Instance.new("StringValue")
+	boxesDisplay.Name = "Boxes Opened"
+	boxesDisplay.Value = NumberFormatter.FormatCount(initialValue)
+	boxesDisplay.Parent = leaderstats
+	return boxesDisplay
+end
+
 local function updatePlayerRAP(player)
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if not leaderstats then return end
@@ -120,6 +140,29 @@ local function updatePlayerRAP(player)
 	
 	-- Queue the leaderboard update instead of calling directly
 	updateQueue[player.UserId] = player
+end
+
+-- When updating R$ or Boxes Opened, update both the attribute and the StringValue
+local function updatePlayerRobux(player, value)
+	player:SetAttribute("RobuxValue", value)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if leaderstats then
+		local robux = leaderstats:FindFirstChild("R$")
+		if robux then
+			robux.Value = NumberFormatter.FormatCurrency(value)
+		end
+	end
+end
+
+local function updatePlayerBoxesOpened(player, value)
+	player:SetAttribute("BoxesOpenedValue", value)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if leaderstats then
+		local boxesOpened = leaderstats:FindFirstChild("Boxes Opened")
+		if boxesOpened then
+			boxesOpened.Value = NumberFormatter.FormatCount(value)
+		end
+	end
 end
 
 -- Optimized inventory loading function
@@ -170,20 +213,10 @@ local function onPlayerAdded(player: Player)
 	leaderstats.Name = "leaderstats"
 	leaderstats.Parent = player
 
-	local robux = Instance.new("IntValue")
-	robux.Name = "R$"
-	robux.Parent = leaderstats
-
-	-- Use custom formatted RAP display (only creates the StringValue in leaderstats)
-	local rapDisplay = createFormattedRAPStat(player, leaderstats, 0)
-
-	local boxesOpened = Instance.new("IntValue")
-	boxesOpened.Name = "Boxes Opened"
-	boxesOpened.Parent = leaderstats
-
-	local inventory = Instance.new("Folder")
-	inventory.Name = "Inventory"
-	inventory.Parent = player
+	-- Use formatted StringValues for all stats
+	local robux = createFormattedRobuxStat(player, leaderstats, GameConfig.Currency.StartingAmount)
+	local boxesOpened = createFormattedBoxesStat(player, leaderstats, 0)
+	createFormattedRAPStat(player, leaderstats, 0)
 
 	local userId = player.UserId
 	local key = "Player_" .. userId
@@ -197,8 +230,8 @@ local function onPlayerAdded(player: Player)
 
 		if success and data then
 			-- Player has data, load it
-			robux.Value = data.robux or GameConfig.Currency.StartingAmount
-			boxesOpened.Value = data.boxesOpened or 0
+			updatePlayerRobux(player, data.robux or GameConfig.Currency.StartingAmount)
+			updatePlayerBoxesOpened(player, data.boxesOpened or 0)
 			
 			-- Load inventory in batches to prevent lag
 			if data.inventory and #data.inventory > 0 then
@@ -293,8 +326,8 @@ local function onPlayerAdded(player: Player)
 			end
 		else
 			-- New player or data load failed
-			robux.Value = GameConfig.Currency.StartingAmount
-			boxesOpened.Value = 0
+			updatePlayerRobux(player, GameConfig.Currency.StartingAmount)
+			updatePlayerBoxesOpened(player, 0)
 			player:SetAttribute("RAPValue", 0)
 			print("No data found for " .. player.Name .. ". Creating new profile.")
 			if err then
@@ -325,12 +358,15 @@ local function saveData(player: Player)
 	local key = "Player_" .. player.UserId
 	
 	-- Create the data table in one go
+	-- Use raw attribute values instead of formatted StringValues
+	local robuxValue = player:GetAttribute("RobuxValue") or 0
+	local boxesOpenedValue = player:GetAttribute("BoxesOpenedValue") or 0
 	local leaderstats = player:FindFirstChild("leaderstats")
 	local inventory = player:FindFirstChild("Inventory")
 	
 	local dataToSave = {
-		robux = leaderstats and leaderstats:FindFirstChild("R$") and leaderstats["R$"].Value or 0,
-		boxesOpened = leaderstats and leaderstats:FindFirstChild("Boxes Opened") and leaderstats["Boxes Opened"].Value or 0,
+		robux = robuxValue,
+		boxesOpened = boxesOpenedValue,
 		inventory = {},
 		equippedItems = {},
 	}
@@ -452,8 +488,8 @@ function DataService.Start()
 			for _, player in ipairs(Players:GetPlayers()) do
 				saveData(player)
 			end
-			-- Allow some time for saving before shutdown
-			task.wait(3) 
+			-- Allow more time for saving before shutdown
+			task.wait(10) 
 		end
 	end)
 

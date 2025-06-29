@@ -20,6 +20,7 @@ Config.Rarities = {
     Exclusive = { Color = Color3.fromRGB(138, 43, 226) },   -- Blue Violet - For exclusive limiteds
     Ultimate = { Color = Color3.fromRGB(255, 0, 0) },       -- Pure Red - For ultimate limiteds
     Dominus = { Color = Color3.fromRGB(0, 0, 0) },          -- Pure Black - For Dominus items only
+    BRAINROT = { Color = Color3.fromRGB(180, 0, 255) },     -- Purple-pink for brainrot meme rarity
 }
 
 Config.Items = {
@@ -332,13 +333,6 @@ Config.Items = {
         Type = "Back",
         Description = "The cape worn by the creator of worlds."
     },
-    ["The All-Seeing Eye"] = { 
-        Rarity = "Divine", 
-        Value = 1200000, 
-        AssetId = 118030,
-        Type = "Face",
-        Description = "An eye that sees across all dimensions."
-    },
     ["Dominus Astra"] = { 
         Rarity = "Divine", 
         Value = 1800000, 
@@ -578,6 +572,69 @@ Config.Items = {
         Type = "Hat",
         Description = "The golden Dominus forged from pure aurum."
     },
+    ["Tung Tung Soldiers"] = {
+        Rarity = "BRAINROT",
+        Value = 100000000000, -- 100B (Loss)
+        AssetId = 119552849311628,
+        Type = "Hat",
+        Description = "The legendary TUNG TUNG SOLDIERS march on!"
+    },
+    ["Kanye"] = {
+        Rarity = "BRAINROT",
+        Value = 200000000000, -- 200B (Loss)
+        AssetId = 95838284964747,
+        Type = "Hat",
+        Description = "A mysterious Kanye artifact from another universe."
+    },
+    ["Bombardiro Crocodilo"] = {
+        Rarity = "BRAINROT",
+        Value = 300000000000, -- 300B (Loss)
+        AssetId = 82573291743526,
+        Type = "Hat",
+        Description = "The croc that bombards with tralalero tralala energy."
+    },
+    ["Tralalero Tralala"] = {
+        Rarity = "BRAINROT",
+        Value = 400000000000, -- 400B (Loss)
+        AssetId = 126595809028493,
+        Type = "Hat",
+        Description = "The sound of the brainrot. TRALALELO TRALALA!"
+    },
+    ["TaTa Sahur"] = {
+        Rarity = "BRAINROT",
+        Value = 600000000000, -- 600B (Win)
+        AssetId = 120782162269962,
+        Type = "Hat",
+        Description = "TaTa Sahur: The meme, the legend."
+    },
+    ["Chimpanzini Bananini"] = {
+        Rarity = "BRAINROT",
+        Value = 1000000000000, -- 1T (Win)
+        AssetId = 116419829790643,
+        Type = "Hat",
+        Description = "The rare Chimpanzini Bananini, only for the brainrotted."
+    },
+    ["Two Monkey Standing In Back Meme Funny Animal"] = {
+        Rarity = "BRAINROT",
+        Value = 2000000000000, -- 2T (Jackpot)
+        AssetId = 101829766673768,
+        Type = "Hat",
+        Description = "Two monkeys, infinite brainrot."
+    },
+    ["Capuchino Assassino"] = {
+        Rarity = "BRAINROT",
+        Value = 150000000000, -- 150B (Loss)
+        AssetId = 81371421522107,
+        Type = "Hat",
+        Description = "The most dangerous cappuccino."
+    },
+    ["Lirili Larila"] = {
+        Rarity = "BRAINROT",
+        Value = 500000000000, -- 250B (Loss)
+        AssetId = 106643331897210,
+        Type = "Hat",
+        Description = "Lirili Larila, the sound of brainrot intensifies."
+    },
 }
 
 Config.Mutations = {
@@ -683,8 +740,8 @@ Config.Boxes = {
         Price = 20000000,
         Rewards = {
             ["The First Omen"] = 75,            -- 10000000 value (loss)
-            ["Crown of the Silent King"] = 20,  -- 13000000 value (loss)
-            ["Aetherium Blade"] = 3,            -- 16000000 value (win)
+            ["Crown of the Silent King"] = 15,  -- 13000000 value (loss)
+            ["Aetherium Blade"] = 8,            -- 16000000 value (win)
             ["Mantle of the Architect"] = 1.5,  -- 22000000 value (win)
             ["Fragment of Creation"] = 0.5,     -- 60000000 value (jackpot)
         },
@@ -693,12 +750,12 @@ Config.Boxes = {
         Name = "🏆 Limited Crate",
         Price = 500000000,
         Rewards = {
-            ["Red Banded Top Hat"] = 15,                -- 50,000,000 value (loss)
+            ["Red Banded Top Hat"] = 25,                -- 50,000,000 value (loss)
             ["Sparkle Time Fedora"] = 15,               -- 100,000,000 value (loss)
             ["ROBLOX Visor"] = 15,                       -- 200,000,000 value (loss)
             ["Workclock Headphones"] = 15,             -- 300,000,000 value (loss)
             ["Clockwork's Shades"] = 15,               -- 500,000,000 value (break-even)
-            ["Brighteyes' Bloxy Cola Hat"] = 15,      -- 750,000,000 value (win)
+            ["Brighteyes' Bloxy Cola Hat"] = 5,      -- 750,000,000 value (win)
             ["Green Bow Tie"] = 6,                   -- 1,000,000,000 value (win)
             ["Kleos Aphthiton"] = 3.5,                 -- 1,500,000,000 value (jackpot)
             ["Adurite Antlers"] = 0.5,                 -- 2,000,000,000 value (jackpot)
@@ -714,6 +771,21 @@ Config.Boxes = {
             ["Dominus Vespertilio"] = 10,          -- 10,000,000,000 value (break-even)
             ["Dominus Infernus"] = 3.5,            -- 15,000,000,000 value (win)
             ["Dominus Aureus"] = 1.5,              -- 25,000,000,000 value (jackpot)
+        },
+    },
+    ["BrainrotCrate"] = {
+        Name = "🧠 Brainrot Crate",
+        Price = 500000000000,
+        Rewards = {
+            ["Tung Tung Soldiers"] = 30, -- 100B (Loss)
+            ["Kanye"] = 20, -- 200B (Loss)
+            ["Bombardiro Crocodilo"] = 12, -- 300B (Loss)
+            ["Tralalero Tralala"] = 10, -- 400B (Loss)
+            ["Capuchino Assassino"] = 10, -- 150B (Loss)
+            ["Lirili Larila"] = 8, -- 500B (even)
+            ["TaTa Sahur"] = 6, -- 600B (Win)
+            ["Chimpanzini Bananini"] = 3, -- 1T (Win)
+            ["Two Monkey Standing In Back Meme Funny Animal"] = 1 -- 2T (Jackpot)
         },
     },
     ["FreeCrate"] = {
