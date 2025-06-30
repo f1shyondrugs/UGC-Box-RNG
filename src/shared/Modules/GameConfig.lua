@@ -878,4 +878,13 @@ Config.Currency = {
     StartingAmount = 500,
 }
 
+Config.GamepassWhitelist = {
+    1885690426, -- Nosowge
+    1261216760, -- Das_F1sHy312
+    2300668379, -- Trynocs
+    813591741, -- Nickkarto
+}
+
+Config.AutoEnchanterGamepassId = 1288782058
+
 return Config

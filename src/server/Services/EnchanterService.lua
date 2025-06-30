@@ -13,28 +13,22 @@ local EnchanterService = {}
 -- Import PlayerDataService for saving data
 local PlayerDataService = require(script.Parent.PlayerDataService)
 
--- Auto-Enchanter Gamepass ID
-local AUTO_ENCHANTER_GAMEPASS_ID = 1288782058
-
 -- Track active auto-enchanting sessions
 local activeAutoEnchantSessions = {} -- player.UserId -> {itemInstance, targetMutators, isRunning}
 
--- Create a ranked lookup table for rarities
-local rarityRanks = {}
-do
-	local rank = 1
-	for rarityName, _ in pairs(GameConfig.Rarities) do
-		rarityRanks[rarityName] = rank
-		rank = rank + 1
-	end
+-- Create a ranked lookup table for mutations based on chance
+local sortedMutationsList = {}
+for name, data in pairs(GameConfig.Mutations) do
+	table.insert(sortedMutationsList, { name = name, chance = data.Chance })
 end
+-- Sort from highest chance (common) to lowest chance (rare)
+table.sort(sortedMutationsList, function(a, b)
+	return a.chance > b.chance
+end)
 
-local function getRarityRank(mutatorName)
-	local mutatorConfig = GameConfig.Mutations[mutatorName]
-	if not mutatorConfig or not mutatorConfig.Rarity then
-		return 0 -- No rarity or not found
-	end
-	return rarityRanks[mutatorConfig.Rarity] or 0
+local mutationRanks = {}
+for i, mutationInfo in ipairs(sortedMutationsList) do
+	mutationRanks[mutationInfo.name] = i
 end
 
 -- Helper function to calculate a single item's value
@@ -46,8 +40,15 @@ end
 
 -- Check if player owns the Auto-Enchanter gamepass
 local function checkAutoEnchanterGamepass(player)
+	-- Check whitelist first
+	for _, whitelistedId in ipairs(GameConfig.GamepassWhitelist or {}) do
+		if player.UserId == whitelistedId then
+			return true -- Grant access if in whitelist
+		end
+	end
+
 	local success, ownsGamepass = pcall(function()
-		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, AUTO_ENCHANTER_GAMEPASS_ID)
+		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, GameConfig.AutoEnchanterGamepassId)
 	end)
 	
 	if success then
@@ -93,15 +94,15 @@ local function itemHasTargetMutators(itemInstance, targetMutators, stopOnHigher,
 		return false
 	end
 
-	-- If "or higher" is enabled, check rarity levels
+	-- If "or higher" is enabled, check rarity levels of mutations
 	local highestTargetRank = 0
 	for _, mutatorName in ipairs(targetMutators) do
-		highestTargetRank = math.max(highestTargetRank, getRarityRank(mutatorName))
+		highestTargetRank = math.max(highestTargetRank, mutationRanks[mutatorName] or 0)
 	end
 
 	local highestCurrentRank = 0
 	for _, mutatorName in ipairs(currentMutators) do
-		highestCurrentRank = math.max(highestCurrentRank, getRarityRank(mutatorName))
+		highestCurrentRank = math.max(highestCurrentRank, mutationRanks[mutatorName] or 0)
 	end
 
 	if highestCurrentRank > highestTargetRank then
@@ -156,6 +157,7 @@ function EnchanterService:startAutoEnchanting(player, itemInstance, targetMutato
 		targetMutators = targetMutators,
 		stopOnHigher = stopOnHigher,
 		matchAnyMode = matchAnyMode,
+		isRunning = true,
 		startTime = tick(),
 		attempts = 0,
 		totalSpent = 0

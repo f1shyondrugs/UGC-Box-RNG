@@ -135,6 +135,15 @@ local function updateMutatorsDisplay(mutationNames, animate)
 		end
 	end
 	
+	-- Sort mutationNames by chance (rarity)
+	table.sort(mutationNames, function(a, b)
+		local aConf = GameConfig.Mutations[a]
+		local bConf = GameConfig.Mutations[b]
+		if not aConf then return false end
+		if not bConf then return true end
+		return aConf.Chance > bConf.Chance
+	end)
+	
 	if #mutationNames > 0 then
 		for _, mutationName in ipairs(mutationNames) do
 			local mutationConfig = GameConfig.Mutations[mutationName] or {Color = Color3.new(1,1,1), ValueMultiplier = 1}
@@ -259,8 +268,6 @@ local function showItemSelectionPopup()
 	-- Clear search box
 	components.SearchBox.Text = ""
 end
-
-
 
 local function showInfoPopup()
 	if not components then return end
@@ -431,11 +438,23 @@ local function populateMutatorSelection()
 		end
 	end
 	mutatorCheckboxes = {}
+
+	-- Create a sorted list of mutations by chance
+	local sortedMutations = {}
+	for name, data in pairs(GameConfig.Mutations) do
+		table.insert(sortedMutations, { name = name, config = data })
+	end
+	table.sort(sortedMutations, function(a, b)
+		return a.config.Chance > b.config.Chance -- Sort from most common to rarest
+	end)
 	
 	-- Add checkbox for each mutator
-	for mutatorName, mutatorConfig in pairs(GameConfig.Mutations) do
+	for index, mutationData in ipairs(sortedMutations) do
+		local mutatorName = mutationData.name
+		local mutatorConfig = mutationData.config
 		local isSelected = selectedTargetMutators[mutatorName] or false
 		local entry, checkbox = EnchanterUI.CreateMutatorCheckboxEntry(mutatorName, mutatorConfig, isSelected)
+		entry.LayoutOrder = index -- Set the layout order to match the sorted list
 		entry.Parent = components.MutatorSelectionFrame
 		mutatorCheckboxes[mutatorName] = checkbox
 		
