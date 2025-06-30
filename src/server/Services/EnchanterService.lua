@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 local Shared = ReplicatedStorage.Shared
 local GameConfig = require(Shared.Modules.GameConfig)
@@ -12,11 +13,278 @@ local EnchanterService = {}
 -- Import PlayerDataService for saving data
 local PlayerDataService = require(script.Parent.PlayerDataService)
 
+-- Auto-Enchanter Gamepass ID
+local AUTO_ENCHANTER_GAMEPASS_ID = 1288782058
+
+-- Track active auto-enchanting sessions
+local activeAutoEnchantSessions = {} -- player.UserId -> {itemInstance, targetMutators, isRunning}
+
+-- Create a ranked lookup table for rarities
+local rarityRanks = {}
+do
+	local rank = 1
+	for rarityName, _ in pairs(GameConfig.Rarities) do
+		rarityRanks[rarityName] = rank
+		rank = rank + 1
+	end
+end
+
+local function getRarityRank(mutatorName)
+	local mutatorConfig = GameConfig.Mutations[mutatorName]
+	if not mutatorConfig or not mutatorConfig.Rarity then
+		return 0 -- No rarity or not found
+	end
+	return rarityRanks[mutatorConfig.Rarity] or 0
+end
+
 -- Helper function to calculate a single item's value
 local function calculateSingleItemValue(itemInstance, itemConfig)
 	local mutationConfigs = ItemValueCalculator.GetMutationConfigs(itemInstance)
 	local size = itemInstance:GetAttribute("Size") or 1
 	return ItemValueCalculator.GetValue(itemConfig, mutationConfigs, size)
+end
+
+-- Check if player owns the Auto-Enchanter gamepass
+local function checkAutoEnchanterGamepass(player)
+	local success, ownsGamepass = pcall(function()
+		return MarketplaceService:UserOwnsGamePassAsync(player.UserId, AUTO_ENCHANTER_GAMEPASS_ID)
+	end)
+	
+	if success then
+		return ownsGamepass
+	else
+		warn("Failed to check gamepass ownership for player " .. player.Name)
+		return false
+	end
+end
+
+-- Check if an item has the desired mutators (or higher if the flag is set)
+local function itemHasTargetMutators(itemInstance, targetMutators, stopOnHigher, matchAnyMode)
+	local currentMutators = ItemValueCalculator.GetMutationNames(itemInstance)
+	local currentMutatorsSet = {}
+	for _, mutatorName in ipairs(currentMutators) do
+		currentMutatorsSet[mutatorName] = true
+	end
+	
+	if #targetMutators == 0 then return false end
+
+	if matchAnyMode then
+		-- OR logic: stop if any target mutator is present
+		for _, targetMutator in ipairs(targetMutators) do
+			if currentMutatorsSet[targetMutator] then
+				return true
+			end
+		end
+	else
+		-- AND logic: stop only if all target mutators are present
+		local allTargetsFound = true
+		for _, targetMutator in ipairs(targetMutators) do
+			if not currentMutatorsSet[targetMutator] then
+				allTargetsFound = false
+				break
+			end
+		end
+		if allTargetsFound then
+			return true
+		end
+	end
+
+	if not stopOnHigher then
+		return false
+	end
+
+	-- If "or higher" is enabled, check rarity levels
+	local highestTargetRank = 0
+	for _, mutatorName in ipairs(targetMutators) do
+		highestTargetRank = math.max(highestTargetRank, getRarityRank(mutatorName))
+	end
+
+	local highestCurrentRank = 0
+	for _, mutatorName in ipairs(currentMutators) do
+		highestCurrentRank = math.max(highestCurrentRank, getRarityRank(mutatorName))
+	end
+
+	if highestCurrentRank > highestTargetRank then
+		return true -- Success, we got something better
+	end
+
+	return false -- Still haven't met the condition
+end
+
+-- Start auto-enchanting for a player
+function EnchanterService:startAutoEnchanting(player, itemInstance, targetMutators, stopOnHigher, matchAnyMode)
+	if activeAutoEnchantSessions[player.UserId] then
+		Remotes.Notify:FireClient(player, "Auto-enchanting session already active.", "Error")
+		return
+	end
+	
+	-- Verify gamepass ownership
+	if not checkAutoEnchanterGamepass(player) then
+		Remotes.Notify:FireClient(player, "You need the Auto-Enchanter gamepass to use this feature!", "Error")
+		return
+	end
+	
+	-- Verify item ownership
+	if not itemInstance or not itemInstance.Parent or itemInstance.Parent.Parent ~= player then
+		return
+	end
+	
+	-- Verify target mutators
+	if not targetMutators or #targetMutators == 0 then
+		Remotes.Notify:FireClient(player, "Please select at least one target mutator.", "Error")
+		return
+	end
+	
+	-- Get item information
+	local itemName = itemInstance:GetAttribute("ItemName") or itemInstance.Name
+	local itemConfig = GameConfig.Items[itemName]
+	if not itemConfig then
+		Remotes.Notify:FireClient(player, "Invalid item configuration.", "Error")
+		return
+	end
+	
+	-- Check if already has target mutators
+	if itemHasTargetMutators(itemInstance, targetMutators, stopOnHigher, matchAnyMode) then
+		Remotes.Notify:FireClient(player, "Item already has the target mutators!", "Success")
+		return
+	end
+	
+	-- Start auto-enchanting session
+	activeAutoEnchantSessions[player.UserId] = {
+		player = player,
+		itemInstance = itemInstance,
+		targetMutators = targetMutators,
+		stopOnHigher = stopOnHigher,
+		matchAnyMode = matchAnyMode,
+		startTime = tick(),
+		attempts = 0,
+		totalSpent = 0
+	}
+	
+	-- Notify client
+	Remotes.Notify:FireClient(player, "Auto-enchanting started! Target: " .. table.concat(targetMutators, " + "), "Success")
+	
+	-- Start the auto-enchanting loop
+	task.spawn(function()
+		autoEnchantLoop(player, itemInstance, targetMutators, stopOnHigher, matchAnyMode)
+	end)
+end
+
+-- Stop auto-enchanting for a player
+local function stopAutoEnchanting(player)
+	local session = activeAutoEnchantSessions[player.UserId]
+	if session then
+		session.isRunning = false
+		activeAutoEnchantSessions[player.UserId] = nil
+		Remotes.Notify:FireClient(player, "Auto-enchanting stopped. Attempts: " .. session.attempts .. ", Total spent: " .. session.totalSpent .. " R$", "Info")
+		Remotes.AutoEnchantingProgress:FireClient(player, false, session.attempts, session.totalSpent, "")
+	end
+end
+
+-- Auto-enchanting loop
+function autoEnchantLoop(player, itemInstance, targetMutators, stopOnHigher, matchAnyMode)
+	local session = activeAutoEnchantSessions[player.UserId]
+	if not session then return end
+	
+	while session.isRunning do
+		-- Check if item still exists
+		if not session.itemInstance or not session.itemInstance.Parent then
+			Remotes.Notify:FireClient(player, "Auto-enchanting stopped: Item no longer exists.", "Error")
+			stopAutoEnchanting(player)
+			return
+		end
+		
+		-- Check if already has target mutators
+		if itemHasTargetMutators(session.itemInstance, session.targetMutators, session.stopOnHigher, session.matchAnyMode) then
+			Remotes.Notify:FireClient(player, "🎉 Auto-enchanting SUCCESS! Got target mutators: " .. table.concat(session.targetMutators, " + "), "Success")
+			stopAutoEnchanting(player)
+			return
+		end
+		
+		-- Get item config
+		local itemName = session.itemInstance:GetAttribute("ItemName") or session.itemInstance.Name
+		local itemConfig = GameConfig.Items[itemName]
+		if not itemConfig then
+			Remotes.Notify:FireClient(player, "Auto-enchanting stopped: Invalid item configuration.", "Error")
+			stopAutoEnchanting(player)
+			return
+		end
+		
+		-- Calculate cost
+		local cost = calculateSingleItemValue(session.itemInstance, itemConfig)
+		local currentRobux = player:GetAttribute("RobuxValue") or 0
+		
+		-- Check if player can afford
+		if currentRobux < cost then
+			Remotes.Notify:FireClient(player, "Auto-enchanting stopped: Not enough R$. Need " .. cost .. " R$", "Error")
+			stopAutoEnchanting(player)
+			return
+		end
+		
+		-- Perform reroll (similar to existing rerollMutators function)
+		PlayerDataService.UpdatePlayerRobux(player, currentRobux - cost)
+		session.attempts = session.attempts + 1
+		session.totalSpent = session.totalSpent + cost
+		
+		-- Generate new mutators
+		local newMutations = {}
+		local sortedMutations = {}
+		for name, data in pairs(GameConfig.Mutations) do
+			table.insert(sortedMutations, {name = name, chance = data.Chance})
+		end
+		table.sort(sortedMutations, function(a, b)
+			return a.chance < b.chance
+		end)
+
+		-- Roll for each mutation independently
+		for _, mutationInfo in ipairs(sortedMutations) do
+			local roll = math.random() * 100
+			if roll <= mutationInfo.chance then
+				table.insert(newMutations, mutationInfo.name)
+			end
+		end
+		
+		-- Apply new mutations
+		if #newMutations > 0 then
+			session.itemInstance:SetAttribute("Mutations", HttpService:JSONEncode(newMutations))
+			session.itemInstance:SetAttribute("Mutation", newMutations[1])
+		else
+			session.itemInstance:SetAttribute("Mutations", nil)
+			session.itemInstance:SetAttribute("Mutation", nil)
+		end
+		
+		-- Update player's RAP
+		PlayerDataService.UpdatePlayerRAP(player)
+		
+		-- Send progress update
+		local progressText = "Attempt #" .. session.attempts .. " | Spent: " .. session.totalSpent .. " R$"
+		local newMutatorNames = {}
+		for _, mutation in ipairs(newMutations) do
+			table.insert(newMutatorNames, mutation)
+		end
+		Remotes.AutoEnchantingProgress:FireClient(player, true, session.attempts, session.totalSpent, progressText, newMutatorNames)
+		
+		-- Check if target is met
+		if itemHasTargetMutators(session.itemInstance, session.targetMutators, session.stopOnHigher, session.matchAnyMode) then
+			Remotes.Notify:FireClient(player, "Target achieved!", "Success")
+			-- Send a final "stopped" event to the client to update the UI
+			Remotes.AutoEnchantingProgress:FireClient(player, false, session.attempts, session.totalSpent, "Target achieved!", newMutatorNames)
+			break
+		end
+		
+		-- Check if player can afford the next roll
+		if currentRobux < cost then
+			Remotes.Notify:FireClient(player, "Not enough money to continue auto-enchanting.", "Error")
+			-- Send a final "stopped" event
+			Remotes.AutoEnchantingProgress:FireClient(player, false, session.attempts, session.totalSpent, "Stopped: Not enough money.")
+			break
+		end
+		
+		task.wait(0.2) -- Small delay between attempts
+	end
+
+	-- Clean up the session after the loop is finished
+	activeAutoEnchantSessions[player.UserId] = nil
 end
 
 -- Handle ProximityPrompt trigger
@@ -234,7 +502,21 @@ function EnchanterService.Start()
 	Remotes.RerollMutators.OnServerEvent:Connect(rerollMutators)
 	Remotes.GetMutatorProbabilities.OnServerInvoke = getMutatorProbabilities
 	
+	-- Connect auto-enchanter remote events
+	Remotes.CheckAutoEnchanterGamepass.OnServerInvoke = checkAutoEnchanterGamepass
+	Remotes.StartAutoEnchanting.OnServerEvent:Connect(function(player, itemInstance, targetMutators, stopOnHigher, matchAnyMode)
+		EnchanterService:startAutoEnchanting(player, itemInstance, targetMutators, stopOnHigher, matchAnyMode)
+	end)
+	Remotes.StopAutoEnchanting.OnServerEvent:Connect(stopAutoEnchanting)
+	
 	print("[EnchanterService] Started successfully!")
 end
+
+-- Clean up auto-enchanting sessions when players leave
+Players.PlayerRemoving:Connect(function(player)
+	if activeAutoEnchantSessions[player.UserId] then
+		activeAutoEnchantSessions[player.UserId] = nil
+	end
+end)
 
 return EnchanterService 

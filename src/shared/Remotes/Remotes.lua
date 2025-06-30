@@ -55,4 +55,10 @@ return {
 	RerollMutators = createRemote("RemoteEvent", "RerollMutators"),
 	GetEnchanterData = createRemote("RemoteFunction", "GetEnchanterData"),
 	GetMutatorProbabilities = createRemote("RemoteFunction", "GetMutatorProbabilities"),
+	
+	-- Auto-Enchanter Remotes
+	CheckAutoEnchanterGamepass = createRemote("RemoteFunction", "CheckAutoEnchanterGamepass"),
+	StartAutoEnchanting = createRemote("RemoteEvent", "StartAutoEnchanting"),
+	StopAutoEnchanting = createRemote("RemoteEvent", "StopAutoEnchanting"),
+	AutoEnchantingProgress = createRemote("RemoteEvent", "AutoEnchantingProgress"),
 } 

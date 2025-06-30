@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
 local RunService = game:GetService("RunService")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 local LocalPlayer = Players.LocalPlayer
 local Shared = ReplicatedStorage.Shared
@@ -25,6 +26,14 @@ local hiddenUIs = {}
 local soundController = nil
 local isRolling = false
 local filteredItems = {}
+
+-- Auto-enchanting state
+local hasAutoEnchanterGamepass = false
+local selectedTargetMutators = {}
+local isAutoEnchanting = false
+local mutatorCheckboxes = {}
+local stopOnHigherRarity = false
+local matchAnyMode = false -- false = AND (default), true = OR
 
 local function hideOtherUIs(show)
 	local playerGui = LocalPlayer:WaitForChild("PlayerGui")
@@ -117,7 +126,32 @@ local function setup3DItemPreview(viewport, itemConfig)
 	end
 end
 
-local function updateSelectedItemDisplay(animateMutators)
+local function updateMutatorsDisplay(mutationNames, animate)
+	local mutatorsFrame = components.MutatorsScrollFrame
+	-- Clear existing mutators
+	for _, child in ipairs(mutatorsFrame:GetChildren()) do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	
+	if #mutationNames > 0 then
+		for _, mutationName in ipairs(mutationNames) do
+			local mutationConfig = GameConfig.Mutations[mutationName] or {Color = Color3.new(1,1,1), ValueMultiplier = 1}
+			local entry = EnchanterUI.CreateMutatorEntry(mutationName, mutationConfig)
+			entry.Parent = mutatorsFrame
+			if animate then
+				entry.BackgroundColor3 = Color3.fromRGB(255, 255, 120)
+				game:GetService("TweenService"):Create(entry, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {BackgroundColor3 = Color3.fromRGB(35, 40, 55)}):Play()
+			end
+		end
+	else
+		local entry = EnchanterUI.CreateMutatorEntry("No mutators", {Color = Color3.fromRGB(150,150,150), ValueMultiplier = 1})
+		entry.Parent = mutatorsFrame
+	end
+end
+
+local function updateSelectedItemDisplay()
 	if not components or not filteredItems or selectedItemIndex < 1 or selectedItemIndex > #filteredItems then return end
 	
 	local ItemValueCalculator = require(Shared.Modules.ItemValueCalculator)
@@ -135,7 +169,6 @@ local function updateSelectedItemDisplay(animateMutators)
 	-- Update selected item info
 	components.ItemNameLabel.Text = displayName
 	components.ItemValueLabel.Text = "Value: " .. NumberFormatter.FormatCurrency(itemData.value)
-	components.ItemTypeLabel.Text = "Type: " .. (itemData.itemConfig.Type or "UGC Item")
 	
 	local size = itemData.itemInstance:GetAttribute("Size") or 1
 	components.ItemSizeLabel.Text = "Size: " .. NumberFormatter.FormatSize(size)
@@ -156,61 +189,17 @@ local function updateSelectedItemDisplay(animateMutators)
 		components.RerollButton.AutoButtonColor = false
 	end
 	
-	-- Update mutators display with animation
-	local mutatorsFrame = components.MutatorsScrollFrame
-	for _, child in pairs(mutatorsFrame:GetChildren()) do
-		if child:IsA("Frame") then
-			if animateMutators then
-				-- Animate: flash color
-				local origColor = child.BackgroundColor3
-				child.BackgroundColor3 = Color3.fromRGB(255, 255, 120)
-				game:GetService("TweenService"):Create(child, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {BackgroundColor3 = origColor}):Play()
-			end
-			child:Destroy()
-		end
-	end
-	
-	if #mutationNames > 0 then
-		for _, mutationName in ipairs(mutationNames) do
-			local mutationConfig = GameConfig.Mutations[mutationName]
-			if mutationConfig then
-				local entry = EnchanterUI.CreateMutatorEntry(mutationName, mutationConfig)
-				entry.Parent = mutatorsFrame
-				if animateMutators then
-					entry.BackgroundColor3 = Color3.fromRGB(255, 255, 120)
-					game:GetService("TweenService"):Create(entry, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {BackgroundColor3 = Color3.fromRGB(35, 40, 55)}):Play()
-				end
-			end
-		end
-	else
-		-- Show "No mutators" entry
-		local noMutatorsEntry = Instance.new("Frame")
-		noMutatorsEntry.Name = "NoMutatorsEntry"
-		noMutatorsEntry.Size = UDim2.new(1, -10, 0, 25)
-		noMutatorsEntry.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-		noMutatorsEntry.BorderSizePixel = 0
-		noMutatorsEntry.ZIndex = 54
-		noMutatorsEntry.Parent = mutatorsFrame
-		
-		local entryCorner = Instance.new("UICorner")
-		entryCorner.CornerRadius = UDim.new(0, 6)
-		entryCorner.Parent = noMutatorsEntry
-		
-		local noMutatorsLabel = Instance.new("TextLabel")
-		noMutatorsLabel.Size = UDim2.new(1, -10, 1, 0)
-		noMutatorsLabel.Position = UDim2.new(0, 5, 0, 0)
-		noMutatorsLabel.Text = "No mutators (1x value)"
-		noMutatorsLabel.Font = Enum.Font.SourceSans
-		noMutatorsLabel.TextSize = 12
-		noMutatorsLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-		noMutatorsLabel.TextXAlignment = Enum.TextXAlignment.Left
-		noMutatorsLabel.BackgroundTransparency = 1
-		noMutatorsLabel.ZIndex = 55
-		noMutatorsLabel.Parent = noMutatorsEntry
-	end
+	-- Update mutators display
+	updateMutatorsDisplay(mutationNames, false)
 	
 	-- Setup 3D preview
 	setup3DItemPreview(components.ItemViewport, itemData.itemConfig)
+end
+
+local function hideItemSelectionPopup()
+	if not components then return end
+	
+	components.ItemSelectionPopup.Visible = false
 end
 
 local function populateItemSelection()
@@ -229,11 +218,11 @@ local function populateItemSelection()
 		noResults.Size = UDim2.new(1, -10, 0, 40)
 		noResults.Position = UDim2.new(0, 5, 0, 0)
 		noResults.Text = "No items found."
-		noResults.Font = Enum.Font.SourceSans
+		noResults.Font = Enum.Font.Gotham
 		noResults.TextSize = 16
 		noResults.TextColor3 = Color3.fromRGB(200, 200, 200)
 		noResults.BackgroundTransparency = 1
-		noResults.ZIndex = 54
+		noResults.ZIndex = 103
 		noResults.Parent = components.ItemSelectionFrame
 		return
 	end
@@ -245,18 +234,33 @@ local function populateItemSelection()
 
 	-- Create selection entries for each item
 	for index, itemData in ipairs(filteredItems) do
-		local entry = EnchanterUI.CreateItemSelectionEntry(itemData, index == selectedItemIndex)
+		local entry = EnchanterUI.CreateItemEntry(itemData)
 		entry.Parent = components.ItemSelectionFrame
 		entry.MouseButton1Click:Connect(function()
 			selectedItemIndex = index
-			populateItemSelection() -- Refresh selection display
 			updateSelectedItemDisplay() -- Update selected item display
+			hideItemSelectionPopup() -- Close the popup after selection
 			if soundController then
 				soundController:playUIClick()
 			end
 		end)
 	end
 end
+
+local function showItemSelectionPopup()
+	if not components then return end
+	
+	-- Show popup
+	components.ItemSelectionPopup.Visible = true
+	
+	-- Populate the item list
+	populateItemSelection()
+	
+	-- Clear search box
+	components.SearchBox.Text = ""
+end
+
+
 
 local function showInfoPopup()
 	if not components then return end
@@ -302,8 +306,6 @@ local function showInfoPopup()
 		local entry = EnchanterUI.CreateInfoEntry(mutatorName, mutatorConfig)
 		entry.Parent = infoFrame
 	end
-	
-	
 end
 
 local function hideInfoPopup()
@@ -336,9 +338,156 @@ local function updateItemListFromSearch()
 			end
 		end
 	end
-	selectedItemIndex = 1
-	populateItemSelection()
+	populateItemSelection() -- Refresh the popup list
+end
+
+-- Update auto-enchanter UI based on gamepass ownership
+local function updateAutoEnchanterUI()
+	if not components then return end
+	
+	local hasSelection = false
+	for _, v in pairs(selectedTargetMutators) do
+		if v then
+			hasSelection = true
+			break
+		end
+	end
+	local canAfford = false
+	if filteredItems and selectedItemIndex >= 1 and selectedItemIndex <= #filteredItems then
+		local selectedItem = filteredItems[selectedItemIndex]
+		canAfford = (LocalPlayer:GetAttribute("RobuxValue") or 0) >= (selectedItem.value or 0)
+	end
+
+	-- Update visuals for all checkboxes based on gamepass ownership
+	for _, checkbox in pairs(mutatorCheckboxes) do
+		checkbox.Parent.Transparency = hasAutoEnchanterGamepass and 0 or 0.5
+	end
+
+	-- Update auto-enchant button state
+	if isAutoEnchanting then
+		components.AutoEnchantButton.Visible = false
+		components.StopAutoEnchantButton.Visible = true
+	else
+		components.AutoEnchantButton.Visible = true
+		components.StopAutoEnchantButton.Visible = false
+		
+		if hasAutoEnchanterGamepass then
+			if hasSelection and canAfford then
+				components.AutoEnchantButton.BackgroundColor3 = Color3.fromRGB(80, 170, 80)
+				components.AutoEnchantButton.Text = "▶ Start Auto-Enchanting"
+				components.AutoEnchantButton.AutoButtonColor = true
+			else
+				components.AutoEnchantButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+				components.AutoEnchantButton.Text = "Select an Item & Target"
+				components.AutoEnchantButton.AutoButtonColor = false
+			end
+		else
+			components.AutoEnchantButton.BackgroundColor3 = Color3.fromRGB(224, 172, 53)
+			components.AutoEnchantButton.Text = "🔑 Get Auto-Enchanter"
+			components.AutoEnchantButton.AutoButtonColor = true
+		end
+	end
+end
+
+-- Check gamepass ownership and update UI
+local function checkGamepassOwnership()
+	if not Remotes.CheckAutoEnchanterGamepass then
+		warn("CheckAutoEnchanterGamepass remote not available yet, retrying in 2 seconds...")
+		hasAutoEnchanterGamepass = false
+		updateAutoEnchanterUI()
+		
+		-- Retry after a delay in a separate task
+		task.spawn(function()
+			task.wait(2)
+			if Remotes.CheckAutoEnchanterGamepass then
+				checkGamepassOwnership() -- Recursive retry
+			end
+		end)
+		return
+	end
+	
+	local success, ownsGamepass = pcall(function()
+		return Remotes.CheckAutoEnchanterGamepass:InvokeServer()
+	end)
+	
+	if success then
+		hasAutoEnchanterGamepass = ownsGamepass
+	else
+		hasAutoEnchanterGamepass = false
+		warn("Failed to check gamepass ownership:", ownsGamepass)
+	end
+	
+	updateAutoEnchanterUI()
+end
+
+-- Populate mutator selection checkboxes
+local function populateMutatorSelection()
+	if not components or not components.MutatorSelectionFrame then return end
+	
+	-- Clear existing checkboxes
+	for _, child in pairs(components.MutatorSelectionFrame:GetChildren()) do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+	mutatorCheckboxes = {}
+	
+	-- Add checkbox for each mutator
+	for mutatorName, mutatorConfig in pairs(GameConfig.Mutations) do
+		local isSelected = selectedTargetMutators[mutatorName] or false
+		local entry, checkbox = EnchanterUI.CreateMutatorCheckboxEntry(mutatorName, mutatorConfig, isSelected)
+		entry.Parent = components.MutatorSelectionFrame
+		mutatorCheckboxes[mutatorName] = checkbox
+		
+		-- Connect checkbox click
+		checkbox.MouseButton1Click:Connect(function()
+			if not hasAutoEnchanterGamepass then
+				promptGamepassPurchase()
+				return
+			end
+			
+			if soundController then
+				soundController:playUIClick()
+			end
+			
+			selectedTargetMutators[mutatorName] = not (selectedTargetMutators[mutatorName] or false)
+			local newState = selectedTargetMutators[mutatorName]
+			
+			checkbox.BackgroundColor3 = newState and Color3.fromRGB(88, 189, 88) or Color3.fromRGB(40, 40, 50)
+			checkbox.Text = newState and "✓" or ""
+			
+			updateAutoEnchanterUI()
+		end)
+	end
+end
+
+-- Handle auto-enchanting progress updates
+local function handleAutoEnchantingProgress(isRunning, attempts, totalSpent, progressText, newMutatorNames)
+	if not components then return end
+	
+	isAutoEnchanting = isRunning
+	updateAutoEnchanterUI()
+	
+	if isRunning then
+		-- While running, show live progress and mutators
+		components.ProgressLabel.Text = progressText
+		if newMutatorNames then
+			updateMutatorsDisplay(newMutatorNames, true)
+		end
+	else
+		-- When stopped, show the final message and refresh the static item display.
+		components.ProgressLabel.Text = progressText -- Show the final status (e.g., "Target achieved!")
+		
+		-- After a short delay, clear the final message
+		task.delay(3, function()
+			if not isAutoEnchanting then -- Make sure another session hasn't started
+				components.ProgressLabel.Text = ""
+			end
+		end)
+		
+		-- Refresh the main display to show the final, static mutators
 	updateSelectedItemDisplay()
+	end
 end
 
 function EnchanterController:Start()
@@ -362,20 +511,36 @@ function EnchanterController:SetupConnections()
 		self:Hide()
 	end)
 	
-	-- Info button connection
-	components.InfoButton.MouseButton1Click:Connect(function()
+	-- Info button connection (disabled for now - components don't exist)
+	-- components.InfoButton.MouseButton1Click:Connect(function()
+	-- 	if soundController then
+	-- 		soundController:playUIClick()
+	-- 	end
+	-- 	showInfoPopup()
+	-- end)
+	
+	-- Info close button connection (disabled for now - components don't exist)
+	-- components.InfoCloseButton.MouseButton1Click:Connect(function()
+	-- 	if soundController then
+	-- 		soundController:playUIClick()
+	-- 	end
+	-- 	hideInfoPopup()
+	-- end)
+
+	-- Select Item button connection
+	components.SelectItemButton.MouseButton1Click:Connect(function()
 		if soundController then
 			soundController:playUIClick()
 		end
-		showInfoPopup()
+		showItemSelectionPopup()
 	end)
 	
-	-- Info close button connection
-	components.InfoCloseButton.MouseButton1Click:Connect(function()
+	-- Popup close button connection
+	components.PopupCloseButton.MouseButton1Click:Connect(function()
 		if soundController then
 			soundController:playUIClick()
 		end
-		hideInfoPopup()
+		hideItemSelectionPopup()
 	end)
 	
 	-- Reroll button connection
@@ -502,7 +667,7 @@ function EnchanterController:SetupConnections()
 			end
 			-- Animate mutator change and update value
 			updateSelectedItemDisplay(true)
-			populateItemSelection() -- Refresh the item selection list so the name/mutators update
+			-- populateItemSelection() -- Not needed - only for popup refresh
 			-- Re-equip if it was equipped before
 			if wasEquipped then
 				local itemName = selectedItem.itemName
@@ -551,6 +716,115 @@ function EnchanterController:SetupConnections()
 	if components and components.SearchBox then
 		components.SearchBox:GetPropertyChangedSignal("Text"):Connect(updateItemListFromSearch)
 	end
+	
+	-- Auto-enchanting button connections
+	components.AutoEnchantButton.MouseButton1Click:Connect(function()
+		if not hasAutoEnchanterGamepass then
+			promptGamepassPurchase()
+			return
+		end
+
+		if isAutoEnchanting then return end
+		
+		if not filteredItems or selectedItemIndex < 1 or selectedItemIndex > #filteredItems then
+			if soundController then
+				soundController:playUIClick()
+			end
+			return
+		end
+		
+		-- Check if remote exists
+		if not Remotes.StartAutoEnchanting then
+			warn("StartAutoEnchanting remote not available")
+			return
+		end
+		
+		-- Get selected target mutators
+		local targetMutators = {}
+		for mutatorName, selected in pairs(selectedTargetMutators) do
+			if selected then
+				table.insert(targetMutators, mutatorName)
+			end
+		end
+		
+		if #targetMutators == 0 then
+			if soundController then
+				soundController:playUIClick()
+			end
+			return
+		end
+		
+		local selectedItem = filteredItems[selectedItemIndex]
+		if soundController then
+			soundController:playUIClick()
+		end
+		
+		-- Start auto-enchanting
+		Remotes.StartAutoEnchanting:FireServer(selectedItem.itemInstance, targetMutators, stopOnHigherRarity, matchAnyMode)
+	end)
+	
+	components.StopAutoEnchantButton.MouseButton1Click:Connect(function()
+		if soundController then
+			soundController:playUIClick()
+		end
+		
+		-- Check if remote exists
+		if not Remotes.StopAutoEnchanting then
+			warn("StopAutoEnchanting remote not available")
+			return
+		end
+		
+		Remotes.StopAutoEnchanting:FireServer()
+	end)
+	
+	-- Connect "Or Higher" toggle switch
+	components.OrHigherSwitch.MouseButton1Click:Connect(function()
+		if not hasAutoEnchanterGamepass then
+			promptGamepassPurchase()
+			return
+		end
+
+		stopOnHigherRarity = not stopOnHigherRarity
+		
+		local knob = components.OrHigherSwitchKnob
+		local sw = components.OrHigherSwitch
+		
+		if stopOnHigherRarity then
+			sw.BackgroundColor3 = Color3.fromRGB(80, 170, 80)
+			TweenService:Create(knob, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Position = UDim2.new(1, -18, 0.5, -8)}):Play()
+		else
+			sw.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+			TweenService:Create(knob, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Position = UDim2.new(0, 2, 0.5, -8)}):Play()
+		end
+	end)
+	
+	-- Connect auto-enchanting progress updates
+	if Remotes.AutoEnchantingProgress then
+		Remotes.AutoEnchantingProgress.OnClientEvent:Connect(handleAutoEnchantingProgress)
+	else
+		warn("AutoEnchantingProgress remote not available for connection")
+	end
+
+	-- Connect match mode switch
+	components.MatchModeSwitch.MouseButton1Click:Connect(function()
+		if not hasAutoEnchanterGamepass then
+			promptGamepassPurchase()
+			return
+		end
+		matchAnyMode = not matchAnyMode
+		local knob = components.MatchModeSwitchKnob
+		local sw = components.MatchModeSwitch
+		local label = components.MatchModeFrame:FindFirstChild("MatchModeLabel")
+		if matchAnyMode then
+			sw.BackgroundColor3 = Color3.fromRGB(80, 170, 80)
+			TweenService:Create(knob, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Position = UDim2.new(1, -18, 0.5, -8)}):Play()
+			if label then label.Text = "Match Any (OR)" end
+		else
+			sw.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+			TweenService:Create(knob, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Position = UDim2.new(0, 2, 0.5, -8)}):Play()
+			if label then label.Text = "Match All (AND)" end
+		end
+	end)
 end
 
 function EnchanterController:Show(itemsList)
@@ -564,8 +838,18 @@ function EnchanterController:Show(itemsList)
 	selectedItemIndex = 1 -- Start with first item selected
 	isVisible = true
 	hideOtherUIs(true)
-	populateItemSelection()
+	
+	-- Hide the popup by default
+	hideItemSelectionPopup()
+	
+	-- Update the selected item display
 	updateSelectedItemDisplay()
+	
+	-- Initialize auto-enchanting features
+	checkGamepassOwnership()
+	populateMutatorSelection()
+	updateAutoEnchanterUI()
+	
 	components.MainFrame.Visible = true
 	-- Animate the UI appearing
 	components.MainFrame.Size = UDim2.new(0, 0, 0, 0)
@@ -574,8 +858,8 @@ function EnchanterController:Show(itemsList)
 		components.MainFrame,
 		TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
 		{
-			Size = UDim2.new(0.7, 0, 0.8, 0),
-			Position = UDim2.new(0.15, 0, 0.1, 0)
+			Size = UDim2.new(0.75, 0, 0.85, 0),
+			Position = UDim2.new(0.125, 0, 0.075, 0)
 		}
 	)
 	showTween:Play()
@@ -586,7 +870,13 @@ function EnchanterController:Hide()
 	
 	isVisible = false
 	hideOtherUIs(false)
-	hideInfoPopup()
+	-- hideInfoPopup() -- Disabled - components don't exist
+	hideItemSelectionPopup() -- Also hide the item selection popup
+	
+	-- Stop any ongoing auto-enchanting
+	if isAutoEnchanting then
+		Remotes.StopAutoEnchanting:FireServer()
+	end
 	
 	-- Animate the UI disappearing
 	local hideTween = TweenService:Create(
@@ -603,6 +893,10 @@ function EnchanterController:Hide()
 		components.MainFrame.Visible = false
 		availableItems = {}
 		selectedItemIndex = 1
+		-- Reset auto-enchanting state
+		selectedTargetMutators = {}
+		isAutoEnchanting = false
+		mutatorCheckboxes = {}
 	end)
 end
 
@@ -614,10 +908,24 @@ function EnchanterController:SetSoundController(controller)
 	soundController = controller
 end
 
+local function promptGamepassPurchase()
+	MarketplaceService:PromptGamePassPurchase(LocalPlayer, GameConfig.AutoEnchanterGamepassId)
+end
+
 -- Handle enchanter open requests from server
 Remotes.OpenEnchanter.OnClientEvent:Connect(function(itemsList)
 	if EnchanterController.Show then
 		EnchanterController:Show(itemsList)
+	end
+end)
+
+-- Handle gamepass purchase finished
+MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamepassId, wasPurchased)
+	if gamepassId == GameConfig.AutoEnchanterGamepassId and wasPurchased then
+		hasAutoEnchanterGamepass = true
+		updateAutoEnchanterUI()
+		-- Maybe show a "Thank you" message
+		Remotes.Notify:FireClient(LocalPlayer, "Gamepass purchased! Auto-Enchanter is now enabled.", "Success")
 	end
 end)
 
