@@ -283,13 +283,7 @@ local function showInfoPopup()
 	introLabel.BackgroundTransparency = 1
 	introLabel.ZIndex = 103
 	introLabel.Parent = infoFrame
-	
-	-- Add all mutator probability entries
-	for mutatorName, mutatorConfig in pairs(GameConfig.Mutations) do
-		local entry = EnchanterUI.CreateInfoEntry(mutatorName, mutatorConfig)
-		entry.Parent = infoFrame
-	end
-	
+
 	-- Add bottom explanation
 	local explanationLabel = Instance.new("TextLabel")
 	explanationLabel.Name = "ExplanationLabel"
@@ -302,6 +296,14 @@ local function showInfoPopup()
 	explanationLabel.BackgroundTransparency = 1
 	explanationLabel.ZIndex = 103
 	explanationLabel.Parent = infoFrame
+	
+	-- Add all mutator probability entries
+	for mutatorName, mutatorConfig in pairs(GameConfig.Mutations) do
+		local entry = EnchanterUI.CreateInfoEntry(mutatorName, mutatorConfig)
+		entry.Parent = infoFrame
+	end
+	
+	
 end
 
 local function hideInfoPopup()

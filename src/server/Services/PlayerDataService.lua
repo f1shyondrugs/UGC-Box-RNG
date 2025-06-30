@@ -147,9 +147,13 @@ local function updatePlayerRobux(player, value)
 	player:SetAttribute("RobuxValue", value)
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if leaderstats then
-		local robux = leaderstats:FindFirstChild("R$")
-		if robux then
-			robux.Value = NumberFormatter.FormatNumber(value)
+		local robuxNumber = leaderstats:FindFirstChild("R$")
+		if robuxNumber then
+			robuxNumber.Value = NumberFormatter.FormatNumber(value)
+		end
+		local robuxDisplay = leaderstats:FindFirstChild("R$ Display")
+		if robuxDisplay then
+			robuxDisplay.Value = NumberFormatter.FormatNumber(value)
 		end
 	end
 end

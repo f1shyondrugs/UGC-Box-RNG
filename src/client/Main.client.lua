@@ -247,12 +247,8 @@ local function onBoxAdded(boxPart)
 		end
 		isTriggered = true
 		
-		-- Properly disable and remove the prompt 
+		-- Only disable the prompt, do not modify other properties
 		prompt.Enabled = false
-		prompt.MaxActivationDistance = 0
-		prompt.RequiresLineOfSight = true
-		prompt.ActionText = ""
-		prompt.ObjectText = ""
 		
 		-- Mark the box as being opened
 		boxPart:SetAttribute("IsOpening", true)

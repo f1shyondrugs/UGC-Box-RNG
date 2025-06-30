@@ -15,12 +15,13 @@ Config.Rarities = {
     Godly = { Color = Color3.fromRGB(255, 215, 0) },
     
     -- Ultra-Premium Limited Rarities
-    Limited = { Color = Color3.fromRGB(255, 20, 147) },      -- Deep Pink - For classic limiteds
+    Limited = { Color = Color3.fromRGB(255, 20, 147) },     -- Deep Pink - For classic limiteds
     Vintage = { Color = Color3.fromRGB(184, 134, 11) },     -- Antique Gold - For vintage items
     Exclusive = { Color = Color3.fromRGB(138, 43, 226) },   -- Blue Violet - For exclusive limiteds
     Ultimate = { Color = Color3.fromRGB(255, 0, 0) },       -- Pure Red - For ultimate limiteds
     Dominus = { Color = Color3.fromRGB(0, 0, 0) },          -- Pure Black - For Dominus items only
     BRAINROT = { Color = Color3.fromRGB(180, 0, 255) },     -- Purple-pink for brainrot meme rarity
+    Huzz = { Color = Color3.fromRGB(255, 182, 193) },       -- Pink for huzz items
 }
 
 Config.Items = {
@@ -635,6 +636,62 @@ Config.Items = {
         Type = "Hat",
         Description = "Lirili Larila, the sound of brainrot intensifies."
     },
+    ["Girl Companion"] = {
+        Rarity = "Huzz",
+        Value = 1000000000000, -- 1T (loss)
+        AssetId = 78040751853297,
+        Type = "Hat",
+        Description = "A loyal anime girl companion."
+    },
+    ["Cat Girl Companion"] = {
+        Rarity = "Huzz",
+        Value = 1200000000000, -- 1.2T (loss)
+        AssetId = 96175704117932,
+        Type = "Hat",
+        Description = "A cute cat girl companion."
+    },
+    ["Goth Girl Companion"] = {
+        Rarity = "Huzz",
+        Value = 1500000000000, -- 1.5T (loss)
+        AssetId = 72315510542194,
+        Type = "Hat",
+        Description = "A mysterious goth girl companion."
+    },
+    ["Cute Girl Companion"] = {
+        Rarity = "Huzz",
+        Value = 2000000000000, -- 2T (loss)
+        AssetId = 76983254345484,
+        Type = "Hat",
+        Description = "A cute anime girl companion."
+    },
+    ["Furry Anime Girl Waifu"] = {
+        Rarity = "Huzz",
+        Value = 2500000000000, -- 2.5T (even)
+        AssetId = 94263375860746,
+        Type = "Hat",
+        Description = "A furry anime girl waifu."
+    },
+    ["Wizard Girl Companion"] = {
+        Rarity = "Huzz",
+        Value = 4000000000000, -- 5T (win)
+        AssetId = 133759958641927,
+        Type = "Hat",
+        Description = "A magical wizard girl companion."
+    },
+    ["Cat Maid Girl Companion"] = {
+        Rarity = "Huzz",
+        Value = 6000000000000, -- 7.5T (win)
+        AssetId = 92407941953530,
+        Type = "Hat",
+        Description = "A cat maid girl companion."
+    },
+    ["Astolfo Companion"] = {
+        Rarity = "Huzz",
+        Value = 8000000000000, -- 10T (jackpot)
+        AssetId = 102686235137722,
+        Type = "Hat",
+        Description = "Astolfo, the legendary companion."
+    },
 }
 
 Config.Mutations = {
@@ -797,6 +854,20 @@ Config.Boxes = {
             ["Plain T-Shirt"] = 20,     -- 15 value
             ["Simple Pants"] = 4,       -- 20 value
             ["Basic Glasses"] = 1,      -- 25 value
+        },
+    },
+    ["HuzzCrate"] = {
+        Name = "💖 Huzz Crate",
+        Price = 2500000000000,
+        Rewards = {
+            ["Girl Companion"] = 25,         -- 1T (loss)
+            ["Cat Girl Companion"] = 19,     -- 1.2T (loss)
+            ["Goth Girl Companion"] = 15,    -- 1.5T (loss)
+            ["Cute Girl Companion"] = 15,    -- 2T (loss)
+            ["Furry Anime Girl Waifu"] = 10,  -- 2.5T (even)
+            ["Wizard Girl Companion"] = 10,   -- 5T (win)
+            ["Cat Maid Girl Companion"] = 5, -- 7.5T (win)
+            ["Astolfo Companion"] = 1,       -- 10T (jackpot)
         },
     },
 }
