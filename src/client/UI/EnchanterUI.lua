@@ -255,7 +255,7 @@ function EnchanterUI.Create(parentGui)
 	selectItemButton.Name = "SelectItemButton"
 	selectItemButton.Size = UDim2.new(1, 0, 0, 50)
 	selectItemButton.BackgroundColor3 = Color3.fromRGB(80, 120, 180)
-	selectItemButton.Text = "📦 Select Item to Enchant"
+	selectItemButton.Text = "📦 Choose Item from Inventory"
 	selectItemButton.Font = Enum.Font.GothamBold
 	selectItemButton.TextSize = 18
 	selectItemButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -841,14 +841,14 @@ function EnchanterUI.Create(parentGui)
 		rightPanel.Position = UDim2.new(0.6, 10, 0, 0)
 	end
 
-	-- === ITEM SELECTION POPUP ===
+	-- === ITEM SELECTION POPUP === (Hidden - using inventory UI instead)
 	local itemSelectionPopup = Instance.new("Frame")
 	itemSelectionPopup.Name = "ItemSelectionPopup"
 	itemSelectionPopup.Size = UDim2.new(0, 600, 0, 500)
 	itemSelectionPopup.Position = UDim2.new(0.5, -300, 0.5, -250)
 	itemSelectionPopup.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
 	itemSelectionPopup.BorderSizePixel = 0
-	itemSelectionPopup.Visible = false
+	itemSelectionPopup.Visible = false -- Always hidden now
 	itemSelectionPopup.ZIndex = 100
 	itemSelectionPopup.Parent = screenGui
 	components.ItemSelectionPopup = itemSelectionPopup
@@ -966,6 +966,111 @@ function EnchanterUI.Create(parentGui)
 	selectionLayout.CellPadding = UDim2.new(0, 5, 0, 5)
 	selectionLayout.CellSize = UDim2.new(0.5, -3, 0, 50)
 	selectionLayout.Parent = itemSelectionFrame
+
+	-- === INFO POPUP ===
+	local infoPopup = Instance.new("Frame")
+	infoPopup.Name = "InfoPopup"
+	infoPopup.Size = UDim2.new(0, 500, 0, 400)
+	infoPopup.Position = UDim2.new(0.5, -250, 0.5, -200)
+	infoPopup.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+	infoPopup.BorderSizePixel = 0
+	infoPopup.Visible = false
+	infoPopup.ZIndex = 200
+	infoPopup.Parent = screenGui
+	components.InfoPopup = infoPopup
+
+	local infoPopupCorner = Instance.new("UICorner")
+	infoPopupCorner.CornerRadius = UDim.new(0, 16)
+	infoPopupCorner.Parent = infoPopup
+
+	local infoPopupGradient = Instance.new("UIGradient")
+	infoPopupGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 24, 35)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(15, 18, 28)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 12, 18))
+	}
+	infoPopupGradient.Rotation = 135
+	infoPopupGradient.Parent = infoPopup
+
+	-- Info Popup Title Bar
+	local infoTitleBar = Instance.new("Frame")
+	infoTitleBar.Name = "InfoTitleBar"
+	infoTitleBar.Size = UDim2.new(1, 0, 0, 50)
+	infoTitleBar.BackgroundColor3 = Color3.fromRGB(35, 40, 55)
+	infoTitleBar.BorderSizePixel = 0
+	infoTitleBar.ZIndex = 201
+	infoTitleBar.Parent = infoPopup
+
+	local infoTitleCorner = Instance.new("UICorner")
+	infoTitleCorner.CornerRadius = UDim.new(0, 16)
+	infoTitleCorner.Parent = infoTitleBar
+
+	local infoTitleGradient = Instance.new("UIGradient")
+	infoTitleGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 45, 75)),
+		ColorSequenceKeypoint.new(0.3, Color3.fromRGB(40, 35, 60)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 45))
+	}
+	infoTitleGradient.Rotation = 110
+	infoTitleGradient.Parent = infoTitleBar
+
+	-- Info popup title
+	local infoTitle = Instance.new("TextLabel")
+	infoTitle.Name = "InfoTitle"
+	infoTitle.Size = UDim2.new(1, -50, 1, 0)
+	infoTitle.Position = UDim2.new(0, 15, 0, 0)
+	infoTitle.Text = "📊 Mutator Probabilities"
+	infoTitle.Font = Enum.Font.GothamBold
+	infoTitle.TextSize = 18
+	infoTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+	infoTitle.TextXAlignment = Enum.TextXAlignment.Left
+	infoTitle.TextYAlignment = Enum.TextYAlignment.Center
+	infoTitle.BackgroundTransparency = 1
+	infoTitle.ZIndex = 202
+	infoTitle.Parent = infoTitleBar
+
+	-- Info popup close button
+	local infoCloseButton = Instance.new("TextButton")
+	infoCloseButton.Name = "InfoCloseButton"
+	infoCloseButton.Size = UDim2.new(0, 35, 0, 35)
+	infoCloseButton.Position = UDim2.new(1, -42, 0.5, -17.5)
+	infoCloseButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+	infoCloseButton.Text = "✕"
+	infoCloseButton.Font = Enum.Font.GothamBold
+	infoCloseButton.TextSize = 14
+	infoCloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	infoCloseButton.ZIndex = 202
+	infoCloseButton.Parent = infoTitleBar
+	components.InfoCloseButton = infoCloseButton
+
+	local infoCloseCorner = Instance.new("UICorner")
+	infoCloseCorner.CornerRadius = UDim.new(0, 17.5)
+	infoCloseCorner.Parent = infoCloseButton
+
+	-- Info Scroll Frame
+	local infoScrollFrame = Instance.new("ScrollingFrame")
+	infoScrollFrame.Name = "InfoScrollFrame"
+	infoScrollFrame.Size = UDim2.new(1, -30, 1, -70)
+	infoScrollFrame.Position = UDim2.new(0, 15, 0, 60)
+	infoScrollFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	infoScrollFrame.BorderSizePixel = 0
+	infoScrollFrame.ScrollBarThickness = 6
+	infoScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 120)
+	infoScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+	infoScrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	infoScrollFrame.ZIndex = 201
+	infoScrollFrame.Parent = infoPopup
+	components.InfoScrollFrame = infoScrollFrame
+
+	local infoScrollCorner = Instance.new("UICorner")
+	infoScrollCorner.CornerRadius = UDim.new(0, 10)
+	infoScrollCorner.Parent = infoScrollFrame
+
+	local infoScrollLayout = Instance.new("UIListLayout")
+	infoScrollLayout.Padding = UDim.new(0, 5)
+	infoScrollLayout.FillDirection = Enum.FillDirection.Vertical
+	infoScrollLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	infoScrollLayout.Parent = infoScrollFrame
 
 	components.UpdateScale = function()
 		uiScale.Scale = calculateUIScale()
@@ -1197,6 +1302,103 @@ function EnchanterUI.CreateMutatorCheckboxEntry(mutatorName, mutatorConfig, isSe
 	chanceLabel.Parent = chanceContainer
 	
 	return entry, checkbox
+end
+
+-- Create info entry for mutator probability display
+function EnchanterUI.CreateInfoEntry(mutatorName, mutatorConfig)
+	local entry = Instance.new("Frame")
+	entry.Name = mutatorName .. "InfoEntry"
+	entry.Size = UDim2.new(1, -10, 0, 30)
+	entry.BackgroundColor3 = Color3.fromRGB(35, 40, 55)
+	entry.BorderSizePixel = 0
+	entry.ZIndex = 202
+	
+	local entryCorner = Instance.new("UICorner")
+	entryCorner.CornerRadius = UDim.new(0, 8)
+	entryCorner.Parent = entry
+	
+	local entryGradient = Instance.new("UIGradient")
+	entryGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 45, 60)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 35, 50))
+	}
+	entryGradient.Rotation = 90
+	entryGradient.Parent = entry
+	
+	local entryStroke = Instance.new("UIStroke")
+	entryStroke.Color = Color3.fromRGB(50, 60, 80)
+	entryStroke.Thickness = 1
+	entryStroke.Transparency = 0.7
+	entryStroke.Parent = entry
+	
+	-- Mutator name label
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Name = "NameLabel"
+	nameLabel.Size = UDim2.new(0.6, 0, 1, 0)
+	nameLabel.Position = UDim2.new(0, 10, 0, 0)
+	nameLabel.Text = mutatorName
+	nameLabel.Font = Enum.Font.GothamMedium
+	nameLabel.TextSize = 12
+	nameLabel.TextColor3 = mutatorConfig.Color or Color3.fromRGB(255, 255, 255)
+	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+	nameLabel.TextYAlignment = Enum.TextYAlignment.Center
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.ZIndex = 203
+	nameLabel.Parent = entry
+	
+	-- Value multiplier label
+	local multiplierLabel = Instance.new("TextLabel")
+	multiplierLabel.Name = "MultiplierLabel"
+	multiplierLabel.Size = UDim2.new(0.2, 0, 1, 0)
+	multiplierLabel.Position = UDim2.new(0.6, 0, 0, 0)
+	multiplierLabel.Text = (mutatorConfig.ValueMultiplier or 1) .. "x"
+	multiplierLabel.Font = Enum.Font.GothamBold
+	multiplierLabel.TextSize = 11
+	multiplierLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+	multiplierLabel.TextXAlignment = Enum.TextXAlignment.Center
+	multiplierLabel.TextYAlignment = Enum.TextYAlignment.Center
+	multiplierLabel.BackgroundTransparency = 1
+	multiplierLabel.ZIndex = 203
+	multiplierLabel.Parent = entry
+	
+	-- Probability container
+	local probabilityContainer = Instance.new("Frame")
+	probabilityContainer.Name = "ProbabilityContainer"
+	probabilityContainer.Size = UDim2.new(0, 50, 0, 18)
+	probabilityContainer.Position = UDim2.new(1, -60, 0.5, -9)
+	probabilityContainer.BackgroundColor3 = Color3.fromRGB(60, 80, 120)
+	probabilityContainer.BorderSizePixel = 0
+	probabilityContainer.ZIndex = 203
+	probabilityContainer.Parent = entry
+	
+	local probabilityCorner = Instance.new("UICorner")
+	probabilityCorner.CornerRadius = UDim.new(0.5, 0)
+	probabilityCorner.Parent = probabilityContainer
+	
+	local probabilityGradient = Instance.new("UIGradient")
+	probabilityGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(70, 90, 130)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 70, 110))
+	}
+	probabilityGradient.Rotation = 90
+	probabilityGradient.Parent = probabilityContainer
+	
+	-- Probability label
+	local probabilityLabel = Instance.new("TextLabel")
+	probabilityLabel.Name = "ProbabilityLabel"
+	probabilityLabel.Size = UDim2.new(1, 0, 1, 0)
+	probabilityLabel.Position = UDim2.new(0, 0, 0, 0)
+	probabilityLabel.Text = (mutatorConfig.Chance or 0) .. "%"
+	probabilityLabel.Font = Enum.Font.GothamBold
+	probabilityLabel.TextSize = 9
+	probabilityLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	probabilityLabel.TextXAlignment = Enum.TextXAlignment.Center
+	probabilityLabel.TextYAlignment = Enum.TextYAlignment.Center
+	probabilityLabel.BackgroundTransparency = 1
+	probabilityLabel.ZIndex = 204
+	probabilityLabel.Parent = probabilityContainer
+	
+	return entry
 end
 
 return EnchanterUI 

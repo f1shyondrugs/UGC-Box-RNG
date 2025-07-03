@@ -66,8 +66,8 @@ function SettingsUI.Create(parentGui)
 	mainFrame.Name = "SettingsMainFrame"
 	mainFrame.Size = UDim2.new(1, -60, 1, -60) -- Add 30px margin on all sides
 	mainFrame.Position = UDim2.new(0, 30, 0, 30) -- Center with 30px offset
-	mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-	mainFrame.BackgroundTransparency = 0.05
+	mainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+	mainFrame.BackgroundTransparency = 0.02
 	mainFrame.BorderSizePixel = 0
 	mainFrame.Visible = false
 	mainFrame.ZIndex = 50
@@ -76,79 +76,131 @@ function SettingsUI.Create(parentGui)
 	
 	-- Add rounded corners to main frame
 	local mainFrameCorner = Instance.new("UICorner")
-	mainFrameCorner.CornerRadius = UDim.new(0, 16)
+	mainFrameCorner.CornerRadius = UDim.new(0, 20)
 	mainFrameCorner.Parent = mainFrame
 
-	-- Background gradient
+	-- Background gradient with more depth
 	local gradient = Instance.new("UIGradient")
 	gradient.Color = ColorSequence.new{
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(25, 25, 35)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 15, 20))
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 24, 35)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(15, 18, 28)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 12, 18))
 	}
-	gradient.Rotation = 45
+	gradient.Rotation = 135
 	gradient.Parent = mainFrame
 
 	-- Title Bar
 	local titleBar = Instance.new("Frame")
 	titleBar.Name = "TitleBar"
-	titleBar.Size = UDim2.new(1, 0, 0, 80)
+	titleBar.Size = UDim2.new(1, 0, 0, 70)
 	titleBar.Position = UDim2.new(0, 0, 0, 0)
-	titleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+	titleBar.BackgroundColor3 = Color3.fromRGB(35, 40, 55)
 	titleBar.BorderSizePixel = 0
 	titleBar.ZIndex = 51
 	titleBar.Parent = mainFrame
 	
-	-- Add rounded corners to title bar (top corners only)
+	-- Add rounded corners to title bar
 	local titleBarCorner = Instance.new("UICorner")
-	titleBarCorner.CornerRadius = UDim.new(0, 16)
+	titleBarCorner.CornerRadius = UDim.new(0, 20)
 	titleBarCorner.Parent = titleBar
 	
+	-- Title bar gradient
 	local titleGradient = Instance.new("UIGradient")
 	titleGradient.Color = ColorSequence.new{
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(45, 35, 65)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 25, 40))
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 45, 75)),
+		ColorSequenceKeypoint.new(0.3, Color3.fromRGB(40, 35, 60)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 45))
 	}
-	titleGradient.Rotation = 90
+	titleGradient.Rotation = 110
 	titleGradient.Parent = titleBar
 
-	-- Title
+	-- Add a subtle accent line
+	local accentLine = Instance.new("Frame")
+	accentLine.Name = "AccentLine"
+	accentLine.Size = UDim2.new(1, 0, 0, 2)
+	accentLine.Position = UDim2.new(0, 0, 1, -2)
+	accentLine.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
+	accentLine.BorderSizePixel = 0
+	accentLine.ZIndex = 52
+	accentLine.Parent = titleBar
+	
+	local accentGradient = Instance.new("UIGradient")
+	accentGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 80, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150, 100, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 60, 200))
+	}
+	accentGradient.Parent = accentLine
+
+	-- Title with improved styling
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
 	title.Size = UDim2.new(1, -120, 1, 0)
-	title.Position = UDim2.new(0, 20, 0, 0)
+	title.Position = UDim2.new(0, 25, 0, 0)
 	title.Text = "⚙️ SETTINGS"
-	title.Font = Enum.Font.SourceSansBold
-	title.TextSize = 32
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 24
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.BackgroundTransparency = 1
 	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.TextYAlignment = Enum.TextYAlignment.Center
 	title.ZIndex = 52
 	title.Parent = titleBar
 	components.Title = title
 
+	-- Add text shadow effect
+	local titleShadow = Instance.new("TextLabel")
+	titleShadow.Name = "TitleShadow"
+	titleShadow.Size = title.Size
+	titleShadow.Position = UDim2.new(0, 27, 0, 2)
+	titleShadow.Text = title.Text
+	titleShadow.Font = title.Font
+	titleShadow.TextSize = title.TextSize
+	titleShadow.TextColor3 = Color3.fromRGB(0, 0, 0)
+	titleShadow.TextTransparency = 0.8
+	titleShadow.BackgroundTransparency = 1
+	titleShadow.TextXAlignment = Enum.TextXAlignment.Left
+	titleShadow.TextYAlignment = Enum.TextYAlignment.Center
+	titleShadow.ZIndex = 51
+	titleShadow.Parent = titleBar
+
 	-- Close Button
 	local closeButton = Instance.new("TextButton")
 	closeButton.Name = "CloseButton"
-	closeButton.Size = UDim2.new(0, 50, 0, 50)
-	closeButton.Position = UDim2.new(1, -65, 0, 15)
-	closeButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
-	closeButton.Text = "X"
-	closeButton.Font = Enum.Font.SourceSansBold
-	closeButton.TextScaled = true
+	closeButton.Size = UDim2.new(0, 40, 0, 40)
+	closeButton.Position = UDim2.new(1, -50, 0.5, -20)
+	closeButton.BackgroundColor3 = Color3.fromRGB(220, 70, 70)
+	closeButton.Text = "✕"
+	closeButton.Font = Enum.Font.GothamBold
+	closeButton.TextSize = 16
 	closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	closeButton.ZIndex = 55
 	closeButton.Parent = titleBar
 	components.CloseButton = closeButton
 
 	local closeCorner = Instance.new("UICorner")
-	closeCorner.CornerRadius = UDim.new(0, 16)
+	closeCorner.CornerRadius = UDim.new(0, 20)
 	closeCorner.Parent = closeButton
+
+	local closeGradient = Instance.new("UIGradient")
+	closeGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(240, 80, 80)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 60, 60))
+	}
+	closeGradient.Rotation = 90
+	closeGradient.Parent = closeButton
+	
+	local closeStroke = Instance.new("UIStroke")
+	closeStroke.Color = Color3.fromRGB(255, 100, 100)
+	closeStroke.Thickness = 1
+	closeStroke.Transparency = 0.5
+	closeStroke.Parent = closeButton
 
 	-- Content Area
 	local contentFrame = Instance.new("Frame")
 	contentFrame.Name = "ContentFrame"
-	contentFrame.Size = UDim2.new(1, -40, 1, -120)
-	contentFrame.Position = UDim2.new(0, 20, 0, 100)
+	contentFrame.Size = UDim2.new(1, -40, 1, -100)
+	contentFrame.Position = UDim2.new(0, 20, 0, 80)
 	contentFrame.BackgroundTransparency = 1
 	contentFrame.ZIndex = 51
 	contentFrame.Parent = mainFrame
@@ -188,7 +240,8 @@ function SettingsUI.CreateSettingFrame(parent, settingId, value)
 	local settingFrame = Instance.new("Frame")
 	settingFrame.Name = settingId .. "Frame"
 	settingFrame.Size = UDim2.new(1, 0, 0, 120)
-	settingFrame.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
+	settingFrame.BackgroundColor3 = Color3.fromHex("#121620")
+	settingFrame.BackgroundTransparency = 0.5
 	settingFrame.BorderSizePixel = 0
 	settingFrame.ZIndex = 53
 	settingFrame.Parent = parent
@@ -197,12 +250,19 @@ function SettingsUI.CreateSettingFrame(parent, settingId, value)
 	frameCorner.CornerRadius = UDim.new(0, 12)
 	frameCorner.Parent = settingFrame
 
+	local frameStroke = Instance.new("UIStroke")
+	frameStroke.Color = Color3.fromRGB(50, 55, 70)
+	frameStroke.Thickness = 1
+	frameStroke.Transparency = 0.7
+	frameStroke.Parent = settingFrame
+
 	local frameGradient = Instance.new("UIGradient")
 	frameGradient.Color = ColorSequence.new{
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(35, 40, 55)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 30, 40))
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(25, 30, 45)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(18, 22, 32)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 15, 22))
 	}
-	frameGradient.Rotation = 90
+	frameGradient.Rotation = 135
 	frameGradient.Parent = settingFrame
 
 	-- Icon
@@ -211,16 +271,30 @@ function SettingsUI.CreateSettingFrame(parent, settingId, value)
 	icon.Size = UDim2.new(0, 60, 0, 60)
 	icon.Position = UDim2.new(0, 15, 0, 15)
 	icon.Text = setting.Icon
-	icon.Font = Enum.Font.SourceSansBold
+	icon.Font = Enum.Font.GothamBold
 	icon.TextSize = 32
 	icon.TextColor3 = Color3.fromRGB(255, 255, 255)
-	icon.BackgroundColor3 = Color3.fromRGB(40, 45, 60)
+	icon.BackgroundColor3 = Color3.fromRGB(35, 40, 55)
 	icon.ZIndex = 54
 	icon.Parent = settingFrame
 
 	local iconCorner = Instance.new("UICorner")
-	iconCorner.CornerRadius = UDim.new(0, 8)
+	iconCorner.CornerRadius = UDim.new(0, 12)
 	iconCorner.Parent = icon
+
+	local iconGradient = Instance.new("UIGradient")
+	iconGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 45, 75)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(35, 40, 55))
+	}
+	iconGradient.Rotation = 90
+	iconGradient.Parent = icon
+
+	local iconStroke = Instance.new("UIStroke")
+	iconStroke.Color = Color3.fromRGB(120, 80, 255)
+	iconStroke.Thickness = 1
+	iconStroke.Transparency = 0.5
+	iconStroke.Parent = icon
 
 	-- Name and Description
 	local nameLabel = Instance.new("TextLabel")
@@ -228,7 +302,7 @@ function SettingsUI.CreateSettingFrame(parent, settingId, value)
 	nameLabel.Size = UDim2.new(0, 300, 0, 25)
 	nameLabel.Position = UDim2.new(0, 90, 0, 15)
 	nameLabel.Text = setting.Name
-	nameLabel.Font = Enum.Font.SourceSansBold
+	nameLabel.Font = Enum.Font.GothamBold
 	nameLabel.TextSize = 18
 	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -295,7 +369,7 @@ function SettingsUI.CreateSettingFrame(parent, settingId, value)
 		sliderTrack.Name = "SliderTrack"
 		sliderTrack.Size = UDim2.new(1, -40, 0, 6)
 		sliderTrack.Position = UDim2.new(0, 20, 0.5, -3)
-		sliderTrack.BackgroundColor3 = Color3.fromRGB(60, 70, 85)
+		sliderTrack.BackgroundColor3 = Color3.fromRGB(35, 40, 55)
 		sliderTrack.BorderSizePixel = 0
 		sliderTrack.ZIndex = 54
 		sliderTrack.Parent = sliderContainer
@@ -304,12 +378,20 @@ function SettingsUI.CreateSettingFrame(parent, settingId, value)
 		trackCorner.CornerRadius = UDim.new(0, 3)
 		trackCorner.Parent = sliderTrack
 
+		local trackGradient = Instance.new("UIGradient")
+		trackGradient.Color = ColorSequence.new{
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 55, 70)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 35, 50))
+		}
+		trackGradient.Rotation = 90
+		trackGradient.Parent = sliderTrack
+
 		-- Slider knob
 		local sliderKnob = Instance.new("TextButton")
 		sliderKnob.Name = "SliderKnob"
 		sliderKnob.Size = UDim2.new(0, 20, 0, 20)
 		sliderKnob.Position = UDim2.new(0, 10, 0.5, -10)
-		sliderKnob.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
+		sliderKnob.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
 		sliderKnob.BorderSizePixel = 0
 		sliderKnob.Text = ""
 		sliderKnob.ZIndex = 55
@@ -318,6 +400,20 @@ function SettingsUI.CreateSettingFrame(parent, settingId, value)
 		local knobCorner = Instance.new("UICorner")
 		knobCorner.CornerRadius = UDim.new(1, 0)
 		knobCorner.Parent = sliderKnob
+
+		local knobGradient = Instance.new("UIGradient")
+		knobGradient.Color = ColorSequence.new{
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 100, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 80, 255))
+		}
+		knobGradient.Rotation = 90
+		knobGradient.Parent = sliderKnob
+
+		local knobStroke = Instance.new("UIStroke")
+		knobStroke.Color = Color3.fromRGB(200, 160, 255)
+		knobStroke.Thickness = 1
+		knobStroke.Transparency = 0.3
+		knobStroke.Parent = sliderKnob
 
 		-- Value label
 		local valueLabel = Instance.new("TextLabel")
@@ -342,15 +438,21 @@ function SettingsUI.CreateSettingFrame(parent, settingId, value)
 		toggleButton.Name = "ToggleButton"
 		toggleButton.Size = UDim2.new(0, 120, 0, 40)
 		toggleButton.Position = UDim2.new(1, -135, 0, 40)
-		toggleButton.Font = Enum.Font.SourceSansBold
+		toggleButton.Font = Enum.Font.GothamBold
 		toggleButton.TextSize = 14
 		toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 		toggleButton.ZIndex = 54
 		toggleButton.Parent = settingFrame
 
 		local buttonCorner = Instance.new("UICorner")
-		buttonCorner.CornerRadius = UDim.new(0, 8)
+		buttonCorner.CornerRadius = UDim.new(0, 12)
 		buttonCorner.Parent = toggleButton
+
+		local buttonStroke = Instance.new("UIStroke")
+		buttonStroke.Color = Color3.fromRGB(100, 120, 160)
+		buttonStroke.Thickness = 1
+		buttonStroke.Transparency = 0.5
+		buttonStroke.Parent = toggleButton
 
 		components.ToggleButton = toggleButton
 	end
@@ -393,7 +495,38 @@ function SettingsUI.UpdateSettingFrame(components, settingId, value)
 
 		-- Update button
 		components.ToggleButton.Text = isEnabled and "DISABLE" or "ENABLE"
-		components.ToggleButton.BackgroundColor3 = isEnabled and Color3.fromRGB(150, 50, 50) or Color3.fromRGB(50, 150, 50)
+		components.ToggleButton.BackgroundColor3 = isEnabled and Color3.fromRGB(140, 60, 60) or Color3.fromRGB(60, 140, 60)
+		
+		-- Update button gradient
+		local buttonGradient = components.ToggleButton:FindFirstChild("UIGradient")
+		if buttonGradient then
+			if isEnabled then
+				buttonGradient.Color = ColorSequence.new{
+					ColorSequenceKeypoint.new(0, Color3.fromRGB(160, 80, 80)),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 60, 60))
+				}
+			else
+				buttonGradient.Color = ColorSequence.new{
+					ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 160, 80)),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 140, 60))
+				}
+			end
+		else
+			buttonGradient = Instance.new("UIGradient")
+			if isEnabled then
+				buttonGradient.Color = ColorSequence.new{
+					ColorSequenceKeypoint.new(0, Color3.fromRGB(160, 80, 80)),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 60, 60))
+				}
+			else
+				buttonGradient.Color = ColorSequence.new{
+					ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 160, 80)),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 140, 60))
+				}
+			end
+			buttonGradient.Rotation = 90
+			buttonGradient.Parent = components.ToggleButton
+		end
 	end
 end
 

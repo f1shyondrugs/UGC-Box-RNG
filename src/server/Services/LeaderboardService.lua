@@ -11,7 +11,7 @@ local rapLeaderboardStore = DataStoreService:GetOrderedDataStore("RAPLeaderboard
 
 local LeaderboardService = {}
 
-local LEADERBOARD_UPDATE_INTERVAL = 60 -- 5 minutes in seconds
+local LEADERBOARD_UPDATE_INTERVAL = 60 -- in seconds (obviously)
 local TOP_N_PLAYERS = 100
 
 local leaderboardPart = nil

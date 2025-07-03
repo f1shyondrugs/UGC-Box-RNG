@@ -115,13 +115,13 @@ end
 -- Start auto-enchanting for a player
 function EnchanterService:startAutoEnchanting(player, itemInstance, targetMutators, stopOnHigher, matchAnyMode)
 	if activeAutoEnchantSessions[player.UserId] then
-		Remotes.Notify:FireClient(player, "Auto-enchanting session already active.", "Error")
+		Remotes.ShowFloatingNotification:FireClient(player, "Auto-enchanting session already active.", "Error")
 		return
 	end
 	
 	-- Verify gamepass ownership
 	if not checkAutoEnchanterGamepass(player) then
-		Remotes.Notify:FireClient(player, "You need the Auto-Enchanter gamepass to use this feature!", "Error")
+		Remotes.ShowFloatingNotification:FireClient(player, "You need the Auto-Enchanter gamepass to use this feature!", "Error")
 		return
 	end
 	
@@ -132,7 +132,7 @@ function EnchanterService:startAutoEnchanting(player, itemInstance, targetMutato
 	
 	-- Verify target mutators
 	if not targetMutators or #targetMutators == 0 then
-		Remotes.Notify:FireClient(player, "Please select at least one target mutator.", "Error")
+		Remotes.ShowFloatingNotification:FireClient(player, "Please select at least one target mutator.", "Error")
 		return
 	end
 	
@@ -140,13 +140,13 @@ function EnchanterService:startAutoEnchanting(player, itemInstance, targetMutato
 	local itemName = itemInstance:GetAttribute("ItemName") or itemInstance.Name
 	local itemConfig = GameConfig.Items[itemName]
 	if not itemConfig then
-		Remotes.Notify:FireClient(player, "Invalid item configuration.", "Error")
+		Remotes.ShowFloatingNotification:FireClient(player, "Invalid item configuration.", "Error")
 		return
 	end
 	
 	-- Check if already has target mutators
 	if itemHasTargetMutators(itemInstance, targetMutators, stopOnHigher, matchAnyMode) then
-		Remotes.Notify:FireClient(player, "Item already has the target mutators!", "Success")
+		Remotes.ShowFloatingNotification:FireClient(player, "Item already has the target mutators!", "Success")
 		return
 	end
 	
@@ -164,7 +164,7 @@ function EnchanterService:startAutoEnchanting(player, itemInstance, targetMutato
 	}
 	
 	-- Notify client
-	Remotes.Notify:FireClient(player, "Auto-enchanting started! Target: " .. table.concat(targetMutators, " + "), "Success")
+	Remotes.ShowFloatingNotification:FireClient(player, "Auto-enchanting started! Target: " .. table.concat(targetMutators, " + "), "Success")
 	
 	-- Start the auto-enchanting loop
 	task.spawn(function()
@@ -178,7 +178,7 @@ local function stopAutoEnchanting(player)
 	if session then
 		session.isRunning = false
 		activeAutoEnchantSessions[player.UserId] = nil
-		Remotes.Notify:FireClient(player, "Auto-enchanting stopped. Attempts: " .. session.attempts .. ", Total spent: " .. session.totalSpent .. " R$", "Info")
+		Remotes.ShowFloatingNotification:FireClient(player, "Auto-enchanting stopped. Attempts: " .. session.attempts .. ", Total spent: " .. session.totalSpent .. " R$", "Info")
 		Remotes.AutoEnchantingProgress:FireClient(player, false, session.attempts, session.totalSpent, "")
 	end
 end
@@ -191,14 +191,14 @@ function autoEnchantLoop(player, itemInstance, targetMutators, stopOnHigher, mat
 	while session.isRunning do
 		-- Check if item still exists
 		if not session.itemInstance or not session.itemInstance.Parent then
-			Remotes.Notify:FireClient(player, "Auto-enchanting stopped: Item no longer exists.", "Error")
+			Remotes.ShowFloatingNotification:FireClient(player, "Auto-enchanting stopped: Item no longer exists.", "Error")
 			stopAutoEnchanting(player)
 			return
 		end
 		
 		-- Check if already has target mutators
 		if itemHasTargetMutators(session.itemInstance, session.targetMutators, session.stopOnHigher, session.matchAnyMode) then
-			Remotes.Notify:FireClient(player, "🎉 Auto-enchanting SUCCESS! Got target mutators: " .. table.concat(session.targetMutators, " + "), "Success")
+			Remotes.ShowFloatingNotification:FireClient(player, "🎉 Auto-enchanting SUCCESS! Got target mutators: " .. table.concat(session.targetMutators, " + "), "Success")
 			stopAutoEnchanting(player)
 			return
 		end
@@ -207,7 +207,7 @@ function autoEnchantLoop(player, itemInstance, targetMutators, stopOnHigher, mat
 		local itemName = session.itemInstance:GetAttribute("ItemName") or session.itemInstance.Name
 		local itemConfig = GameConfig.Items[itemName]
 		if not itemConfig then
-			Remotes.Notify:FireClient(player, "Auto-enchanting stopped: Invalid item configuration.", "Error")
+			Remotes.ShowFloatingNotification:FireClient(player, "Auto-enchanting stopped: Invalid item configuration.", "Error")
 			stopAutoEnchanting(player)
 			return
 		end
@@ -218,7 +218,7 @@ function autoEnchantLoop(player, itemInstance, targetMutators, stopOnHigher, mat
 		
 		-- Check if player can afford
 		if currentRobux < cost then
-			Remotes.Notify:FireClient(player, "Auto-enchanting stopped: Not enough R$. Need " .. cost .. " R$", "Error")
+			Remotes.ShowFloatingNotification:FireClient(player, "Auto-enchanting stopped: Not enough R$. Need " .. cost .. " R$", "Error")
 			stopAutoEnchanting(player)
 			return
 		end
@@ -268,7 +268,7 @@ function autoEnchantLoop(player, itemInstance, targetMutators, stopOnHigher, mat
 		
 		-- Check if target is met
 		if itemHasTargetMutators(session.itemInstance, session.targetMutators, session.stopOnHigher, session.matchAnyMode) then
-			Remotes.Notify:FireClient(player, "Target achieved!", "Success")
+			Remotes.ShowFloatingNotification:FireClient(player, "Target achieved!", "Success")
 			-- Send a final "stopped" event to the client to update the UI
 			Remotes.AutoEnchantingProgress:FireClient(player, false, session.attempts, session.totalSpent, "Target achieved!", newMutatorNames)
 			break
@@ -276,7 +276,7 @@ function autoEnchantLoop(player, itemInstance, targetMutators, stopOnHigher, mat
 		
 		-- Check if player can afford the next roll
 		if currentRobux < cost then
-			Remotes.Notify:FireClient(player, "Not enough money to continue auto-enchanting.", "Error")
+			Remotes.ShowFloatingNotification:FireClient(player, "Not enough money to continue auto-enchanting.", "Error")
 			-- Send a final "stopped" event
 			Remotes.AutoEnchantingProgress:FireClient(player, false, session.attempts, session.totalSpent, "Stopped: Not enough money.")
 			break
@@ -294,7 +294,7 @@ local function onEnchanterPromptTriggered(player, promptPart)
 	-- Check if player has an inventory
 	local inventory = player:FindFirstChild("Inventory")
 	if not inventory then
-		Remotes.Notify:FireClient(player, "Inventory not found.", "Error")
+		Remotes.ShowFloatingNotification:FireClient(player, "Inventory not found.", "Error")
 		return
 	end
 	
@@ -316,7 +316,7 @@ local function onEnchanterPromptTriggered(player, promptPart)
 	end
 	
 	if #availableItems == 0 then
-		Remotes.Notify:FireClient(player, "You need at least one item to use the Enchanter!", "Error")
+		Remotes.ShowFloatingNotification:FireClient(player, "You need at least one item to use the Enchanter!", "Error")
 		return
 	end
 	
@@ -368,7 +368,7 @@ local function rerollMutators(player, itemInstance)
 	local currentRobux = player:GetAttribute("RobuxValue") or 0
 	
 	if currentRobux < cost then
-		Remotes.Notify:FireClient(player, "You don't have enough R$ to reroll this item's mutators! Cost: " .. cost, "Error")
+		Remotes.ShowFloatingNotification:FireClient(player, "You don't have enough R$ to reroll this item's mutators! Cost: " .. cost, "Error")
 		return
 	end
 	
@@ -417,9 +417,9 @@ local function rerollMutators(player, itemInstance)
 	-- Notify player of success
 	if #newMutations > 0 then
 		local mutationText = table.concat(newMutations, ", ")
-		Remotes.Notify:FireClient(player, "✨ Mutators rerolled! New mutators: " .. mutationText, "Success")
+		Remotes.ShowFloatingNotification:FireClient(player, "✨ Mutators rerolled! New mutators: " .. mutationText, "Success")
 	else
-		Remotes.Notify:FireClient(player, "Mutators rerolled! No new mutators this time.", "Info")
+		Remotes.ShowFloatingNotification:FireClient(player, "Mutators rerolled! No new mutators this time.", "Info")
 	end
 	
 	-- Close the enchanter GUI and reopen with updated item

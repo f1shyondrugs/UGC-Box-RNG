@@ -2,6 +2,9 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+local TeleportService = game:GetService("TeleportService")
+local RunService = game:GetService("RunService")
+-- local ProximityPromptService = game:GetService("ProximityPromptService") -- Removed
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -22,8 +25,8 @@ local UpgradeController = require(script.Parent.Controllers.UpgradeController)
 local SettingsController = require(script.Parent.Controllers.SettingsController)
 local CrateSelectionController = require(script.Parent.Controllers.CrateSelectionController)
 local EnchanterController = require(script.Parent.Controllers.EnchanterController)
-local BoxAnimator = require(script.Parent.Controllers.BoxAnimator)
-local Notifier = require(script.Parent.Controllers.Notifier)
+local AutoOpenController = require(script.Parent.Controllers.AutoOpenController)
+local ShopController = require(script.Parent.Controllers.ShopController)
 local BuyButtonUI = require(script.Parent.UI.BuyButtonUI)
 local StatsUI = require(script.Parent.UI.StatsUI)
 local BoostersController = require(script.Parent.Controllers.BoostersController)
@@ -49,8 +52,13 @@ InventoryController.Start(PlayerGui, openingBoxes, soundController)
 CollectionController.Start(PlayerGui, soundController)
 UpgradeController.Start(PlayerGui, soundController)
 SettingsController.Start(PlayerGui, soundController)
+AutoOpenController.Start(PlayerGui, soundController)
+ShopController.Start(PlayerGui, soundController)
 CrateSelectionController:Start()
 EnchanterController:Start()
+
+-- Initialize saved selected crate after CrateSelectionController is started
+AutoOpenController.InitializeSelectedCrate()
 
 -- Connect BuyButtonUI to CrateSelectionController
 BuyButtonUI.SetCrateSelectionController(CrateSelectionController)
@@ -74,8 +82,9 @@ local buyButtonGui = BuyButtonUI.Create(PlayerGui)
 -- Create Boosters UI in the bottom left
 BoostersController.Start(PlayerGui)
 
--- Set default crate
-BuyButtonUI.SetSelectedCrate(buyButtonGui, "StarterCrate")
+-- Set crate to match the current CrateSelectionController selection
+local currentSelectedCrate = CrateSelectionController:GetSelectedCrate()
+BuyButtonUI.SetSelectedCrate(buyButtonGui, currentSelectedCrate)
 
 -- Setup stats monitoring
 local leaderstats = LocalPlayer:WaitForChild("leaderstats")
@@ -185,9 +194,20 @@ Remotes.UpdateBoxCount.OnClientEvent:Connect(function(newCount)
 end)
 
 -- Listen for the box landing event
-Remotes.BoxLanded.OnClientEvent:Connect(function()
+Remotes.BoxLanded.OnClientEvent:Connect(function(boxPart)
 	soundController:playBoxLand()
 	-- CameraShaker.Shake(0.2, 0.3) -- Short, sharp shake
+
+	-- If auto-open is enabled, automatically fire the RequestOpen remote
+	local autoOpenSettings = AutoOpenController.GetSettings()
+	if autoOpenSettings and autoOpenSettings.enabled then
+		print("[Main.client.lua] Auto-Open is enabled. Directly firing Remotes.RequestOpen for box: " .. boxPart.Name)
+		Remotes.RequestOpen:FireServer(boxPart)
+	else
+		print("[Main.client.lua] Auto-Open is not enabled, not opening box automatically.")
+		-- If auto-open is not enabled, the player will have to manually interact with the ProximityPrompt.
+		-- The onBoxAdded function already sets up the ProximityPrompt.Triggered connection.
+	end
 end)
 
 -- Handle max boxes updates from upgrade system
@@ -241,20 +261,24 @@ local function onBoxAdded(boxPart)
 	local isTriggered = false
 
 	prompt.Triggered:Connect(function()
-		-- Prevent multiple triggers
+		print("[Main.client.lua] ProximityPrompt.Triggered fired for box: " .. boxPart.Name .. ". isTriggered flag: " .. tostring(isTriggered))
+		-- Prevent multiple triggers while request is being processed
 		if isTriggered then
+			print("[Main.client.lua] Prompt already triggered, returning.")
 			return
 		end
 		isTriggered = true
 		
-		-- Only disable the prompt, do not modify other properties
-		prompt.Enabled = false
-		
-		-- Mark the box as being opened
-		boxPart:SetAttribute("IsOpening", true)
-		
-		soundController:playBoxOpen()
+		-- Don't disable prompt here - let server decide based on inventory status
+		-- Just fire the request and let server handle the rest
+		print("[Main.client.lua] Firing Remotes.RequestOpen for box: " .. boxPart.Name)
 		Remotes.RequestOpen:FireServer(boxPart)
+		
+		-- Reset trigger flag after a short delay to allow retry if inventory was full
+		task.delay(1, function()
+			isTriggered = false
+			print("[Main.client.lua] isTriggered flag reset for box: " .. boxPart.Name)
+		end)
 	end)
 end
 
@@ -263,9 +287,18 @@ local boxesFolder = Workspace:FindFirstChild("Boxes")
 if boxesFolder then
 	-- Handle existing boxes that might have been created before the script ran
 	for _, boxPart in ipairs(boxesFolder:GetChildren()) do
-		task.spawn(onBoxAdded, boxPart)
+		task.spawn(function()
+			-- Wait a moment to ensure all box properties and prompts are fully replicated
+			task.wait(0.1)
+			onBoxAdded(boxPart)
+		end)
 	end
-	boxesFolder.ChildAdded:Connect(onBoxAdded)
+	boxesFolder.ChildAdded:Connect(function(boxPart)
+		task.spawn(function()
+			task.wait(0.1) -- Small delay for replication
+			onBoxAdded(boxPart)
+		end)
+	end)
 else
 	-- If the folder doesn't exist yet, wait for it
 	Workspace.ChildAdded:Connect(function(child)
@@ -273,9 +306,17 @@ else
 			boxesFolder = child
 			-- Handle existing boxes that might have been created before the script ran
 			for _, boxPart in ipairs(boxesFolder:GetChildren()) do
-				task.spawn(onBoxAdded, boxPart)
+				task.spawn(function()
+					task.wait(0.1)
+					onBoxAdded(boxPart)
+				end)
 			end
-			boxesFolder.ChildAdded:Connect(onBoxAdded)
+			boxesFolder.ChildAdded:Connect(function(boxPart)
+				task.spawn(function()
+					task.wait(0.1) -- Small delay for replication
+					onBoxAdded(boxPart)
+				end)
+			end)
 		end
 	end)
 end
@@ -298,6 +339,11 @@ Remotes.PlayAnimation.OnClientEvent:Connect(function(boxPart, itemName, mutation
 		if SettingsController.GetSetting("HideOtherPlayers") then
 			return -- Don't show crates from hidden players
 		end
+	end
+	
+	-- Play box open sound when animation starts (only for own crates)
+	if isOwnCrate then
+		soundController:playBoxOpen()
 	end
 	
 	openingBoxes[boxPart] = true
@@ -331,6 +377,91 @@ Remotes.PlayAnimation.OnClientEvent:Connect(function(boxPart, itemName, mutation
 			
 			-- Start the floating text animation
 			BoxAnimator.AnimateFloatingText(boxPart.Position, itemName, itemConfig, mutationNames, mutationConfigs, size, soundController, isOwnCrate)
+
+			-- Add the item to inventory when floating text appears
+			local item = boxPart:FindFirstChildOfClass("Tool") or boxPart:FindFirstChildOfClass("Part")
+			if item then
+				item.Parent = inventory
+
+				-- Auto-sell check (call after item is added to inventory)
+				AutoOpenController.HandleNewItem(item, itemName)
+			end
 		end
 	end)
+end)
+
+-- Handle floating error messages
+Remotes.ShowFloatingError.OnClientEvent:Connect(function(position, message)
+	BoxAnimator.AnimateFloatingErrorText(position, message)
+end)
+
+-- Connect floating notification system
+Remotes.ShowFloatingNotification.OnClientEvent:Connect(function(message, messageType)
+	BoxAnimator.AnimateFloatingNotification(message, messageType)
+end)
+
+-- Celebration effect remote
+if Remotes.ShowCelebrationEffect then
+	Remotes.ShowCelebrationEffect.OnClientEvent:Connect(function()
+		BoxAnimator.PlayCelebrationEffect()
+	end)
+end
+
+-- Local chat command to test celebration effect
+LocalPlayer.Chatted:Connect(function(msg)
+	if msg:lower() == "/celebrate" or msg:lower() == "!celebrate" then
+		BoxAnimator.PlayCelebrationEffect()
+	end
+end)
+
+-- Add at the bottom of the file:
+local function tryReconnect()
+	local placeId = game.PlaceId
+	local jobId = nil -- nil means new server
+	print("[Reconnect] Attempting to teleport to same place to avoid idle disconnect...")
+	TeleportService:Teleport(placeId, LocalPlayer)
+end
+
+-- Roblox disconnects after 20 minutes of idling. We'll use a timer and user input detection to reset it.
+local idleTime = 0
+local idleLimit = 19 * 60 -- 19 minutes, to be safe
+
+-- Save function for all controllers/services that need to persist state
+local function saveAllData()
+	-- Save auto-open settings
+	local AutoOpenController = require(script.Parent.Controllers.AutoOpenController)
+	if AutoOpenController and AutoOpenController.saveSettings then
+		AutoOpenController.saveSettings()
+	end
+	-- Add other save calls here if needed
+end
+
+-- Reset idle timer on any user input
+local function resetIdle()
+	idleTime = 0
+end
+
+-- Listen for user input
+if UserInputService then
+	UserInputService.InputBegan:Connect(resetIdle)
+	UserInputService.InputChanged:Connect(resetIdle)
+	UserInputService.InputEnded:Connect(resetIdle)
+end
+
+-- Main idle check loop
+RunService.Heartbeat:Connect(function(dt)
+	idleTime = idleTime + dt
+	if idleTime > idleLimit then
+		print("[Reconnect] Idle limit reached, saving and reconnecting...")
+		saveAllData()
+		task.wait(1)
+		tryReconnect()
+	end
+end)
+
+-- On teleport, reload auto-open and other persistent features
+LocalPlayer.OnTeleport:Connect(function(teleportState)
+	if teleportState == Enum.TeleportState.Started then
+		print("[Reconnect] Teleport started, will reload persistent features after arrival.")
+	end
 end) 

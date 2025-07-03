@@ -4,6 +4,7 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 local LocalPlayer = Players.LocalPlayer
 local NavigationController = require(script.Parent.NavigationController)
@@ -18,6 +19,10 @@ local NumberFormatter = require(Shared.Modules.NumberFormatter)
 local InventoryController = {}
 local DEFAULT_INVENTORY_LIMIT = 50
 
+-- Infinite Storage gamepass variables
+local INFINITE_STORAGE_GAMEPASS_ID = GameConfig.InfiniteStorageGamepassId
+local hasInfiniteStorageGamepass = false
+
 -- Camera and UI state management
 local originalCamera = nil
 local inventoryCamera = nil
@@ -30,6 +35,11 @@ local isAnimating = false
 local ANIMATION_TIME = 0.3
 local ANIMATION_STYLE = Enum.EasingStyle.Quint
 local ANIMATION_DIRECTION = Enum.EasingDirection.Out
+
+-- Enchanting mode variables
+local isEnchantingMode = false
+local enchantingCallback = nil
+local enchantingCloseCallback = nil
 
 local function setupCharacterViewport(ui)
 	local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -96,6 +106,14 @@ local function setupCharacterViewport(ui)
 end
 
 function InventoryController.Start(parentGui, openingBoxes, soundController)
+	-- Prevent multiple initializations
+	if InventoryController._ui then
+		print("InventoryController already initialized, skipping...")
+		return
+	end
+	
+	print("Starting InventoryController...")
+	
 	local inventory = LocalPlayer:WaitForChild("Inventory")
 	local leaderstats = LocalPlayer:WaitForChild("leaderstats")
 	
@@ -118,8 +136,56 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	local ITEM_BATCH_SIZE = 10
 	local BATCH_DELAY = 0.05
 
+	-- Infinite Storage gamepass checking
+	local function checkInfiniteStorageGamepass()
+		local isWhitelisted = false
+		for _, id in ipairs(GameConfig.GamepassWhitelist or {}) do
+			if LocalPlayer.UserId == id then
+				isWhitelisted = true
+				break
+			end
+		end
+
+		if isWhitelisted then
+			hasInfiniteStorageGamepass = true
+			return true
+		end
+
+		local success, owns = pcall(function()
+			return Remotes.CheckInfiniteStorageGamepass:InvokeServer()
+		end)
+		
+		if success then
+			hasInfiniteStorageGamepass = owns
+		else
+			hasInfiniteStorageGamepass = false
+			warn("Failed to check Infinite Storage gamepass ownership")
+		end
+		
+		return hasInfiniteStorageGamepass
+	end
+
+	local function promptInfiniteStorageGamepassPurchase()
+		if soundController then
+			soundController:playUIClick()
+		end
+		
+		local success, errorMsg = pcall(function()
+			MarketplaceService:PromptGamePassPurchase(LocalPlayer, INFINITE_STORAGE_GAMEPASS_ID)
+		end)
+		
+		if not success then
+			warn("Failed to prompt Infinite Storage gamepass purchase:", errorMsg)
+		end
+	end
+
 	-- Function to get current inventory limit dynamically
 	local function getCurrentInventoryLimit()
+		-- If player has Infinite Storage gamepass, return a very high number
+		if hasInfiniteStorageGamepass then
+			return 999999 -- Effectively infinite
+		end
+		
 		local success, upgradeData = pcall(function()
 			return Remotes.GetUpgradeData:InvokeServer()
 		end)
@@ -554,10 +620,13 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 		local playerGui = LocalPlayer:WaitForChild("PlayerGui")
 		
 		if show then
-			-- Hide other UIs
+			-- Hide other UIs for clean inventory experience
 			for _, gui in pairs(playerGui:GetChildren()) do
 				if gui:IsA("ScreenGui") and gui ~= ui.ScreenGui then
 					if gui.Enabled then
+						if gui.Name == "EnchanterGui" and isEnchantingMode then
+							print("Hiding enchanter interface during item selection")
+						end
 						hiddenUIs[gui] = true
 						gui.Enabled = false
 					end
@@ -573,6 +642,9 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 			-- Restore hidden UIs
 			for gui, _ in pairs(hiddenUIs) do
 				if gui and gui.Parent then
+					if gui.Name == "EnchanterGui" then
+						print("Restoring enchanter interface after item selection")
+					end
 					gui.Enabled = true
 				end
 			end
@@ -614,12 +686,18 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	local function updateInventoryCount()
 		local count = #inventory:GetChildren()
 		local currentLimit = getCurrentInventoryLimit()
-		ui.InventoryTitle.Text = "INVENTORY (" .. NumberFormatter.FormatCount(count) .. " / " .. NumberFormatter.FormatCount(currentLimit) .. ")"
+		
+		-- Display differently if player has infinite storage
+		if hasInfiniteStorageGamepass then
+			ui.InventoryTitle.Text = "INVENTORY (" .. NumberFormatter.FormatCount(count) .. " / ∞)"
+		else
+			ui.InventoryTitle.Text = "INVENTORY (" .. NumberFormatter.FormatCount(count) .. " / " .. NumberFormatter.FormatCount(currentLimit) .. ")"
+		end
 	
 		local isFull = count >= currentLimit
-		-- Show inventory full notification on navigation button
-		NavigationController.SetNotification("Inventory", isFull)
-		updateBoxPrompts(isFull)
+		-- Show inventory full notification on navigation button (never full if infinite)
+		NavigationController.SetNotification("Inventory", isFull and not hasInfiniteStorageGamepass)
+		updateBoxPrompts(isFull and not hasInfiniteStorageGamepass)
 	end
 
 	local function resetDetailsPanel()
@@ -869,11 +947,45 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 			end
 		end
 
-		local connection = itemInstance:GetAttributeChangedSignal("Locked"):Connect(updateItemStatus)
-		
+		-- Connection for lock status changes
+		local lockConnection = itemInstance:GetAttributeChangedSignal("Locked"):Connect(updateItemStatus)
+
+		-- Function to refresh cached mutation data and update UI
+		local function refreshMutations()
+			mutationNames = ItemValueCalculator.GetMutationNames(itemInstance)
+			mutationConfigs = ItemValueCalculator.GetMutationConfigs(itemInstance)
+
+			-- Update cached entry if it exists already
+			if itemEntries[itemInstance] then
+				itemEntries[itemInstance].MutationNames = mutationNames
+				itemEntries[itemInstance].MutationConfigs = mutationConfigs
+			end
+
+			-- Refresh status and details
+			updateItemStatus()
+
+			-- If this item is currently selected, refresh detailed panel text
+			if selectedItem == itemInstance and selectedItemTemplate then
+				updateDetails(itemInstance, selectedItemTemplate)
+			end
+
+			-- Re-apply current filters and sorting so the mutated item moves accordingly
+			task.spawn(function()
+				task.wait(0.05)
+				if itemEntries[itemInstance] then
+					filterInventory()
+				end
+			end)
+		end
+
+		-- Connections for mutation changes (supports both single and multi-mutation storage)
+		local mutationConnection1 = itemInstance:GetAttributeChangedSignal("Mutations"):Connect(refreshMutations)
+		local mutationConnection2 = itemInstance:GetAttributeChangedSignal("Mutation"):Connect(refreshMutations)
+
 		itemEntries[itemInstance] = { 
 			Template = template, 
-			Connection = connection, 
+			Connection = lockConnection, -- legacy key kept for cleanup
+			MutationConnections = {mutationConnection1, mutationConnection2},
 			UpdateStatus = updateItemStatus,
 			ItemConfig = itemConfig, -- Cache for performance
 			MutationNames = mutationNames, -- Cache for performance
@@ -921,16 +1033,25 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 
 	local function removeItemEntry(itemInstance)
 		if itemEntries[itemInstance] then
+			-- Disconnect stored connections
+			local entry = itemEntries[itemInstance]
+			if entry.Connection then entry.Connection:Disconnect() end
+			if entry.MutationConnections then
+				for _, conn in ipairs(entry.MutationConnections) do
+					conn:Disconnect()
+				end
+			end
+			
 			-- Clean up rainbow animation for this specific template
-			local template = itemEntries[itemInstance].Template
+			local template = entry.Template
 			if template then
 				local rainbowThread = template:GetAttribute("RainbowThread")
 				if rainbowThread then
 					coroutine.close(rainbowThread)
+					template:SetAttribute("RainbowThread", nil)
 				end
 			end
 			
-			itemEntries[itemInstance].Connection:Disconnect()
 			itemEntries[itemInstance].Template:Destroy()
 			itemEntries[itemInstance] = nil
 		end
@@ -1008,12 +1129,16 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	end
 
 	local function toggleInventory(visible)
-		if isAnimating then return end
+		if isAnimating then 
+			print("Inventory animation in progress, skipping toggle")
+			return 
+		end
 		isAnimating = true
 
 		local tweenInfo = TweenInfo.new(ANIMATION_TIME, ANIMATION_STYLE, ANIMATION_DIRECTION)
 
 		if visible then
+			print("Opening inventory interface...")
 			-- Show and animate in
 			hideOtherUIs(true)
 			setupCharacterViewport(ui)
@@ -1089,7 +1214,12 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	ui.CloseButton.MouseButton1Click:Connect(function()
 		if isAnimating then return end
 		soundController:playUIClick()
-		toggleInventory(false)
+		
+		if isEnchantingMode and enchantingCloseCallback then
+			enchantingCloseCallback()
+		else
+			toggleInventory(false)
+		end
 	end)
 
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -1136,6 +1266,18 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	ui.LockButton.MouseButton1Click:Connect(function()
 		if selectedItem then
 			Remotes.ToggleItemLock:FireServer(selectedItem)
+		end
+	end)
+
+	-- Infinite Storage button connection
+	ui.InfiniteStorageButton.MouseButton1Click:Connect(function()
+		if hasInfiniteStorageGamepass then
+			-- Already have gamepass, maybe show some info
+			if soundController then
+				soundController:playUIClick()
+			end
+		else
+			promptInfiniteStorageGamepassPurchase()
 		end
 	end)
 
@@ -1198,6 +1340,34 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 	startInitialLoad()
 	inventory.ChildRemoved:Connect(removeItemEntry)
 	
+	-- Check Infinite Storage gamepass ownership
+	checkInfiniteStorageGamepass()
+
+	-- Hide the + button if player already owns Infinite Storage
+	do
+		local infiniteButton = ui.InfiniteStorageButton
+		if infiniteButton then
+			infiniteButton.Visible = not hasInfiniteStorageGamepass
+		end
+	end
+	
+	-- Monitor gamepass purchase completion
+	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamepassId, wasPurchased)
+		if player == LocalPlayer and gamepassId == INFINITE_STORAGE_GAMEPASS_ID and wasPurchased then
+			hasInfiniteStorageGamepass = true
+			updateInventoryCount() -- Refresh the display
+			
+			-- Hide + button now that gamepass is owned
+			if ui and ui.InfiniteStorageButton then
+				ui.InfiniteStorageButton.Visible = false
+			end
+			
+			if soundController then
+				soundController:playUIClick()
+			end
+		end
+	end)
+	
 	-- Initialize UI state
 	resetDetailsPanel()
 	updateInventoryCount()
@@ -1224,6 +1394,198 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 			setupCharacterViewport(ui)
 		end
 	end)
+	
+	-- Store references for enchanting mode
+	InventoryController._ui = ui
+	InventoryController._toggleInventory = toggleInventory
+	InventoryController._soundController = soundController
+	InventoryController._selectedItem = function() return selectedItem end
+	
+	print("InventoryController initialized with enchanting support")
+	
+	-- Close handler now supports enchanting mode
+end
+
+-- Update UI for enchanting mode
+local function updateUIForEnchantingMode()
+	local ui = InventoryController._ui
+	if not ui then 
+		warn("UI not available for enchanting mode")
+		return 
+	end
+	
+	print("Updating UI for enchanting mode...")
+	
+	-- Hide normal action buttons (with null checks)
+	if ui.EquipButton then ui.EquipButton.Visible = false end
+	if ui.UnequipButton then ui.UnequipButton.Visible = false end
+	if ui.SellButton then ui.SellButton.Visible = false end
+	if ui.LockButton then ui.LockButton.Visible = false end
+	if ui.SellUnlockedButton then ui.SellUnlockedButton.Visible = false end
+	
+	-- Create or show enchanting button
+	if not ui.UseForEnchantingButton then
+		local buttonContainer = ui.LeftPanel and ui.LeftPanel:FindFirstChild("ButtonContainer")
+		if not buttonContainer then
+			warn("ButtonContainer not found in LeftPanel")
+			return
+		end
+		
+		local button = Instance.new("TextButton")
+		button.Name = "UseForEnchantingButton"
+		button.Size = UDim2.new(1, 0, 0, 35)
+		button.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
+		button.Text = "🔮 Use for Enchanting"
+		button.Font = Enum.Font.SourceSansBold
+		button.TextSize = 16
+		button.TextColor3 = Color3.fromRGB(255, 255, 255)
+		button.ZIndex = 53
+		button.LayoutOrder = 1
+		button.Parent = buttonContainer
+		
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 8)
+		corner.Parent = button
+		
+		local gradient = Instance.new("UIGradient")
+		gradient.Color = ColorSequence.new{
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(140, 100, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 60, 220))
+		}
+		gradient.Rotation = 90
+		gradient.Parent = button
+		
+		ui.UseForEnchantingButton = button
+		
+		-- Connect the button click
+		button.MouseButton1Click:Connect(function()
+			local selectedItem = InventoryController._selectedItem()
+			if selectedItem and enchantingCallback then
+				InventoryController._soundController:playUIClick()
+				enchantingCallback(selectedItem)
+				-- Don't close here - let the enchanter controller handle it
+			end
+		end)
+	else
+		ui.UseForEnchantingButton.Visible = true
+	end
+	
+	-- Update titles
+	if ui.DetailTitle then
+		ui.DetailTitle.Text = "SELECT ITEM TO ENCHANT"
+		print("Updated DetailTitle to:", ui.DetailTitle.Text)
+	end
+	if ui.InventoryTitle then
+		ui.InventoryTitle.Text = "ENCHANTING - SELECT ITEM"
+		print("Updated InventoryTitle to:", ui.InventoryTitle.Text)
+	end
+	
+	print("Enchanting button created:", ui.UseForEnchantingButton ~= nil)
+	if ui.UseForEnchantingButton then
+		print("Enchanting button visible:", ui.UseForEnchantingButton.Visible)
+		print("Enchanting button parent:", ui.UseForEnchantingButton.Parent and ui.UseForEnchantingButton.Parent.Name)
+	end
+end
+
+-- Update UI for normal mode
+local function updateUIForNormalMode()
+	local ui = InventoryController._ui
+	if not ui then return end
+	
+	-- Show normal action buttons (they'll be shown/hidden based on item selection)
+	ui.SellUnlockedButton.Visible = true
+	
+	-- Hide enchanting button
+	if ui.UseForEnchantingButton then
+		ui.UseForEnchantingButton.Visible = false
+	end
+	
+	-- Restore titles
+	if ui.DetailTitle then
+		ui.DetailTitle.Text = "ITEM DETAILS"
+	end
+	if ui.InventoryTitle then
+		ui.InventoryTitle.Text = "INVENTORY"
+	end
+end
+
+-- New function to open inventory in enchanting mode
+function InventoryController.OpenForEnchanting(callback, closeCallback)
+	-- Check if the UI is ready
+	if not InventoryController._ui or not InventoryController._toggleInventory then
+		warn("InventoryController not properly initialized for enchanting mode")
+		return false
+	end
+	
+	print("Opening inventory in enchanting mode...")
+	
+	isEnchantingMode = true
+	enchantingCallback = callback
+	enchantingCloseCallback = closeCallback
+	
+	-- Update UI for enchanting mode
+	updateUIForEnchantingMode()
+	
+	-- Open the inventory
+	print("About to call toggleInventory(true)...")
+	InventoryController._toggleInventory(true)
+	
+	-- Debug UI visibility
+	task.wait(0.1)
+	local ui = InventoryController._ui
+	if ui then
+		print("UI MainFrame exists:", ui.MainFrame ~= nil)
+		print("UI MainFrame visible:", ui.MainFrame and ui.MainFrame.Visible)
+		print("UI LeftPanel exists:", ui.LeftPanel ~= nil)
+		print("UI RightPanel exists:", ui.RightPanel ~= nil)
+		print("UI ScreenGui exists:", ui.ScreenGui ~= nil)
+		print("UI ScreenGui enabled:", ui.ScreenGui and ui.ScreenGui.Enabled)
+		print("UI ScreenGui name:", ui.ScreenGui and ui.ScreenGui.Name)
+		
+		-- Ensure UI is visible
+		if ui.ScreenGui then
+			ui.ScreenGui.Enabled = true
+			print("Inventory ScreenGui enabled for enchanting mode")
+		end
+		if ui.MainFrame then
+			ui.MainFrame.Visible = true
+			print("Inventory MainFrame made visible for enchanting mode")
+		end
+	end
+	
+	return true
+end
+
+-- Function to close enchanting mode
+function InventoryController.CloseEnchantingMode()
+	print("Closing enchanting mode...")
+	
+	-- Store the enchanting mode state before resetting
+	local wasInEnchantingMode = isEnchantingMode
+	
+	isEnchantingMode = false
+	enchantingCallback = nil
+	enchantingCloseCallback = nil
+	
+	-- Restore normal UI
+	updateUIForNormalMode()
+	
+	-- Close the inventory if it exists
+	if InventoryController._toggleInventory then
+		print("Closing inventory UI...")
+		InventoryController._toggleInventory(false)
+	end
+	
+	-- Ensure the enchanter GUI is visible again after closing
+	if wasInEnchantingMode then
+		task.wait(0.5) -- Wait for close animation to complete
+		local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+		local enchanterGui = playerGui:FindFirstChild("EnchanterGui")
+		if enchanterGui then
+			print("Ensuring EnchanterGui is visible after selection")
+			enchanterGui.Enabled = true
+		end
+	end
 end
 
 return InventoryController 

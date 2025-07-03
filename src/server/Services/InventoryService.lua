@@ -21,12 +21,12 @@ local function sellItem(player: Player, itemToSell: Instance)
 	
 	-- Do not allow selling a locked item or equipped item.
 	if itemToSell:GetAttribute("Locked") then
-		Remotes.Notify:FireClient(player, "You cannot sell a locked item.", "Error")
+		Remotes.ShowFloatingNotification:FireClient(player, "You cannot sell a locked item.", "Error")
 		return
 	end
 	
 	if AvatarService.IsItemEquipped(player, itemToSell) then
-		Remotes.Notify:FireClient(player, "You cannot sell an equipped item.", "Error")
+		Remotes.ShowFloatingNotification:FireClient(player, "You cannot sell an equipped item.", "Error")
 		return
 	end
 
@@ -103,9 +103,9 @@ local function sellAllItems(player: Player)
 	
 	-- Notify player of the sale
 	if itemsSold > 0 then
-		Remotes.Notify:FireClient(player, "Sold " .. itemsSold .. " items for " .. ItemValueCalculator.GetFormattedValue({Value = totalSellPrice}, nil, 1), "Success")
+		Remotes.ShowFloatingNotification:FireClient(player, "Sold " .. itemsSold .. " items for " .. ItemValueCalculator.GetFormattedValue({Value = totalSellPrice}, nil, 1), "Success")
 	else
-		Remotes.Notify:FireClient(player, "No items to sell (all locked/equipped or none available)", "Info")
+		Remotes.ShowFloatingNotification:FireClient(player, "No items to sell (all locked/equipped or none available)", "Info")
 	end
 end
 
@@ -151,9 +151,9 @@ local function sellUnlockedItems(player: Player)
 	
 	-- Notify player of the sale
 	if itemsSold > 0 then
-		Remotes.Notify:FireClient(player, "Sold " .. itemsSold .. " unlocked items for " .. ItemValueCalculator.GetFormattedValue({Value = totalSellPrice}, nil, 1), "Success")
+		Remotes.ShowFloatingNotification:FireClient(player, "Sold " .. itemsSold .. " unlocked items for " .. ItemValueCalculator.GetFormattedValue({Value = totalSellPrice}, nil, 1), "Success")
 	else
-		Remotes.Notify:FireClient(player, "No unlocked items to sell", "Info")
+		Remotes.ShowFloatingNotification:FireClient(player, "No unlocked items to sell", "Info")
 	end
 end
 
@@ -172,6 +172,10 @@ function InventoryService.Start()
 	Remotes.SellAllItems.OnServerEvent:Connect(sellAllItems)
 	Remotes.SellUnlockedItems.OnServerEvent:Connect(sellUnlockedItems)
 	Remotes.ToggleItemLock.OnServerEvent:Connect(toggleItemLock)
+end
+
+function InventoryService.SellItemForBoxService(player, itemToSell)
+	sellItem(player, itemToSell)
 end
 
 return InventoryService 

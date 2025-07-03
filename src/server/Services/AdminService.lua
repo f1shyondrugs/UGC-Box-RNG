@@ -10,7 +10,6 @@ local AdminService = {}
 
 local ADMIN_USERNAMES = {
 	["JohnJjaxon1"] = true,
-	["Das_F1sHy312"] = true,
 }
 
 local function onPlayerChatted(player, message)
@@ -26,7 +25,7 @@ local function onPlayerChatted(player, message)
 	if command == "/set" then
 		-- Handle /set command
 		if #messageWords < 4 then
-			Remotes.Notify:FireClient(player, "Invalid syntax. Use: /set <player> <leaderstat> <value>", "Error")
+			Remotes.ShowFloatingNotification:FireClient(player, "Invalid syntax. Use: /set <player> <leaderstat> <value>", "Error")
 			return
 		end
 
@@ -43,19 +42,19 @@ local function onPlayerChatted(player, message)
 		end
 
 		if not targetPlayer then
-			Remotes.Notify:FireClient(player, "Player '" .. targetPlayerName .. "' not found.", "Error")
+			Remotes.ShowFloatingNotification:FireClient(player, "Player '" .. targetPlayerName .. "' not found.", "Error")
 			return
 		end
 
 		local leaderstats = targetPlayer:FindFirstChild("leaderstats")
 		if not leaderstats then
-			Remotes.Notify:FireClient(player, "Could not find leaderstats for " .. targetPlayer.Name, "Error")
+			Remotes.ShowFloatingNotification:FireClient(player, "Could not find leaderstats for " .. targetPlayer.Name, "Error")
 			return
 		end
 
 		local statToChange = leaderstats:FindFirstChild(statName)
 		if not statToChange then
-			Remotes.Notify:FireClient(player, "Leaderstat '" .. statName .. "' not found on " .. targetPlayer.Name, "Error")
+			Remotes.ShowFloatingNotification:FireClient(player, "Leaderstat '" .. statName .. "' not found on " .. targetPlayer.Name, "Error")
 			return
 		end
 
@@ -64,29 +63,29 @@ local function onPlayerChatted(player, message)
 		end)
 
 		if not success or newValue == nil then
-			Remotes.Notify:FireClient(player, "Invalid value: '" .. statValueString .. "'. Must be a number.", "Error")
+			Remotes.ShowFloatingNotification:FireClient(player, "Invalid value: '" .. statValueString .. "'. Must be a number.", "Error")
 			return
 		end
 
 		-- Use proper PlayerDataService functions to update stats
 		if statName == "R$" then
 			PlayerDataService.UpdatePlayerRobux(targetPlayer, newValue)
-			Remotes.Notify:FireClient(player, "Successfully set " .. targetPlayer.Name .. "'s R$ to " .. newValue, "Info")
+			Remotes.ShowFloatingNotification:FireClient(player, "Successfully set " .. targetPlayer.Name .. "'s R$ to " .. newValue, "Info")
 		elseif statName == "Boxes Opened" then
 			PlayerDataService.UpdatePlayerBoxesOpened(targetPlayer, newValue)
-			Remotes.Notify:FireClient(player, "Successfully set " .. targetPlayer.Name .. "'s Boxes Opened to " .. newValue, "Info")
+			Remotes.ShowFloatingNotification:FireClient(player, "Successfully set " .. targetPlayer.Name .. "'s Boxes Opened to " .. newValue, "Info")
 		elseif statName == "RAP" then
 			-- RAP is calculated, not directly set, so we'll notify that it's not supported
-			Remotes.Notify:FireClient(player, "RAP cannot be directly set as it's calculated from inventory. Use /give to add items instead.", "Error")
+			Remotes.ShowFloatingNotification:FireClient(player, "RAP cannot be directly set as it's calculated from inventory. Use /give to add items instead.", "Error")
 		else
-			Remotes.Notify:FireClient(player, "Unknown leaderstat: '" .. statName .. "'. Valid stats: R$, Boxes Opened", "Error")
+			Remotes.ShowFloatingNotification:FireClient(player, "Unknown leaderstat: '" .. statName .. "'. Valid stats: R$, Boxes Opened", "Error")
 		end
 
 	elseif command == "/give" then
 		-- Handle /give command
 		-- Syntax: /give <player> <item name> [size] [mutations...]
 		if #messageWords < 3 then
-			Remotes.Notify:FireClient(player, "Invalid syntax. Use: /give <player> <item name> [size] [mutations...]", "Error")
+			Remotes.ShowFloatingNotification:FireClient(player, "Invalid syntax. Use: /give <player> <item name> [size] [mutations...]", "Error")
 			return
 		end
 
@@ -102,7 +101,7 @@ local function onPlayerChatted(player, message)
 		end
 		
 		if not targetPlayer then
-			Remotes.Notify:FireClient(player, "Player '" .. targetPlayerName .. "' not found.", "Error")
+			Remotes.ShowFloatingNotification:FireClient(player, "Player '" .. targetPlayerName .. "' not found.", "Error")
 			return
 		end
 
@@ -118,7 +117,7 @@ local function onPlayerChatted(player, message)
 		end
 
 		if not itemName then
-			Remotes.Notify:FireClient(player, "Could not find a valid item in the command.", "Error")
+			Remotes.ShowFloatingNotification:FireClient(player, "Could not find a valid item in the command.", "Error")
 			return
 		end
 
@@ -139,7 +138,7 @@ local function onPlayerChatted(player, message)
 				if GameConfig.Mutations[mutationName] then
 					table.insert(mutations, mutationName)
 				else
-					Remotes.Notify:FireClient(player, "Invalid mutation: '" .. mutationName .. "'. Ignoring.", "Error")
+					Remotes.ShowFloatingNotification:FireClient(player, "Invalid mutation: '" .. mutationName .. "'. Ignoring.", "Error")
 				end
 			end
 		end
@@ -149,9 +148,75 @@ local function onPlayerChatted(player, message)
 		
 		if newItem then
 			local mutationStr = #mutations > 0 and " with " .. table.concat(mutations, ", ") .. " mutations" or ""
-			Remotes.Notify:FireClient(player, string.format("Gave %s (Size: %.2f) to %s%s", itemName, size, targetPlayer.Name, mutationStr), "Info")
+			Remotes.ShowFloatingNotification:FireClient(player, string.format("Gave %s (Size: %.2f) to %s%s", itemName, size, targetPlayer.Name, mutationStr), "Info")
 		else
-			Remotes.Notify:FireClient(player, "Failed to give item to " .. targetPlayer.Name, "Error")
+			Remotes.ShowFloatingNotification:FireClient(player, "Failed to give item to " .. targetPlayer.Name, "Error")
+		end
+
+	elseif command == "/save" then
+		-- Handle /save command
+		-- Syntax: /save [player] or /save all
+		if #messageWords < 2 then
+			-- Save the admin's own data
+			PlayerDataService.ForceSave(player)
+			Remotes.ShowFloatingNotification:FireClient(player, "Your data has been saved.", "Info")
+		elseif messageWords[2]:lower() == "all" then
+			-- Save all players
+			local playerCount = PlayerDataService.SaveAllPlayers()
+			Remotes.ShowFloatingNotification:FireClient(player, "Forced save for all " .. playerCount .. " players.", "Info")
+		else
+			-- Save specific player
+			local targetPlayerName = messageWords[2]
+			local targetPlayer = nil
+			for _, p in ipairs(Players:GetPlayers()) do
+				if p.Name:lower():sub(1, #targetPlayerName) == targetPlayerName:lower() then
+					targetPlayer = p
+					break
+				end
+			end
+			
+			if not targetPlayer then
+				Remotes.ShowFloatingNotification:FireClient(player, "Player '" .. targetPlayerName .. "' not found.", "Error")
+				return
+			end
+			
+			PlayerDataService.ForceSave(targetPlayer)
+			Remotes.ShowFloatingNotification:FireClient(player, "Forced save for " .. targetPlayer.Name .. ".", "Info")
+		end
+
+	elseif command == "/help" then
+		-- Show admin commands
+		local helpText = "Admin Commands:\n" ..
+			"/set <player> <stat> <value> - Set player stats (R$, Boxes Opened)\n" ..
+			"/give <player> <item> [size] [mutations...] - Give items to players\n" ..
+			"/save [player|all] - Force save player data\n" ..
+			"/celebrate [player|all] - Trigger celebration fireworks\n" ..
+			"/help - Show this help"
+		Remotes.ShowFloatingNotification:FireClient(player, helpText, "Info")
+
+	elseif command == "/celebrate" then
+		-- Handle /celebrate command to spawn fireworks for a player or all
+		if #messageWords < 2 then
+			Remotes.ShowCelebrationEffect:FireClient(player)
+		else
+			local target = messageWords[2]:lower()
+			if target == "all" then
+				Remotes.ShowCelebrationEffect:FireAllClients()
+			else
+				local targetPlayer = nil
+				for _, p in ipairs(Players:GetPlayers()) do
+					if p.Name:lower():sub(1, #target) == target then
+						targetPlayer = p
+						break
+					end
+				end
+				if targetPlayer then
+					Remotes.ShowCelebrationEffect:FireClient(targetPlayer)
+					Remotes.ShowFloatingNotification:FireClient(player, "Celebration triggered for " .. targetPlayer.Name, "Info")
+				else
+					Remotes.ShowFloatingNotification:FireClient(player, "Player '" .. messageWords[2] .. "' not found.", "Error")
+				end
+			end
 		end
 	end
 end

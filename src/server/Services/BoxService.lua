@@ -3,12 +3,14 @@ local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
+local MarketplaceService = game:GetService("MarketplaceService")
 local PlayerDataService = require(script.Parent.PlayerDataService)
 
 local Shared = ReplicatedStorage.Shared
 local GameConfig = require(Shared.Modules.GameConfig)
 local Remotes = require(Shared.Remotes.Remotes)
 local Box = require(Shared.Modules.Box)
+local ItemValueCalculator = require(Shared.Modules.ItemValueCalculator)
 
 local BoxService = {}
 
@@ -17,6 +19,7 @@ local DEFAULT_INVENTORY_LIMIT = 50
 local activeBoxes = {} -- boxPart -> Box object
 local playerBoxCount = {} -- player.UserId -> number
 local playerFreeCrateCooldowns = {} -- player.UserId -> last claim tick()
+local autoSellSettings = {} -- player.UserId -> settings table
 
 -- Define UUID generator at the top to ensure it's available for functions below
 local function generateUUID()
@@ -37,30 +40,35 @@ end
 getBoxesFolder()
 
 local function requestBox(player: Player, boxType: string)
+	print("[BoxService] requestBox called for player: " .. player.Name .. ", boxType: " .. tostring(boxType))
 	-- Default to StarterCrate if no type specified
 	boxType = boxType or "StarterCrate"
 	
 	local boxConfig = GameConfig.Boxes[boxType]
 	if not boxConfig then
-		Remotes.Notify:FireClient(player, "Invalid crate type!", "Error")
+		print("[BoxService] Error: Invalid crate type for player: " .. player.Name .. ", type: " .. tostring(boxType))
+		Remotes.ShowFloatingNotification:FireClient(player, "Invalid crate type!", "Error")
 		return
 	end
 
 	-- Get player's max boxes from upgrade system
 	local UpgradeService = require(script.Parent.UpgradeService)
 	local maxBoxes = UpgradeService.GetPlayerMaxBoxes(player)
-	
+	print("[BoxService] Player " .. player.Name .. " has " .. (playerBoxCount[player.UserId] or 0) .. " active boxes, max: " .. maxBoxes)
 	if (playerBoxCount[player.UserId] or 0) >= maxBoxes then
-		Remotes.Notify:FireClient(player, "You can only have " .. maxBoxes .. " boxes out at a time!", "Error")
+		print("[BoxService] Error: Player " .. player.Name .. " has too many active boxes.")
+		Remotes.ShowFloatingNotification:FireClient(player, "You can only have " .. maxBoxes .. " boxes out at a time!", "Error")
 		return
 	end
 
 	-- Check for cost or cooldown
 	if boxConfig.Price > 0 then
 		local currentRobux = player:GetAttribute("RobuxValue") or 0
+		print("[BoxService] Player " .. player.Name .. " has R$" .. currentRobux .. ", crate price: R$" .. boxConfig.Price)
 
 		if currentRobux < boxConfig.Price then
-			Remotes.Notify:FireClient(player, "Not enough R$! Need " .. boxConfig.Price .. " R$", "Error")
+			print("[BoxService] Error: Not enough R$ for player: " .. player.Name)
+			Remotes.ShowFloatingNotification:FireClient(player, "Not enough R$! Need " .. boxConfig.Price .. " R$", "Error")
 			return
 		end
 		
@@ -75,27 +83,32 @@ local function requestBox(player: Player, boxType: string)
 			robux.Value = NumberFormatter.FormatNumber(currentRobux - boxConfig.Price)
 		end
 	else -- This is a free crate, check cooldown
+		print("[BoxService] Free crate request for player: " .. player.Name .. ", cooldown: " .. boxConfig.Cooldown)
 		local cooldown = boxConfig.Cooldown or 60
 		local lastClaim = playerFreeCrateCooldowns[player.UserId]
 		
 		if lastClaim and (tick() - lastClaim < cooldown) then
 			local remaining = math.ceil(cooldown - (tick() - lastClaim))
-			Remotes.Notify:FireClient(player, "Free crate is on cooldown for " .. remaining .. "s", "Error")
+			print("[BoxService] Error: Free crate on cooldown for player: " .. player.Name .. ", remaining: " .. remaining .. "s")
+			Remotes.ShowFloatingNotification:FireClient(player, "Free crate is on cooldown for " .. remaining .. "s", "Error")
 			return
 		end
 		
 		playerFreeCrateCooldowns[player.UserId] = tick()
 		Remotes.StartFreeCrateCooldown:FireClient(player, cooldown)
+		print("[BoxService] Free crate cooldown started for player: " .. player.Name)
 	end
 
 	local character = player.Character
 	if not character or not character.PrimaryPart then
+		print("[BoxService] Error: Player character or PrimaryPart not found for player: " .. player.Name)
 		return
 	end
 	
 	-- Increment Boxes Opened stat
 	local currentBoxesOpened = player:GetAttribute("BoxesOpenedValue") or 0
 	player:SetAttribute("BoxesOpenedValue", currentBoxesOpened + 1)
+	print("[BoxService] Boxes Opened stat incremented for player: " .. player.Name .. ", new value: " .. (currentBoxesOpened + 1))
 	
 	-- Also update the StringValue for display consistency
 	local leaderstats = player:FindFirstChild("leaderstats")
@@ -134,7 +147,9 @@ local function requestBox(player: Player, boxType: string)
 	-- Fallback if no spot was found, place it in front with some jitter
 	if not spawnPosition then
 		spawnPosition = (rootCf * CFrame.new(math.random(-5, 5), 0, -8)).Position
+		print("[BoxService] No clear spawn spot found, using fallback position.")
 	end
+	print("[BoxService] Attempting to spawn box at: " .. tostring(spawnPosition))
 
 	-- Add a vertical offset to make it fall from the sky
 	local spawnInTheAir = spawnPosition + Vector3.new(0, 50, 0)
@@ -167,12 +182,14 @@ local function requestBox(player: Player, boxType: string)
 
 	fallTween.Completed:Connect(function()
 		box.Part.CanCollide = true -- Give it a hitbox after it lands
-		Remotes.BoxLanded:FireClient(player)
+		Remotes.BoxLanded:FireClient(player, box.Part)
+		print("[BoxService] Box landed and BoxLanded remote fired for player: " .. player.Name)
 	end)
 
 	activeBoxes[box.Part] = box
 	playerBoxCount[player.UserId] = (playerBoxCount[player.UserId] or 0) + 1
 	Remotes.UpdateBoxCount:FireClient(player, playerBoxCount[player.UserId])
+	print("[BoxService] Box successfully spawned and added to activeBoxes. Total boxes for player " .. player.Name .. ": " .. playerBoxCount[player.UserId])
 end
 
 local function openBox(player: Player, boxPart: BasePart)
@@ -186,7 +203,21 @@ local function openBox(player: Player, boxPart: BasePart)
 		return -- Box is already being processed
 	end
 	
-	-- Mark the box as being opened immediately
+	-- Check if inventory is full BEFORE disabling prompt (using upgrade system)
+	local inventory = player:FindFirstChild("Inventory")
+	if not inventory then return end
+	
+	local UpgradeService = require(script.Parent.UpgradeService)
+	local inventoryLimit = UpgradeService.GetPlayerInventoryLimit(player)
+	
+	if #inventory:GetChildren() >= inventoryLimit then
+		-- Show floating error text above the crate but keep prompt enabled
+		local message = "Inventory Full!\n(" .. #inventory:GetChildren() .. "/" .. inventoryLimit .. ")"
+		Remotes.ShowFloatingError:FireClient(player, boxPart.Position, message)
+		return
+	end
+	
+	-- Only now mark the box as being opened and disable prompt (inventory has space)
 	boxPart:SetAttribute("IsOpening", true)
 	
 	-- Find and properly disable the prompt to prevent any further interactions
@@ -197,18 +228,6 @@ local function openBox(player: Player, boxPart: BasePart)
 		prompt.RequiresLineOfSight = true
 		prompt.ActionText = ""
 		prompt.ObjectText = ""
-	end
-
-	-- Check if inventory is full before opening (using upgrade system)
-	local inventory = player:FindFirstChild("Inventory")
-	if not inventory then return end
-	
-	local UpgradeService = require(script.Parent.UpgradeService)
-	local inventoryLimit = UpgradeService.GetPlayerInventoryLimit(player)
-	
-	if #inventory:GetChildren() >= inventoryLimit then
-		Remotes.Notify:FireClient(player, "Your inventory is full! (" .. #inventory:GetChildren() .. "/" .. inventoryLimit .. ")", "Error")
-		return
 	end
 
 	local ownerId = boxPart:GetAttribute("Owner")
@@ -223,11 +242,41 @@ local function openBox(player: Player, boxPart: BasePart)
 		boxConfig = GameConfig.Boxes["StarterCrate"] -- Fallback
 	end
 
-	-- Premium Booster: 10% more luck for Roblox Premium users
-	local isPremium = false
-	if player.MembershipType and player.MembershipType == Enum.MembershipType.Premium then
-		isPremium = true
+	-- Luck Boosts: Premium membership + Extra Lucky + ULTRA Lucky gamepasses
+	local baseLuckBoost = 0
+
+	local isPremium = player.MembershipType == Enum.MembershipType.Premium
+	if isPremium then
+		baseLuckBoost = baseLuckBoost + 0.1 -- 10% boost
 	end
+
+	local ownsExtraLucky, ownsUltraLucky = false, false
+
+	-- Whitelisted developer IDs automatically own the passes
+	for _, id in ipairs(GameConfig.GamepassWhitelist or {}) do
+		if id == player.UserId then
+			ownsExtraLucky = true
+			ownsUltraLucky = true
+			break
+		end
+	end
+
+	if not ownsExtraLucky then
+		local success, result = pcall(function()
+			return MarketplaceService:UserOwnsGamePassAsync(player.UserId, GameConfig.ExtraLuckyGamepassId)
+		end)
+		ownsExtraLucky = success and result or false
+	end
+
+	if not ownsUltraLucky then
+		local success, result = pcall(function()
+			return MarketplaceService:UserOwnsGamePassAsync(player.UserId, GameConfig.UltraLuckyGamepassId)
+		end)
+		ownsUltraLucky = success and result or false
+	end
+
+	if ownsExtraLucky then baseLuckBoost = baseLuckBoost + 0.25 end -- 25% boost
+	if ownsUltraLucky then baseLuckBoost = baseLuckBoost + 0.4 end -- 40% boost
 
 	-- Determine reward using a more robust method for fractional chances
 	local rewardItemName = nil
@@ -236,30 +285,10 @@ local function openBox(player: Player, boxPart: BasePart)
 		totalChance = totalChance + chance
 	end
 
-	-- If Premium, boost the chance for rarer items by 10%
 	local adjustedRewards = {}
-	if isPremium then
-		-- Find the highest rarity in this box
-		local rarities = {}
-		for itemName, _ in pairs(boxConfig.Rewards) do
-			local itemConfig = GameConfig.Items and GameConfig.Items[itemName]
-			if itemConfig and itemConfig.Rarity then
-				rarities[itemConfig.Rarity] = true
-			end
-		end
-		-- Sort rarities by assumed order (common < rare < epic < legendary < godly)
-		local rarityOrder = {"Common", "Uncommon", "Rare", "Epic", "Legendary", "Godly"}
-		local rarityBoost = {}
-		for i, rarity in ipairs(rarityOrder) do
-			rarityBoost[rarity] = 1 + (0.1 * i / #rarityOrder) -- scale boost by rarity
-		end
+	if baseLuckBoost > 0 then
 		for itemName, chance in pairs(boxConfig.Rewards) do
-			local itemConfig = GameConfig.Items and GameConfig.Items[itemName]
-			if itemConfig and itemConfig.Rarity and rarityBoost[itemConfig.Rarity] then
-				adjustedRewards[itemName] = chance * rarityBoost[itemConfig.Rarity]
-			else
-				adjustedRewards[itemName] = chance
-			end
+			adjustedRewards[itemName] = chance * (1 + baseLuckBoost)
 		end
 	else
 		adjustedRewards = boxConfig.Rewards
@@ -369,7 +398,7 @@ local function openBox(player: Player, boxPart: BasePart)
 			PlayerDataService.Save(player)
 		else
 			-- Inventory might be full now, notify the player.
-			Remotes.Notify:FireClient(player, "Inventory is full! Reward was lost.", "Error")
+			Remotes.ShowFloatingNotification:FireClient(player, "Inventory is full! Reward was lost.", "Error")
 		end
 
 		-- Fire animation to the box opener
@@ -384,7 +413,7 @@ local function openBox(player: Player, boxPart: BasePart)
 	else
 		-- This should not happen if chances are configured correctly, but as a fallback,
 		-- we MUST clean up the box properly to prevent ghost boxes.
-		Remotes.Notify:FireClient(player, "Crate Error", "Error") -- Let the player know something went wrong
+		Remotes.ShowFloatingNotification:FireClient(player, "Crate Error", "Error") -- Let the player know something went wrong
 		
 		local box = activeBoxes[boxPart]
 		if box then
@@ -451,6 +480,21 @@ local function onAnimationComplete(player: Player, boxPart: BasePart)
 
 			-- Save the player's data immediately after they receive an item
 			PlayerDataService.Save(player)
+
+			-- Check auto-sell
+			local settings = autoSellSettings[player.UserId]
+			if settings and settings.autoSellEnabled then
+				local mutationConfigs = ItemValueCalculator.GetMutationConfigs(item)
+				local size = item:GetAttribute("Size") or 1
+				local itemConfig = GameConfig.Items[item:GetAttribute("ItemName")]
+				local value = ItemValueCalculator.GetValue(itemConfig, mutationConfigs, size)
+				local shouldSell = false
+				if value < (settings.valueThreshold or 0) then shouldSell = true end
+				if shouldSell then
+					local InventoryService = require(script.Parent.InventoryService)
+					InventoryService.SellItemForBoxService(player, item)
+				end
+			end
 		else
 			-- This should rarely happen, but log it for debugging
 			warn("Player " .. player.Name .. " inventory not found when granting reward")
@@ -484,6 +528,23 @@ function BoxService.Start()
 			end
 		end
 	end)
+
+	Players.PlayerAdded:Connect(function(player)
+		local settings = PlayerDataService.GetAutoSettings(player.UserId)
+		if settings then
+			autoSellSettings[player.UserId] = settings
+		end
+	end)
+
+	Remotes.UpdateAutoSellSettings.OnServerEvent:Connect(function(player, settings)
+		autoSellSettings[player.UserId] = settings
+		local PlayerDataService = require(script.Parent.PlayerDataService)
+		PlayerDataService.SetAutoSettings(player.UserId, settings)
+	end)
+
+	Remotes.GetAutoSettings.OnServerInvoke = function(player)
+		return autoSellSettings[player.UserId] or {}
+	end
 end
 
 return BoxService

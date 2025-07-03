@@ -56,6 +56,21 @@ function NavigationController.Start(parentGui, soundControllerRef)
 			controllers.Settings.toggle()
 		end
 	end)
+
+	NavigationUI.ConnectButton(navigationUI, "AutoOpen", function()
+		if soundController then soundController:playUIClick() end
+		if controllers.AutoOpen then
+			print("Calling AutoOpenController.toggle()")
+			controllers.AutoOpen.toggle()
+		end
+	end)
+
+	NavigationUI.ConnectButton(navigationUI, "Shop", function()
+		if soundController then soundController:playUIClick() end
+		if controllers.Shop then
+			controllers.Shop.toggle()
+		end
+	end)
 end
 
 -- Function for individual controllers to register their toggle functions

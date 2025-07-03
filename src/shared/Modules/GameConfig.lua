@@ -688,7 +688,7 @@ Config.Items = {
     ["Astolfo Companion"] = {
         Rarity = "Huzz",
         Value = 8000000000000, -- 10T (jackpot)
-        AssetId = 102686235137722,
+        AssetId = 87610936807356,
         Type = "Hat",
         Description = "Astolfo, the legendary companion."
     },
@@ -880,11 +880,17 @@ Config.Currency = {
 
 Config.GamepassWhitelist = {
     1885690426, -- Nosowge
-    1261216760, -- Das_F1sHy312
-    2300668379, -- Trynocs
-    813591741, -- Nickkarto
+    -- 1261216760, -- Das_F1sHy312
+    -- 2300668379, -- Trynocs
+    -- 813591741, -- Nickkarto
 }
 
-Config.AutoEnchanterGamepassId = 1288782058
+Config.AutoEnchanterGamepassId = 1288782058 -- 99R$
+Config.AutoOpenGamepassId = 1290860985 -- 99R$
+Config.AutoSellGamepassId = 1296259225 -- 99R$
+Config.InfiniteStorageGamepassId = 1291387177 -- 49R$
+
+Config.ExtraLuckyGamepassId = 1293308405 -- Extra Lucky (+25%) 129R$
+Config.UltraLuckyGamepassId = 1294534907 -- ULTRA Lucky (+40%) 199R$
 
 return Config

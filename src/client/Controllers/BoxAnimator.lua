@@ -1016,4 +1016,259 @@ function BoxAnimator.AnimateFloatingText(position, itemName, itemConfig, mutatio
 	end)
 end
 
+-- Create floating error text for inventory full messages
+function BoxAnimator.AnimateFloatingErrorText(position, message)
+	-- Skip animation if effects are disabled
+	if areEffectsDisabled() then
+		return
+	end
+	
+	-- Create floating text part
+	local textPart = Instance.new("Part")
+	textPart.Anchored = true
+	textPart.CanCollide = false
+	textPart.Size = Vector3.new(1, 1, 1)
+	textPart.Position = position + Vector3.new(0, 4, 0) -- Start above the box
+	textPart.Transparency = 1
+	textPart.Parent = workspace
+
+	local billboardGui = Instance.new("BillboardGui")
+	billboardGui.Size = UDim2.new(10, 0, 3, 0)
+	billboardGui.AlwaysOnTop = true
+	billboardGui.Parent = textPart
+
+	local textLabel = Instance.new("TextLabel")
+	textLabel.Size = UDim2.new(1, 0, 1, 0)
+	textLabel.Text = message
+	textLabel.TextColor3 = Color3.fromRGB(255, 100, 100) -- Red error color
+	textLabel.BackgroundTransparency = 1
+	textLabel.Font = Enum.Font.GothamBold
+	textLabel.TextSize = 24
+	textLabel.TextStrokeTransparency = 0.5
+	textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+	textLabel.TextTransparency = 1 -- Start invisible
+	textLabel.Parent = billboardGui
+	
+	-- Add a red glowing outline
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = 3
+	stroke.Color = Color3.fromRGB(255, 50, 50)
+	stroke.Transparency = 0.3
+	stroke.Parent = textLabel
+
+	-- Clean up after animation
+	local Debris = game:GetService("Debris")
+	Debris:AddItem(textPart, 3.5)
+	
+	-- Punch-in animation
+	textLabel.Size = UDim2.fromScale(0.1, 0.1)
+	local punchInTween = TweenService:Create(textLabel, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Size = UDim2.fromScale(1, 1),
+		TextTransparency = 0
+	})
+	
+	-- Float up animation
+	local floatPosition = position + Vector3.new(0, 12, 0)
+	local floatTween = TweenService:Create(textPart, TweenInfo.new(3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = floatPosition})
+	
+	-- Fade out animation
+	local fadeOutTween = TweenService:Create(textLabel, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		TextTransparency = 1
+	})
+	
+	-- Play animations in sequence
+	punchInTween:Play()
+	punchInTween.Completed:Connect(function()
+		floatTween:Play()
+		task.wait(2) -- Show for 2 seconds
+		fadeOutTween:Play()
+	end)
+end
+
+-- Create floating notification text for general notifications
+function BoxAnimator.AnimateFloatingNotification(message, messageType)
+	-- Skip animation if effects are disabled
+	if areEffectsDisabled() then
+		return
+	end
+	
+	-- Get player's character position
+	local LocalPlayer = game:GetService("Players").LocalPlayer
+	local character = LocalPlayer.Character
+	if not character or not character.PrimaryPart then
+		return
+	end
+	
+	local position = character.PrimaryPart.Position + Vector3.new(0, 5, 0)
+	
+	-- Create floating text part
+	local textPart = Instance.new("Part")
+	textPart.Anchored = true
+	textPart.CanCollide = false
+	textPart.Size = Vector3.new(1, 1, 1)
+	textPart.Position = position
+	textPart.Transparency = 1
+	textPart.Parent = workspace
+
+	local billboardGui = Instance.new("BillboardGui")
+	billboardGui.Size = UDim2.new(12, 0, 4, 0)
+	billboardGui.AlwaysOnTop = true
+	billboardGui.Parent = textPart
+
+	local textLabel = Instance.new("TextLabel")
+	textLabel.Size = UDim2.new(1, 0, 1, 0)
+	textLabel.Text = message
+	textLabel.BackgroundTransparency = 1
+	textLabel.Font = Enum.Font.GothamBold
+	textLabel.TextSize = 28
+	textLabel.TextStrokeTransparency = 0.3
+	textLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+	textLabel.TextTransparency = 1 -- Start invisible
+	textLabel.TextWrapped = true
+	textLabel.Parent = billboardGui
+	
+	-- Set colors based on message type
+	local strokeColor
+	if messageType == "Error" then
+		textLabel.TextColor3 = Color3.fromRGB(255, 100, 100) -- Red
+		strokeColor = Color3.fromRGB(255, 50, 50)
+	elseif messageType == "Success" then
+		textLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Green
+		strokeColor = Color3.fromRGB(50, 255, 50)
+	else -- Info or default
+		textLabel.TextColor3 = Color3.fromRGB(100, 150, 255) -- Blue
+		strokeColor = Color3.fromRGB(50, 100, 255)
+	end
+	
+	-- Add a glowing outline
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = 3
+	stroke.Color = strokeColor
+	stroke.Transparency = 0.2
+	stroke.Parent = textLabel
+
+	-- Clean up after animation
+	local Debris = game:GetService("Debris")
+	Debris:AddItem(textPart, 4)
+	
+	-- Punch-in animation
+	textLabel.Size = UDim2.fromScale(0.1, 0.1)
+	local punchInTween = TweenService:Create(textLabel, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Size = UDim2.fromScale(1, 1),
+		TextTransparency = 0
+	})
+	
+	-- Float up animation
+	local floatPosition = position + Vector3.new(0, 15, 0)
+	local floatTween = TweenService:Create(textPart, TweenInfo.new(3.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = floatPosition})
+	
+	-- Fade out animation
+	local fadeOutTween = TweenService:Create(textLabel, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+		TextTransparency = 1
+	})
+	
+	-- Play animations in sequence
+	punchInTween:Play()
+	punchInTween.Completed:Connect(function()
+		floatTween:Play()
+		task.wait(2.3) -- Show for 2.3 seconds
+		fadeOutTween:Play()
+	end)
+end
+
+-- Create fireworks celebration effect (e.g., for gamepass purchase)
+function BoxAnimator.PlayCelebrationEffect()
+	-- Skip if effects disabled
+	if areEffectsDisabled() then return end
+	local Players = game:GetService("Players")
+	local LocalPlayer = Players.LocalPlayer
+	local character = LocalPlayer and LocalPlayer.Character
+	if not character or not character.PrimaryPart then return end
+
+	local basePosition = character.PrimaryPart.Position
+	-- Configure fireworks parameters
+	local colors = {
+		Color3.fromRGB(255, 100, 100),
+		Color3.fromRGB(100, 255, 100),
+		Color3.fromRGB(100, 150, 255),
+		Color3.fromRGB(255, 255, 100),
+		Color3.fromRGB(255, 100, 255),
+	}
+
+	local Debris = game:GetService("Debris")
+	local TweenService = game:GetService("TweenService")
+
+	-- Spawn a double ring of fireworks (10 total)
+	local total = 10
+	for i = 1, total do
+		local angle = math.rad((i - 1) * 360 / total)
+		local radius = (i % 2 == 0) and 4 or 6 -- alternate inner/outer rings
+		local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
+		local part = Instance.new("Part")
+		part.Anchored = true
+		part.CanCollide = false
+		part.Size = Vector3.new(0.5, 0.5, 0.5)
+		part.Transparency = 1
+		part.Position = basePosition + offset + Vector3.new(0, 2, 0)
+		part.Parent = workspace
+
+		local attachment = Instance.new("Attachment")
+		attachment.Parent = part
+
+		local emitter = Instance.new("ParticleEmitter")
+		emitter.Enabled = false
+		emitter.Texture = "rbxassetid://248625108" -- spark texture
+		emitter.Color = ColorSequence.new(colors[i % 5 + 1] or Color3.new(1,1,1))
+		emitter.LightEmission = 0.85
+		emitter.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 0)})
+		emitter.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1)})
+		emitter.Speed = NumberRange.new(35, 45)
+		emitter.Lifetime = NumberRange.new(1.2, 1.6)
+		emitter.Rate = 0
+		emitter.Rotation = NumberRange.new(0, 360)
+		emitter.RotSpeed = NumberRange.new(-180, 180)
+		emitter.SpreadAngle = Vector2.new(360, 360)
+		emitter.Parent = attachment
+
+		-- Play emitter after slight stagger
+		delay((i - 1) * 0.08, function()
+			emitter:Emit(180)
+		end)
+
+		Debris:AddItem(part, 4)
+	end
+
+	-- Central upward burst after ring
+	task.delay(0.6, function()
+		local centerPart = Instance.new("Part")
+		centerPart.Anchored = true
+		centerPart.CanCollide = false
+		centerPart.Size = Vector3.new(0.5, 0.5, 0.5)
+		centerPart.Transparency = 1
+		centerPart.Position = basePosition + Vector3.new(0, 2, 0)
+		centerPart.Parent = workspace
+
+		local attach = Instance.new("Attachment")
+		attach.Parent = centerPart
+
+		local upEmitter = Instance.new("ParticleEmitter")
+		upEmitter.Enabled = false
+		upEmitter.Texture = "rbxassetid://248625108"
+		upEmitter.Color = ColorSequence.new(Color3.fromRGB(255,255,255))
+		upEmitter.LightEmission = 0.9
+		upEmitter.Size = NumberSequence.new({NumberSequenceKeypoint.new(0,0.4),NumberSequenceKeypoint.new(1,0)})
+		upEmitter.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0,0),NumberSequenceKeypoint.new(1,1)})
+		upEmitter.Speed = NumberRange.new(55,65)
+		upEmitter.Lifetime = NumberRange.new(1,1.4)
+		upEmitter.Rate = 0
+		upEmitter.SpreadAngle = Vector2.new(10,10)
+		upEmitter.Parent = attach
+
+		upEmitter:Emit(250)
+		Debris:AddItem(centerPart, 4)
+	end)
+
+	-- Optional: small camera shake or sound could be added here if desired
+end
+
 return BoxAnimator 

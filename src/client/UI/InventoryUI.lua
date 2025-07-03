@@ -99,7 +99,8 @@ function InventoryUI.Create(parentGui)
 	leftPanel.Name = "LeftPanel"
 	leftPanel.Size = UDim2.new(0.25, -15, 0.9, 0)
 	leftPanel.Position = UDim2.new(0, 10, 0.05, 0)
-	leftPanel.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
+	leftPanel.BackgroundColor3 = Color3.fromHex("#121620")
+	leftPanel.BackgroundTransparency = 0.5
 	leftPanel.BorderSizePixel = 0
 	leftPanel.ZIndex = 52
 	leftPanel.Parent = mainFrame
@@ -109,13 +110,20 @@ function InventoryUI.Create(parentGui)
 	leftCorner.CornerRadius = UDim.new(0, 12)
 	leftCorner.Parent = leftPanel
 
+	local leftStroke = Instance.new("UIStroke")
+	leftStroke.Color = Color3.fromRGB(50, 55, 70)
+	leftStroke.Thickness = 1
+	leftStroke.Transparency = 0.7
+	leftStroke.Parent = leftPanel
+
 	-- Left panel gradient
 	local leftGradient = Instance.new("UIGradient")
 	leftGradient.Color = ColorSequence.new{
-		ColorSequenceKeypoint.new(0.0, Color3.fromRGB(35, 40, 50)),
-		ColorSequenceKeypoint.new(1.0, Color3.fromRGB(15, 20, 30))
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(25, 30, 45)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(18, 22, 32)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 15, 22))
 	}
-	leftGradient.Rotation = 90
+	leftGradient.Rotation = 135
 	leftGradient.Parent = leftPanel
 
 	-- Right Panel - Item List with 3D Previews
@@ -124,7 +132,8 @@ function InventoryUI.Create(parentGui)
 	rightPanel.Size = UDim2.new(0.25, -15, 0.9, 0)
 	rightPanel.Position = UDim2.new(1, -10, 0.05, 0)
 	rightPanel.AnchorPoint = Vector2.new(1, 0)
-	rightPanel.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
+	rightPanel.BackgroundColor3 = Color3.fromHex("#121620")
+	rightPanel.BackgroundTransparency = 0.5
 	rightPanel.BorderSizePixel = 0
 	rightPanel.ZIndex = 52
 	rightPanel.Parent = mainFrame
@@ -134,13 +143,20 @@ function InventoryUI.Create(parentGui)
 	rightCorner.CornerRadius = UDim.new(0, 12)
 	rightCorner.Parent = rightPanel
 
+	local rightStroke = Instance.new("UIStroke")
+	rightStroke.Color = Color3.fromRGB(50, 55, 70)
+	rightStroke.Thickness = 1
+	rightStroke.Transparency = 0.7
+	rightStroke.Parent = rightPanel
+
 	-- Right panel gradient
 	local rightGradient = Instance.new("UIGradient")
 	rightGradient.Color = ColorSequence.new{
-		ColorSequenceKeypoint.new(0.0, Color3.fromRGB(35, 40, 50)),
-		ColorSequenceKeypoint.new(1.0, Color3.fromRGB(15, 20, 30))
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(25, 30, 45)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(18, 22, 32)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 15, 22))
 	}
-	rightGradient.Rotation = 90
+	rightGradient.Rotation = 135
 	rightGradient.Parent = rightPanel
 
 	-- Close Button (Top Right)
@@ -148,18 +164,32 @@ function InventoryUI.Create(parentGui)
 	closeButton.Name = "CloseButton"
 	closeButton.Size = UDim2.new(0, 40, 0, 40)
 	closeButton.Position = UDim2.new(1, -50, 0, 15)
-	closeButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
-	closeButton.Text = "X"
-	closeButton.Font = Enum.Font.SourceSansBold
-	closeButton.TextScaled = true
+	closeButton.BackgroundColor3 = Color3.fromRGB(220, 70, 70)
+	closeButton.Text = "✕"
+	closeButton.Font = Enum.Font.GothamBold
+	closeButton.TextSize = 16
 	closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	closeButton.ZIndex = 55
 	closeButton.Parent = mainFrame
 	components.CloseButton = closeButton
 
 	local closeCorner = Instance.new("UICorner")
-	closeCorner.CornerRadius = UDim.new(1, 0)
+	closeCorner.CornerRadius = UDim.new(0, 20)
 	closeCorner.Parent = closeButton
+
+	local closeGradient = Instance.new("UIGradient")
+	closeGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(240, 80, 80)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 60, 60))
+	}
+	closeGradient.Rotation = 90
+	closeGradient.Parent = closeButton
+	
+	local closeStroke = Instance.new("UIStroke")
+	closeStroke.Color = Color3.fromRGB(255, 100, 100)
+	closeStroke.Thickness = 1
+	closeStroke.Transparency = 0.5
+	closeStroke.Parent = closeButton
 
 	local closeAspect = Instance.new("UIAspectRatioConstraint")
 	closeAspect.AspectRatio = 1
@@ -173,14 +203,29 @@ function InventoryUI.Create(parentGui)
 	detailTitle.Size = UDim2.new(1, -20, 0, 35)
 	detailTitle.Position = UDim2.new(0, 10, 0, 8)
 	detailTitle.Text = "ITEM DETAILS"
-	detailTitle.Font = Enum.Font.SourceSansBold
-	detailTitle.TextSize = 22
+	detailTitle.Font = Enum.Font.GothamBold
+	detailTitle.TextSize = 18
 	detailTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 	detailTitle.BackgroundTransparency = 1
 	detailTitle.TextXAlignment = Enum.TextXAlignment.Left
 	detailTitle.ZIndex = 53
 	detailTitle.Parent = leftPanel
 	components.DetailTitle = detailTitle
+
+	-- Add title shadow
+	local detailTitleShadow = Instance.new("TextLabel")
+	detailTitleShadow.Name = "DetailTitleShadow"
+	detailTitleShadow.Size = detailTitle.Size
+	detailTitleShadow.Position = UDim2.new(0, 12, 0, 10)
+	detailTitleShadow.Text = detailTitle.Text
+	detailTitleShadow.Font = detailTitle.Font
+	detailTitleShadow.TextSize = detailTitle.TextSize
+	detailTitleShadow.TextColor3 = Color3.fromRGB(0, 0, 0)
+	detailTitleShadow.TextTransparency = 0.8
+	detailTitleShadow.BackgroundTransparency = 1
+	detailTitleShadow.TextXAlignment = Enum.TextXAlignment.Left
+	detailTitleShadow.ZIndex = 52
+	detailTitleShadow.Parent = leftPanel
 
 	-- Item preview viewport (3D model)
 	local itemViewport = Instance.new("ViewportFrame")
@@ -333,7 +378,7 @@ function InventoryUI.Create(parentGui)
 	-- Title for right panel
 	local inventoryTitle = Instance.new("TextLabel")
 	inventoryTitle.Name = "InventoryTitle"
-	inventoryTitle.Size = UDim2.new(1, 0, 0, 35)
+	inventoryTitle.Size = UDim2.new(1, -40, 0, 35) -- Make room for the + button
 	inventoryTitle.Position = UDim2.new(0, 0, 0, 0)
 	inventoryTitle.Text = "INVENTORY"
 	inventoryTitle.Font = Enum.Font.SourceSansBold
@@ -344,6 +389,42 @@ function InventoryUI.Create(parentGui)
 	inventoryTitle.ZIndex = 53
 	inventoryTitle.Parent = headerContainer
 	components.InventoryTitle = inventoryTitle
+	
+	-- Infinite Storage button (+ symbol)
+	local infiniteStorageButton = Instance.new("TextButton")
+	infiniteStorageButton.Name = "InfiniteStorageButton"
+	infiniteStorageButton.Size = UDim2.new(0, 30, 0, 30)
+	infiniteStorageButton.Position = UDim2.new(1, -35, 0, 2)
+	infiniteStorageButton.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+	infiniteStorageButton.Text = "+"
+	infiniteStorageButton.Font = Enum.Font.GothamBold
+	infiniteStorageButton.TextSize = 18
+	infiniteStorageButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	infiniteStorageButton.ZIndex = 54
+	infiniteStorageButton.Parent = headerContainer
+	components.InfiniteStorageButton = infiniteStorageButton
+
+	local infiniteCorner = Instance.new("UICorner")
+	infiniteCorner.CornerRadius = UDim.new(0, 15)
+	infiniteCorner.Parent = infiniteStorageButton
+
+	local infiniteStroke = Instance.new("UIStroke")
+	infiniteStroke.Color = Color3.fromRGB(150, 255, 150)
+	infiniteStroke.Thickness = 1
+	infiniteStroke.Transparency = 0.3
+	infiniteStroke.Parent = infiniteStorageButton
+
+	-- Hover effects for infinite storage button
+	infiniteStorageButton.MouseEnter:Connect(function()
+		infiniteStorageButton.BackgroundColor3 = Color3.fromRGB(120, 220, 120)
+		infiniteStroke.Color = Color3.fromRGB(200, 255, 200)
+		infiniteStroke.Transparency = 0.1
+	end)
+	infiniteStorageButton.MouseLeave:Connect(function()
+		infiniteStorageButton.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+		infiniteStroke.Color = Color3.fromRGB(150, 255, 150)
+		infiniteStroke.Transparency = 0.3
+	end)
 
 	-- Search container
 	local searchContainer = Instance.new("Frame")

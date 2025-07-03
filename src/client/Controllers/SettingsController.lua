@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
 
 local LocalPlayer = Players.LocalPlayer
 local NavigationController = require(script.Parent.NavigationController)
@@ -16,10 +17,46 @@ local ui = nil
 local settings = {}
 local isVisible = false
 local soundController = nil
+local hiddenUIs = {}
 
 -- Animation settings
 local ANIMATION_TIME = 0.3
 local EASE_INFO = TweenInfo.new(ANIMATION_TIME, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+
+-- Hide other UIs for clean settings experience
+local function hideOtherUIs(show)
+	local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+	
+	if show then
+		-- Hide other UIs for clean settings experience
+		for _, gui in pairs(playerGui:GetChildren()) do
+			if gui:IsA("ScreenGui") and gui.Name ~= "SettingsGui" then
+				if gui.Enabled then
+					hiddenUIs[gui] = true
+					gui.Enabled = false
+				end
+			end
+		end
+		
+		-- Also hide CoreGui elements
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false)
+	else
+		-- Restore hidden UIs
+		for gui, _ in pairs(hiddenUIs) do
+			if gui and gui.Parent then
+				gui.Enabled = true
+			end
+		end
+		hiddenUIs = {}
+		
+		-- Restore CoreGui
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, true)
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, true)
+	end
+end
 
 -- Default settings
 local function initializeDefaultSettings()
@@ -283,6 +320,7 @@ local function toggleSettingsGUI()
 	isVisible = not isVisible
 	
 	if isVisible then
+		hideOtherUIs(true)
 		ui.MainFrame.Visible = true
 		-- Animate in
 		ui.MainFrame.Size = UDim2.new(0, 0, 0, 0)
@@ -299,6 +337,7 @@ local function toggleSettingsGUI()
 		-- Refresh settings display when opening
 		updateSettingsDisplay()
 	else
+		hideOtherUIs(false)
 		-- Animate out
 		local tweenOut = TweenService:Create(ui.MainFrame, EASE_INFO, {
 			Size = UDim2.new(0, 0, 0, 0),

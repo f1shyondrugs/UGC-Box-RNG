@@ -80,8 +80,8 @@ function BuyButtonUI.Create(parent)
 	local buyButton = Instance.new("TextButton")
 	buyButton.Name = "BuyBoxButton"
 	buyButton.Size = UDim2.new(0.48, 0, 0.9, 0) -- 48% of container width
-	buyButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-	buyButton.Font = Enum.Font.SourceSansBold
+	buyButton.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
+	buyButton.Font = Enum.Font.GothamBold
 	buyButton.Text = "" -- Text will be handled by children
 	buyButton.ZIndex = 1 -- Lower ZIndex
 	buyButton.Parent = mainFrame
@@ -90,6 +90,20 @@ function BuyButtonUI.Create(parent)
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 12)
 	corner.Parent = buyButton
+
+	local buttonGradient = Instance.new("UIGradient")
+	buttonGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 100, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 80, 255))
+	}
+	buttonGradient.Rotation = 90
+	buttonGradient.Parent = buyButton
+
+	local buttonStroke = Instance.new("UIStroke")
+	buttonStroke.Color = Color3.fromRGB(200, 160, 255)
+	buttonStroke.Thickness = 1
+	buttonStroke.Transparency = 0.3
+	buttonStroke.Parent = buyButton
 	
 	-- "Buy/Get Crate" Text (will change based on selection)
 	local titleLabel = Instance.new("TextLabel")
@@ -97,7 +111,7 @@ function BuyButtonUI.Create(parent)
 	titleLabel.Size = UDim2.new(1, 0, 0.6, 0)
 	titleLabel.Position = UDim2.new(0,0,0,0)
 	titleLabel.Text = "Get Crate"
-	titleLabel.Font = Enum.Font.SourceSansBold
+	titleLabel.Font = Enum.Font.GothamBold
 	titleLabel.TextScaled = true
 	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	titleLabel.BackgroundTransparency = 1
@@ -153,11 +167,12 @@ function BuyButtonUI.Create(parent)
 	local crateDropdown = Instance.new("TextButton")
 	crateDropdown.Name = "CrateDropdown"
 	crateDropdown.Size = UDim2.new(0.48, 0, 0.9, 0) -- 48% of container width
-	crateDropdown.BackgroundColor3 = Color3.fromRGB(60, 65, 75)
-	crateDropdown.Font = Enum.Font.SourceSans
+	crateDropdown.BackgroundColor3 = Color3.fromRGB(42, 47, 65) -- Solid attractive color
+	crateDropdown.Font = Enum.Font.GothamBold
 	crateDropdown.Text = "📦 Select Crate"
 	crateDropdown.TextScaled = true
 	crateDropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
+	crateDropdown.AutoButtonColor = false -- Prevent default button overlay
 	crateDropdown.ZIndex = 1 -- Lower ZIndex
 	crateDropdown.Parent = mainFrame
 	components.CrateDropdown = crateDropdown
@@ -168,8 +183,28 @@ function BuyButtonUI.Create(parent)
 	dropdownPadding.Parent = crateDropdown
 
 	local dropdownCorner = Instance.new("UICorner")
-	dropdownCorner.CornerRadius = UDim.new(0, 8)
+	dropdownCorner.CornerRadius = UDim.new(0, 12)
 	dropdownCorner.Parent = crateDropdown
+
+	-- Enhanced stroke for visual appeal instead of gradient
+	local dropdownStroke = Instance.new("UIStroke")
+	dropdownStroke.Color = Color3.fromRGB(120, 80, 255)
+	dropdownStroke.Thickness = 2
+	dropdownStroke.Transparency = 0.3
+	dropdownStroke.Parent = crateDropdown
+
+	-- Hover effects
+	crateDropdown.MouseEnter:Connect(function()
+		crateDropdown.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
+		dropdownStroke.Color = Color3.fromRGB(200, 160, 255)
+		dropdownStroke.Transparency = 0.1
+	end)
+	
+	crateDropdown.MouseLeave:Connect(function()
+		crateDropdown.BackgroundColor3 = Color3.fromRGB(42, 47, 65)
+		dropdownStroke.Color = Color3.fromRGB(120, 80, 255)
+		dropdownStroke.Transparency = 0.3
+	end)
 
 	-- Store selected crate type
 	components.SelectedCrateType = "StarterCrate" -- Default
@@ -194,6 +229,9 @@ function BuyButtonUI.SetSelectedCrate(components, crateType)
 	components.SelectedCrateType = crateType
 	components.SelectedCrateConfig = crateConfig
 	components.CrateDropdown.Text = crateConfig.Name
+	
+	-- Set attribute for other systems to access
+	components.ScreenGui:SetAttribute("SelectedCrateType", crateType)
 	
 	-- Update button appearance based on crate type
 	if crateType == "FreeCrate" then

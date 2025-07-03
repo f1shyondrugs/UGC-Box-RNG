@@ -248,6 +248,26 @@ function CrateSelectionController:GetSelectedCrate()
 	return selectedCrate
 end
 
+function CrateSelectionController:SetSelectedCrateQuiet(crateName)
+	-- Set the selected crate without UI updates or closing (used for initialization)
+	if GameConfig.Boxes[crateName] then
+		selectedCrate = crateName
+		print("[CrateSelectionController] Quietly set selected crate to:", crateName)
+		
+		-- Update the UI selection state if crate cards exist
+		if crateCards then
+			for name, card in pairs(crateCards) do
+				if card and card.Parent then
+					local isSelected = (name == crateName)
+					CrateSelectionUI.UpdateCardSelection(card, isSelected)
+				end
+			end
+		end
+	else
+		warn("[CrateSelectionController] Cannot set unknown crate:", crateName)
+	end
+end
+
 function CrateSelectionController:Show()
 	if not components then return end
 	

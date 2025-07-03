@@ -32,18 +32,33 @@ function NavigationUI.Create(parentGui)
 	-- Main Container Frame (draggable)
 	local containerFrame = Instance.new("Frame")
 	containerFrame.Name = "NavigationContainer"
-	containerFrame.Size = UDim2.new(0, 130, 0, 130) -- 2 buttons wide x 2 buttons tall (50+10+50+20 each direction)
-	containerFrame.Position = UDim2.new(0, 15, 0.5, -65) -- Centered vertically on left side
-	containerFrame.BackgroundColor3 = Color3.fromRGB(20, 22, 25) -- Nice dark gray
-	containerFrame.BackgroundTransparency = 0.3 -- Seethrough
+	containerFrame.Size = UDim2.new(0, 130, 0, 250) -- 2 buttons wide x 4 buttons tall
+	containerFrame.Position = UDim2.new(0, 15, 0.5, -95) -- Centered vertically on left side, adjusted for new height
+	containerFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+	containerFrame.BackgroundTransparency = 0.02
 	containerFrame.BorderSizePixel = 0
 	containerFrame.ZIndex = 100
 	containerFrame.Parent = screenGui
 	components.ContainerFrame = containerFrame
 	
 	local containerCorner = Instance.new("UICorner")
-	containerCorner.CornerRadius = UDim.new(0, 12)
+	containerCorner.CornerRadius = UDim.new(0, 20)
 	containerCorner.Parent = containerFrame
+
+	local containerGradient = Instance.new("UIGradient")
+	containerGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 24, 35)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(15, 18, 28)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 12, 18))
+	}
+	containerGradient.Rotation = 135
+	containerGradient.Parent = containerFrame
+
+	local containerStroke = Instance.new("UIStroke")
+	containerStroke.Color = Color3.fromRGB(50, 55, 70)
+	containerStroke.Thickness = 1
+	containerStroke.Transparency = 0.7
+	containerStroke.Parent = containerFrame
 	
 	-- Grid Layout (2 columns, 3 rows)
 	local gridLayout = Instance.new("UIGridLayout")
@@ -73,61 +88,62 @@ function NavigationUI.Create(parentGui)
 		local button = Instance.new("TextButton")
 		button.Name = name .. "Button"
 		button.Size = UDim2.new(0, 50, 0, 50) -- This will be overridden by grid
-		button.BackgroundColor3 = color or Color3.fromRGB(41, 43, 48)
+		button.BackgroundColor3 = Color3.fromRGB(42, 47, 65) -- Solid attractive color
 		button.BorderSizePixel = 0
 		button.Text = icon or "?"
-		button.Font = Enum.Font.SourceSansBold
+		button.Font = Enum.Font.GothamBold
 		button.TextScaled = true
 		button.TextColor3 = Color3.fromRGB(255, 255, 255)
+		button.AutoButtonColor = false -- Prevent default button color changes
 		button.ZIndex = 101
 		button.LayoutOrder = layoutOrder
+		button.Active = true -- Explicitly make the button active
 		button.Parent = containerFrame
+		print("Created navigation button: " .. name)
 		
 		local aspect = Instance.new("UIAspectRatioConstraint")
 		aspect.AspectRatio = 1
 		aspect.Parent = button
 		
 		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 8)
+		corner.CornerRadius = UDim.new(0, 12)
 		corner.Parent = button
+
+		-- Enhanced stroke for visual appeal instead of gradient
+		local buttonStroke = Instance.new("UIStroke")
+		buttonStroke.Color = Color3.fromRGB(120, 80, 255)
+		buttonStroke.Thickness = 2
+		buttonStroke.Transparency = 0.3
+		buttonStroke.Parent = button
+
+		-- Hover effects
+		button.MouseEnter:Connect(function()
+			button.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
+			buttonStroke.Color = Color3.fromRGB(200, 160, 255)
+			buttonStroke.Transparency = 0.1
+		end)
+		
+		button.MouseLeave:Connect(function()
+			button.BackgroundColor3 = Color3.fromRGB(42, 47, 65)
+			buttonStroke.Color = Color3.fromRGB(120, 80, 255)
+			buttonStroke.Transparency = 0.3
+		end)
 		
 		return button
 	end
 
-	-- Create navigation buttons (2x2 grid)
+	-- Create navigation buttons (2x3 grid)
 	-- Row 1: Inventory, Collection 
-	components.Buttons.Inventory = createNavButton("Inventory", "📦", Color3.fromRGB(41, 43, 48), 1)
-	components.Buttons.Collection = createNavButton("Collection", "📚", Color3.fromRGB(60, 88, 50), 2)
+	components.Buttons.Inventory = createNavButton("Inventory", "📦", nil, 1)
+	components.Buttons.Collection = createNavButton("Collection", "📚", nil, 2)
 	
 	-- Row 2: Upgrade, Settings  
-	components.Buttons.Upgrade = createNavButton("Upgrade", "⚡", Color3.fromRGB(88, 61, 33), 3)
-	components.Buttons.Settings = createNavButton("Settings", "⚙️", Color3.fromRGB(70, 70, 70), 4)
+	components.Buttons.Upgrade = createNavButton("Upgrade", "⚡", nil, 3)
+	components.Buttons.Settings = createNavButton("Settings", "⚙️", nil, 4)
 
-	-- Make container draggable
-	local dragging = false
-	local dragStart = nil
-	local startPos = nil
-	
-	containerFrame.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			dragging = true
-			dragStart = input.Position
-			startPos = containerFrame.Position
-		end
-	end)
-	
-	UserInputService.InputChanged:Connect(function(input)
-		if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-			local delta = input.Position - dragStart
-			containerFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-		end
-	end)
-	
-	UserInputService.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			dragging = false
-		end
-	end)
+	-- Row 3: Auto-Open, Shop
+	components.Buttons.AutoOpen = createNavButton("AutoOpen", "🤖", nil, 5)
+	components.Buttons.Shop = createNavButton("Shop", "🛒", nil, 6)
 
 	-- Update scale when screen size changes
 	local function updateScale()
@@ -144,7 +160,11 @@ end
 function NavigationUI.ConnectButton(navigationUI, buttonName, callback)
 	local button = navigationUI.Buttons[buttonName]
 	if button then
-		button.MouseButton1Click:Connect(callback)
+		print("Connecting click for: " .. buttonName)
+		button.MouseButton1Click:Connect(function(...)
+			print("Button clicked: " .. buttonName)
+			callback(...)
+		end)
 	end
 end
 

@@ -13,6 +13,7 @@ local Remotes = require(Shared.Remotes.Remotes)
 local EnchanterUI = require(script.Parent.Parent.UI.EnchanterUI)
 local NumberFormatter = require(Shared.Modules.NumberFormatter)
 local InventoryController = require(script.Parent.InventoryController)
+local BoxAnimator = require(script.Parent.BoxAnimator)
 
 local EnchanterController = {}
 EnchanterController.ClassName = "EnchanterController"
@@ -126,6 +127,40 @@ local function setup3DItemPreview(viewport, itemConfig)
 	end
 end
 
+local function promptGamepassPurchase()
+	-- Safety check for gamepass ID
+	if not GameConfig or not GameConfig.AutoEnchanterGamepassId then
+		warn("AutoEnchanterGamepassId not found in GameConfig")
+		-- Notify player about the issue
+		if BoxAnimator and BoxAnimator.AnimateFloatingNotification then
+			BoxAnimator.AnimateFloatingNotification("Auto-Enchanter gamepass temporarily unavailable. Please try again later.", "Error")
+		end
+		return
+	end
+	
+	-- Ensure the gamepass ID is a valid number
+	local gamepassId = GameConfig.AutoEnchanterGamepassId
+	if type(gamepassId) ~= "number" or gamepassId <= 0 then
+		warn("Invalid AutoEnchanterGamepassId:", gamepassId)
+		if BoxAnimator and BoxAnimator.AnimateFloatingNotification then
+			BoxAnimator.AnimateFloatingNotification("Auto-Enchanter gamepass temporarily unavailable. Please try again later.", "Error")
+		end
+		return
+	end
+	
+	-- Safely prompt gamepass purchase
+	local success, err = pcall(function()
+		MarketplaceService:PromptGamePassPurchase(LocalPlayer, gamepassId)
+	end)
+	
+	if not success then
+		warn("Failed to prompt gamepass purchase:", err)
+		if BoxAnimator and BoxAnimator.AnimateFloatingNotification then
+			BoxAnimator.AnimateFloatingNotification("Failed to open gamepass purchase. Please try again.", "Error")
+		end
+	end
+end
+
 local function updateMutatorsDisplay(mutationNames, animate)
 	local mutatorsFrame = components.MutatorsScrollFrame
 	-- Clear existing mutators
@@ -208,7 +243,8 @@ end
 local function hideItemSelectionPopup()
 	if not components then return end
 	
-	components.ItemSelectionPopup.Visible = false
+	-- Close the inventory enchanting mode if it's open
+	InventoryController.CloseEnchantingMode()
 end
 
 local function populateItemSelection()
@@ -259,14 +295,73 @@ end
 local function showItemSelectionPopup()
 	if not components then return end
 	
-	-- Show popup
-	components.ItemSelectionPopup.Visible = true
+	print("Opening inventory for item selection...")
 	
-	-- Populate the item list
-	populateItemSelection()
+	-- Check if InventoryController is ready
+	if not InventoryController._ui then
+		print("InventoryController not ready, attempting to initialize...")
+		-- Try to initialize the inventory controller if it hasn't been started yet
+		local initSuccess, initErr = pcall(function()
+			InventoryController.Start(LocalPlayer.PlayerGui, nil, soundController)
+		end)
+		
+		if not initSuccess then
+			warn("Failed to initialize InventoryController:", initErr)
+			-- Fallback to show the old popup
+			components.ItemSelectionPopup.Visible = true
+			return
+		end
+		
+		-- Wait a moment for it to initialize
+		task.wait(0.2)
+		print("After init - InventoryController._ui exists:", InventoryController._ui ~= nil)
+	end
 	
-	-- Clear search box
-	components.SearchBox.Text = ""
+	-- Use the inventory UI instead of the popup
+	local success, err = pcall(function()
+		return InventoryController.OpenForEnchanting(
+			-- Callback when item is selected
+			function(selectedItemInstance)
+				print("Item selected in enchanting mode:", selectedItemInstance.Name)
+				-- Find the item in our available items list
+				for index, itemData in ipairs(availableItems) do
+					if itemData.itemInstance == selectedItemInstance then
+						selectedItemIndex = index
+						-- Update our filtered items to match
+						filteredItems = {}
+						for i, item in ipairs(availableItems) do
+							table.insert(filteredItems, item)
+						end
+											updateSelectedItemDisplay()
+					InventoryController.CloseEnchantingMode()
+					-- Make sure our enchanter GUI is visible again
+					if components and components.ScreenGui then
+						components.ScreenGui.Enabled = true
+					end
+					break
+					end
+				end
+			end,
+					-- Callback when closed
+		function()
+			print("Enchanting mode closed by user")
+			InventoryController.CloseEnchantingMode()
+			-- Make sure our enchanter GUI is visible again
+			if components and components.ScreenGui then
+				components.ScreenGui.Enabled = true
+			end
+		end
+		)
+	end)
+	
+	if not success then
+		warn("Failed to open inventory for enchanting:", err)
+		-- Fallback to show the old popup
+		print("Falling back to old popup")
+		components.ItemSelectionPopup.Visible = true
+	else
+		print("Successfully opened inventory for enchanting")
+	end
 end
 
 local function showInfoPopup()
@@ -398,16 +493,20 @@ end
 
 -- Check gamepass ownership and update UI
 local function checkGamepassOwnership()
-	if not Remotes.CheckAutoEnchanterGamepass then
+	if not Remotes or not Remotes.CheckAutoEnchanterGamepass then
 		warn("CheckAutoEnchanterGamepass remote not available yet, retrying in 2 seconds...")
 		hasAutoEnchanterGamepass = false
-		updateAutoEnchanterUI()
+		if components then
+			updateAutoEnchanterUI()
+		end
 		
 		-- Retry after a delay in a separate task
 		task.spawn(function()
 			task.wait(2)
-			if Remotes.CheckAutoEnchanterGamepass then
+			if Remotes and Remotes.CheckAutoEnchanterGamepass then
 				checkGamepassOwnership() -- Recursive retry
+			else
+				warn("CheckAutoEnchanterGamepass remote still not available after retry")
 			end
 		end)
 		return
@@ -418,13 +517,16 @@ local function checkGamepassOwnership()
 	end)
 	
 	if success then
-		hasAutoEnchanterGamepass = ownsGamepass
+		hasAutoEnchanterGamepass = ownsGamepass or false
+		print("Gamepass ownership check successful:", hasAutoEnchanterGamepass)
 	else
 		hasAutoEnchanterGamepass = false
 		warn("Failed to check gamepass ownership:", ownsGamepass)
 	end
 	
-	updateAutoEnchanterUI()
+	if components then
+		updateAutoEnchanterUI()
+	end
 end
 
 -- Populate mutator selection checkboxes
@@ -530,21 +632,21 @@ function EnchanterController:SetupConnections()
 		self:Hide()
 	end)
 	
-	-- Info button connection (disabled for now - components don't exist)
-	-- components.InfoButton.MouseButton1Click:Connect(function()
-	-- 	if soundController then
-	-- 		soundController:playUIClick()
-	-- 	end
-	-- 	showInfoPopup()
-	-- end)
+	-- Info button connection
+	components.InfoButton.MouseButton1Click:Connect(function()
+		if soundController then
+			soundController:playUIClick()
+		end
+		showInfoPopup()
+	end)
 	
-	-- Info close button connection (disabled for now - components don't exist)
-	-- components.InfoCloseButton.MouseButton1Click:Connect(function()
-	-- 	if soundController then
-	-- 		soundController:playUIClick()
-	-- 	end
-	-- 	hideInfoPopup()
-	-- end)
+	-- Info close button connection
+	components.InfoCloseButton.MouseButton1Click:Connect(function()
+		if soundController then
+			soundController:playUIClick()
+		end
+		hideInfoPopup()
+	end)
 
 	-- Select Item button connection
 	components.SelectItemButton.MouseButton1Click:Connect(function()
@@ -554,13 +656,7 @@ function EnchanterController:SetupConnections()
 		showItemSelectionPopup()
 	end)
 	
-	-- Popup close button connection
-	components.PopupCloseButton.MouseButton1Click:Connect(function()
-		if soundController then
-			soundController:playUIClick()
-		end
-		hideItemSelectionPopup()
-	end)
+	-- Note: Popup close button connection removed since we're using inventory UI now
 	
 	-- Reroll button connection
 	components.RerollButton.MouseButton1Click:Connect(function()
@@ -693,8 +789,7 @@ function EnchanterController:SetupConnections()
 				local itemInstanceName = selectedItem.itemInstance.Name
 				Remotes.EquipItem:FireServer(itemName, itemInstanceName)
 			end
-			-- Reload inventory UI
-			InventoryController.Start(LocalPlayer.PlayerGui, nil, soundController) 
+			-- Note: Inventory reload moved to server-side or handled elsewhere 
 			task.wait(0.5) -- Add cooldown after roll
 			isRolling = false
 		else
@@ -731,10 +826,7 @@ function EnchanterController:SetupConnections()
 		end
 	end)
 
-	-- Connect search box change
-	if components and components.SearchBox then
-		components.SearchBox:GetPropertyChangedSignal("Text"):Connect(updateItemListFromSearch)
-	end
+	-- Note: Search box connection removed since we're using inventory UI now
 	
 	-- Auto-enchanting button connections
 	components.AutoEnchantButton.MouseButton1Click:Connect(function()
@@ -745,7 +837,17 @@ function EnchanterController:SetupConnections()
 
 		if isAutoEnchanting then return end
 		
-		if not filteredItems or selectedItemIndex < 1 or selectedItemIndex > #filteredItems then
+		-- Validate filteredItems and selectedItemIndex
+		if not filteredItems or type(filteredItems) ~= "table" or #filteredItems == 0 then
+			warn("No items available for auto-enchanting")
+			if soundController then
+				soundController:playUIClick()
+			end
+			return
+		end
+		
+		if selectedItemIndex < 1 or selectedItemIndex > #filteredItems then
+			warn("Invalid selected item index:", selectedItemIndex, "out of", #filteredItems)
 			if soundController then
 				soundController:playUIClick()
 			end
@@ -760,13 +862,16 @@ function EnchanterController:SetupConnections()
 		
 		-- Get selected target mutators
 		local targetMutators = {}
-		for mutatorName, selected in pairs(selectedTargetMutators) do
-			if selected then
-				table.insert(targetMutators, mutatorName)
+		if selectedTargetMutators and type(selectedTargetMutators) == "table" then
+			for mutatorName, selected in pairs(selectedTargetMutators) do
+				if selected then
+					table.insert(targetMutators, mutatorName)
+				end
 			end
 		end
 		
 		if #targetMutators == 0 then
+			warn("No target mutators selected for auto-enchanting")
 			if soundController then
 				soundController:playUIClick()
 			end
@@ -774,12 +879,34 @@ function EnchanterController:SetupConnections()
 		end
 		
 		local selectedItem = filteredItems[selectedItemIndex]
+		if not selectedItem then
+			warn("Selected item is nil at index:", selectedItemIndex)
+			if soundController then
+				soundController:playUIClick()
+			end
+			return
+		end
+		
+		if not selectedItem.itemInstance then
+			warn("Selected item has no itemInstance")
+			if soundController then
+				soundController:playUIClick()
+			end
+			return
+		end
+		
 		if soundController then
 			soundController:playUIClick()
 		end
 		
-		-- Start auto-enchanting
-		Remotes.StartAutoEnchanting:FireServer(selectedItem.itemInstance, targetMutators, stopOnHigherRarity, matchAnyMode)
+		-- Start auto-enchanting with safety checks
+		local success, err = pcall(function()
+			Remotes.StartAutoEnchanting:FireServer(selectedItem.itemInstance, targetMutators, stopOnHigherRarity, matchAnyMode)
+		end)
+		
+		if not success then
+			warn("Failed to start auto-enchanting:", err)
+		end
 	end)
 	
 	components.StopAutoEnchantButton.MouseButton1Click:Connect(function()
@@ -889,7 +1016,7 @@ function EnchanterController:Hide()
 	
 	isVisible = false
 	hideOtherUIs(false)
-	-- hideInfoPopup() -- Disabled - components don't exist
+	hideInfoPopup() -- Hide the info popup
 	hideItemSelectionPopup() -- Also hide the item selection popup
 	
 	-- Stop any ongoing auto-enchanting
@@ -927,10 +1054,6 @@ function EnchanterController:SetSoundController(controller)
 	soundController = controller
 end
 
-local function promptGamepassPurchase()
-	MarketplaceService:PromptGamePassPurchase(LocalPlayer, GameConfig.AutoEnchanterGamepassId)
-end
-
 -- Handle enchanter open requests from server
 Remotes.OpenEnchanter.OnClientEvent:Connect(function(itemsList)
 	if EnchanterController.Show then
@@ -943,8 +1066,11 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamep
 	if gamepassId == GameConfig.AutoEnchanterGamepassId and wasPurchased then
 		hasAutoEnchanterGamepass = true
 		updateAutoEnchanterUI()
-		-- Maybe show a "Thank you" message
-		Remotes.Notify:FireClient(LocalPlayer, "Gamepass purchased! Auto-Enchanter is now enabled.", "Success")
+		-- Show celebration effects and notification
+		if BoxAnimator then
+			BoxAnimator.AnimateFloatingNotification("Gamepass purchased! Auto-Enchanter is now enabled.", "Success")
+			BoxAnimator.PlayCelebrationEffect()
+		end
 	end
 end)
 

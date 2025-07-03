@@ -1,6 +1,8 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local StarterGui = game:GetService("StarterGui")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 local LocalPlayer = Players.LocalPlayer
 local NavigationController = require(script.Parent.NavigationController)
@@ -8,6 +10,7 @@ local Shared = ReplicatedStorage.Shared
 local Remotes = require(Shared.Remotes.Remotes)
 local UpgradeConfig = require(Shared.Modules.UpgradeConfig)
 local UpgradeUI = require(script.Parent.Parent.UI.UpgradeUI)
+local GameConfig = require(Shared.Modules.GameConfig)
 
 local UpgradeController = {}
 
@@ -15,10 +18,93 @@ local ui = nil
 local upgradeData = {}
 local isVisible = false
 local soundController = nil
+local hiddenUIs = {}
+
+-- Infinite Storage gamepass variables
+local INFINITE_STORAGE_GAMEPASS_ID = GameConfig.InfiniteStorageGamepassId
+local hasInfiniteStorageGamepass = false
 
 -- Animation settings
 local ANIMATION_TIME = 0.3
 local EASE_INFO = TweenInfo.new(ANIMATION_TIME, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+
+-- Hide other UIs for clean upgrade experience
+local function hideOtherUIs(show)
+	local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+	
+	if show then
+		-- Hide other UIs for clean upgrade experience
+		for _, gui in pairs(playerGui:GetChildren()) do
+			if gui:IsA("ScreenGui") and gui.Name ~= "UpgradeGui" then
+				if gui.Enabled then
+					hiddenUIs[gui] = true
+					gui.Enabled = false
+				end
+			end
+		end
+		
+		-- Also hide CoreGui elements
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false)
+	else
+		-- Restore hidden UIs
+		for gui, _ in pairs(hiddenUIs) do
+			if gui and gui.Parent then
+				gui.Enabled = true
+			end
+		end
+		hiddenUIs = {}
+		
+		-- Restore CoreGui
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, true)
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, true)
+	end
+end
+
+-- Infinite Storage gamepass checking
+local function checkInfiniteStorageGamepass()
+	local isWhitelisted = false
+	for _, id in ipairs(GameConfig.GamepassWhitelist or {}) do
+		if LocalPlayer.UserId == id then
+			isWhitelisted = true
+			break
+		end
+	end
+
+	if isWhitelisted then
+		hasInfiniteStorageGamepass = true
+		return true
+	end
+
+	local success, owns = pcall(function()
+		return Remotes.CheckInfiniteStorageGamepass:InvokeServer()
+	end)
+	
+	if success then
+		hasInfiniteStorageGamepass = owns
+	else
+		hasInfiniteStorageGamepass = false
+		warn("Failed to check Infinite Storage gamepass ownership")
+	end
+	
+	return hasInfiniteStorageGamepass
+end
+
+local function promptInfiniteStorageGamepassPurchase()
+	if soundController then
+		soundController:playUIClick()
+	end
+	
+	local success, errorMsg = pcall(function()
+		MarketplaceService:PromptGamePassPurchase(LocalPlayer, INFINITE_STORAGE_GAMEPASS_ID)
+	end)
+	
+	if not success then
+		warn("Failed to prompt Infinite Storage gamepass purchase:", errorMsg)
+	end
+end
 
 local function updateUpgradeDisplay()
 	if not ui then return end
@@ -50,6 +136,27 @@ local function updateUpgradeDisplay()
 					Remotes.PurchaseUpgrade:FireServer(upgradeId)
 				end
 			end)
+			
+			-- Connect infinite storage button for InventorySlots
+			if upgradeId == "InventorySlots" and upgradeFrame.InfiniteStorageButton then
+				-- Hide button if gamepass already owned
+				if hasInfiniteStorageGamepass then
+					upgradeFrame.InfiniteStorageButton.Visible = false
+				else
+					upgradeFrame.InfiniteStorageButton.Visible = true
+				end
+
+				upgradeFrame.InfiniteStorageButton.MouseButton1Click:Connect(function()
+					if hasInfiniteStorageGamepass then
+						-- Already have gamepass, maybe show some info
+						if soundController then
+							soundController:playUIClick()
+						end
+					else
+						promptInfiniteStorageGamepassPurchase()
+					end
+				end)
+			end
 		end
 	end
 
@@ -80,6 +187,7 @@ local function toggleUpgradeGUI()
 	isVisible = not isVisible
 	
 	if isVisible then
+		hideOtherUIs(true)
 		ui.MainFrame.Visible = true
 		-- Animate in
 		ui.MainFrame.Size = UDim2.new(0, 0, 0, 0)
@@ -96,6 +204,7 @@ local function toggleUpgradeGUI()
 		-- Refresh data when opening
 		refreshUpgradeData()
 	else
+		hideOtherUIs(false)
 		-- Animate out
 		local tweenOut = TweenService:Create(ui.MainFrame, EASE_INFO, {
 			Size = UDim2.new(0, 0, 0, 0),
@@ -112,6 +221,28 @@ end
 
 function UpgradeController.Start(parentGui, soundControllerRef)
 	soundController = soundControllerRef
+	
+	-- Check Infinite Storage gamepass ownership
+	checkInfiniteStorageGamepass()
+	
+	-- Monitor gamepass purchase completion
+	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamepassId, wasPurchased)
+		if player == LocalPlayer and gamepassId == INFINITE_STORAGE_GAMEPASS_ID and wasPurchased then
+			hasInfiniteStorageGamepass = true
+			
+			if ui and ui.UpgradeFrames then
+				for _, frame in pairs(ui.UpgradeFrames) do
+					if frame.InfiniteStorageButton then
+						frame.InfiniteStorageButton.Visible = false
+					end
+				end
+			end
+			
+			if soundController then
+				soundController:playUIClick()
+			end
+		end
+	end)
 	
 	-- Create UI
 	ui = UpgradeUI.Create(parentGui)

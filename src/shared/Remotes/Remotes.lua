@@ -18,6 +18,9 @@ return {
 	PlayAnimation = createRemote("RemoteEvent", "PlayAnimation"),
 	AnimationComplete = createRemote("RemoteEvent", "AnimationComplete"),
 	Notify = createRemote("RemoteEvent", "Notify"),
+	ShowFloatingError = createRemote("RemoteEvent", "ShowFloatingError"),
+	ShowFloatingNotification = createRemote("RemoteEvent", "ShowFloatingNotification"),
+	ShowCelebrationEffect = createRemote("RemoteEvent", "ShowCelebrationEffect"),
 	SellItem = createRemote("RemoteEvent", "SellItem"),
 	BoxLanded = createRemote("RemoteEvent", "BoxLanded"),
 	UpdateBoxCount = createRemote("RemoteEvent", "UpdateBoxCount"),
@@ -61,4 +64,18 @@ return {
 	StartAutoEnchanting = createRemote("RemoteEvent", "StartAutoEnchanting"),
 	StopAutoEnchanting = createRemote("RemoteEvent", "StopAutoEnchanting"),
 	AutoEnchantingProgress = createRemote("RemoteEvent", "AutoEnchantingProgress"),
+	
+	-- Auto-Open Remotes
+	CheckAutoOpenGamepass = createRemote("RemoteFunction", "CheckAutoOpenGamepass"),
+	
+	-- Auto-Sell Remotes
+	CheckAutoSellGamepass = createRemote("RemoteFunction", "CheckAutoSellGamepass"),
+	AutoSellItem = createRemote("RemoteEvent", "AutoSellItem"),
+	UpdateAutoSellSettings = createRemote("RemoteEvent", "UpdateAutoSellSettings"),
+	
+	-- Infinite Storage Remotes
+	CheckInfiniteStorageGamepass = createRemote("RemoteFunction", "CheckInfiniteStorageGamepass"),
+	
+	-- New RemoteFunction
+	GetAutoSettings = createRemote("RemoteFunction", "GetAutoSettings"),
 } 

@@ -67,8 +67,8 @@ function UpgradeUI.Create(parentGui)
 	mainFrame.Name = "UpgradeMainFrame"
 	mainFrame.Size = UDim2.new(1, -60, 1, -60) -- Add 30px margin on all sides
 	mainFrame.Position = UDim2.new(0, 30, 0, 30) -- Center with 30px offset
-	mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
-	mainFrame.BackgroundTransparency = 0.05
+	mainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+	mainFrame.BackgroundTransparency = 0.02
 	mainFrame.BorderSizePixel = 0
 	mainFrame.Visible = false
 	mainFrame.ZIndex = 50
@@ -77,79 +77,131 @@ function UpgradeUI.Create(parentGui)
 	
 	-- Add rounded corners to main frame
 	local mainFrameCorner = Instance.new("UICorner")
-	mainFrameCorner.CornerRadius = UDim.new(0, 16)
+	mainFrameCorner.CornerRadius = UDim.new(0, 20)
 	mainFrameCorner.Parent = mainFrame
 
-	-- Background gradient
+	-- Background gradient with more depth
 	local gradient = Instance.new("UIGradient")
 	gradient.Color = ColorSequence.new{
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(25, 25, 35)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 15, 20))
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 24, 35)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(15, 18, 28)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 12, 18))
 	}
-	gradient.Rotation = 45
+	gradient.Rotation = 135
 	gradient.Parent = mainFrame
 
 	-- Title Bar
 	local titleBar = Instance.new("Frame")
 	titleBar.Name = "TitleBar"
-	titleBar.Size = UDim2.new(1, 0, 0, 80)
+	titleBar.Size = UDim2.new(1, 0, 0, 70)
 	titleBar.Position = UDim2.new(0, 0, 0, 0)
-	titleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+	titleBar.BackgroundColor3 = Color3.fromRGB(35, 40, 55)
 	titleBar.BorderSizePixel = 0
 	titleBar.ZIndex = 51
 	titleBar.Parent = mainFrame
 	
-	-- Add rounded corners to title bar (top corners only)
+	-- Add rounded corners to title bar
 	local titleBarCorner = Instance.new("UICorner")
-	titleBarCorner.CornerRadius = UDim.new(0, 16)
+	titleBarCorner.CornerRadius = UDim.new(0, 20)
 	titleBarCorner.Parent = titleBar
 	
+	-- Title bar gradient
 	local titleGradient = Instance.new("UIGradient")
 	titleGradient.Color = ColorSequence.new{
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(45, 35, 65)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 25, 40))
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 45, 75)),
+		ColorSequenceKeypoint.new(0.3, Color3.fromRGB(40, 35, 60)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 45))
 	}
-	titleGradient.Rotation = 90
+	titleGradient.Rotation = 110
 	titleGradient.Parent = titleBar
 
-	-- Title
+	-- Add a subtle accent line
+	local accentLine = Instance.new("Frame")
+	accentLine.Name = "AccentLine"
+	accentLine.Size = UDim2.new(1, 0, 0, 2)
+	accentLine.Position = UDim2.new(0, 0, 1, -2)
+	accentLine.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
+	accentLine.BorderSizePixel = 0
+	accentLine.ZIndex = 52
+	accentLine.Parent = titleBar
+	
+	local accentGradient = Instance.new("UIGradient")
+	accentGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 80, 255)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150, 100, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 60, 200))
+	}
+	accentGradient.Parent = accentLine
+
+	-- Title with improved styling
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
 	title.Size = UDim2.new(1, -120, 1, 0)
-	title.Position = UDim2.new(0, 20, 0, 0)
+	title.Position = UDim2.new(0, 25, 0, 0)
 	title.Text = "⚡ UPGRADES"
-	title.Font = Enum.Font.SourceSansBold
-	title.TextSize = 32
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 24
 	title.TextColor3 = Color3.fromRGB(255, 255, 255)
 	title.BackgroundTransparency = 1
 	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.TextYAlignment = Enum.TextYAlignment.Center
 	title.ZIndex = 52
 	title.Parent = titleBar
 	components.Title = title
 
+	-- Add text shadow effect
+	local titleShadow = Instance.new("TextLabel")
+	titleShadow.Name = "TitleShadow"
+	titleShadow.Size = title.Size
+	titleShadow.Position = UDim2.new(0, 27, 0, 2)
+	titleShadow.Text = title.Text
+	titleShadow.Font = title.Font
+	titleShadow.TextSize = title.TextSize
+	titleShadow.TextColor3 = Color3.fromRGB(0, 0, 0)
+	titleShadow.TextTransparency = 0.8
+	titleShadow.BackgroundTransparency = 1
+	titleShadow.TextXAlignment = Enum.TextXAlignment.Left
+	titleShadow.TextYAlignment = Enum.TextYAlignment.Center
+	titleShadow.ZIndex = 51
+	titleShadow.Parent = titleBar
+
 	-- Close Button
 	local closeButton = Instance.new("TextButton")
 	closeButton.Name = "CloseButton"
-	closeButton.Size = UDim2.new(0, 50, 0, 50)
-	closeButton.Position = UDim2.new(1, -65, 0, 15)
-	closeButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
-	closeButton.Text = "X"
-	closeButton.Font = Enum.Font.SourceSansBold
-	closeButton.TextScaled = true
+	closeButton.Size = UDim2.new(0, 40, 0, 40)
+	closeButton.Position = UDim2.new(1, -50, 0.5, -20)
+	closeButton.BackgroundColor3 = Color3.fromRGB(220, 70, 70)
+	closeButton.Text = "✕"
+	closeButton.Font = Enum.Font.GothamBold
+	closeButton.TextSize = 16
 	closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	closeButton.ZIndex = 55
 	closeButton.Parent = titleBar
 	components.CloseButton = closeButton
 
 	local closeCorner = Instance.new("UICorner")
-	closeCorner.CornerRadius = UDim.new(0, 16)
+	closeCorner.CornerRadius = UDim.new(0, 20)
 	closeCorner.Parent = closeButton
+
+	local closeGradient = Instance.new("UIGradient")
+	closeGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(240, 80, 80)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 60, 60))
+	}
+	closeGradient.Rotation = 90
+	closeGradient.Parent = closeButton
+	
+	local closeStroke = Instance.new("UIStroke")
+	closeStroke.Color = Color3.fromRGB(255, 100, 100)
+	closeStroke.Thickness = 1
+	closeStroke.Transparency = 0.5
+	closeStroke.Parent = closeButton
 
 	-- Content Area
 	local contentFrame = Instance.new("Frame")
 	contentFrame.Name = "ContentFrame"
-	contentFrame.Size = UDim2.new(1, -40, 1, -120)
-	contentFrame.Position = UDim2.new(0, 20, 0, 100)
+	contentFrame.Size = UDim2.new(1, -40, 1, -100)
+	contentFrame.Position = UDim2.new(0, 20, 0, 80)
 	contentFrame.BackgroundTransparency = 1
 	contentFrame.ZIndex = 51
 	contentFrame.Parent = mainFrame
@@ -187,7 +239,8 @@ function UpgradeUI.CreateUpgradeFrame(parent, upgradeId, upgradeData)
 	local upgradeFrame = Instance.new("Frame")
 	upgradeFrame.Name = upgradeId .. "Frame"
 	upgradeFrame.Size = UDim2.new(1, 0, 0, 120)
-	upgradeFrame.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
+	upgradeFrame.BackgroundColor3 = Color3.fromHex("#121620")
+	upgradeFrame.BackgroundTransparency = 0.5
 	upgradeFrame.BorderSizePixel = 0
 	upgradeFrame.ZIndex = 53
 	upgradeFrame.Parent = parent
@@ -196,12 +249,19 @@ function UpgradeUI.CreateUpgradeFrame(parent, upgradeId, upgradeData)
 	frameCorner.CornerRadius = UDim.new(0, 12)
 	frameCorner.Parent = upgradeFrame
 
+	local frameStroke = Instance.new("UIStroke")
+	frameStroke.Color = Color3.fromRGB(50, 55, 70)
+	frameStroke.Thickness = 1
+	frameStroke.Transparency = 0.7
+	frameStroke.Parent = upgradeFrame
+
 	local frameGradient = Instance.new("UIGradient")
 	frameGradient.Color = ColorSequence.new{
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(35, 40, 55)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 30, 40))
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(25, 30, 45)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(18, 22, 32)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 15, 22))
 	}
-	frameGradient.Rotation = 90
+	frameGradient.Rotation = 135
 	frameGradient.Parent = upgradeFrame
 
 	-- Icon
@@ -210,16 +270,30 @@ function UpgradeUI.CreateUpgradeFrame(parent, upgradeId, upgradeData)
 	icon.Size = UDim2.new(0, 60, 0, 60)
 	icon.Position = UDim2.new(0, 15, 0, 15)
 	icon.Text = upgrade.Icon
-	icon.Font = Enum.Font.SourceSansBold
+	icon.Font = Enum.Font.GothamBold
 	icon.TextSize = 32
 	icon.TextColor3 = Color3.fromRGB(255, 255, 255)
-	icon.BackgroundColor3 = Color3.fromRGB(40, 45, 60)
+	icon.BackgroundColor3 = Color3.fromRGB(35, 40, 55)
 	icon.ZIndex = 54
 	icon.Parent = upgradeFrame
 
 	local iconCorner = Instance.new("UICorner")
-	iconCorner.CornerRadius = UDim.new(0, 8)
+	iconCorner.CornerRadius = UDim.new(0, 12)
 	iconCorner.Parent = icon
+
+	local iconGradient = Instance.new("UIGradient")
+	iconGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 45, 75)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(35, 40, 55))
+	}
+	iconGradient.Rotation = 90
+	iconGradient.Parent = icon
+
+	local iconStroke = Instance.new("UIStroke")
+	iconStroke.Color = Color3.fromRGB(120, 80, 255)
+	iconStroke.Thickness = 1
+	iconStroke.Transparency = 0.5
+	iconStroke.Parent = icon
 
 	-- Name and Description
 	local nameLabel = Instance.new("TextLabel")
@@ -227,7 +301,7 @@ function UpgradeUI.CreateUpgradeFrame(parent, upgradeId, upgradeData)
 	nameLabel.Size = UDim2.new(0, 300, 0, 25)
 	nameLabel.Position = UDim2.new(0, 90, 0, 15)
 	nameLabel.Text = upgrade.Name
-	nameLabel.Font = Enum.Font.SourceSansBold
+	nameLabel.Font = Enum.Font.GothamBold
 	nameLabel.TextSize = 18
 	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	nameLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -279,15 +353,21 @@ function UpgradeUI.CreateUpgradeFrame(parent, upgradeId, upgradeData)
 	upgradeButton.Name = "UpgradeButton"
 	upgradeButton.Size = UDim2.new(0, 120, 0, 40)
 	upgradeButton.Position = UDim2.new(1, -135, 0, 40)
-	upgradeButton.Font = Enum.Font.SourceSansBold
+	upgradeButton.Font = Enum.Font.GothamBold
 	upgradeButton.TextSize = 14
 	upgradeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	upgradeButton.ZIndex = 54
 	upgradeButton.Parent = upgradeFrame
 
 	local buttonCorner = Instance.new("UICorner")
-	buttonCorner.CornerRadius = UDim.new(0, 8)
+	buttonCorner.CornerRadius = UDim.new(0, 12)
 	buttonCorner.Parent = upgradeButton
+
+	local buttonStroke = Instance.new("UIStroke")
+	buttonStroke.Color = Color3.fromRGB(100, 120, 160)
+	buttonStroke.Thickness = 1
+	buttonStroke.Transparency = 0.5
+	buttonStroke.Parent = upgradeButton
 
 	-- Store references for updates
 	local components = {
@@ -331,12 +411,98 @@ function UpgradeUI.UpdateUpgradeFrame(components, upgradeId, upgradeData)
 	-- Update button
 	if upgradeData.isMaxLevel then
 		components.UpgradeButton.Text = "MAX LEVEL"
-		components.UpgradeButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+		components.UpgradeButton.BackgroundColor3 = Color3.fromRGB(70, 75, 85)
 		components.UpgradeButton.Active = false
+		
+		-- Add Infinite Storage button for InventorySlots at max level
+		if upgradeId == "InventorySlots" and not components.InfiniteStorageButton then
+			local infiniteButton = Instance.new("TextButton")
+			infiniteButton.Name = "InfiniteStorageButton"
+			infiniteButton.Size = UDim2.new(0, 40, 0, 40)
+			infiniteButton.Position = UDim2.new(1, -205, 0, 40)
+			infiniteButton.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+			infiniteButton.Text = "+"
+			infiniteButton.Font = Enum.Font.GothamBold
+			infiniteButton.TextSize = 18
+			infiniteButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+			infiniteButton.ZIndex = 54
+			infiniteButton.Parent = components.Frame
+			components.InfiniteStorageButton = infiniteButton
+
+			local infiniteCorner = Instance.new("UICorner")
+			infiniteCorner.CornerRadius = UDim.new(0, 20)
+			infiniteCorner.Parent = infiniteButton
+
+			local infiniteStroke = Instance.new("UIStroke")
+			infiniteStroke.Color = Color3.fromRGB(150, 255, 150)
+			infiniteStroke.Thickness = 1
+			infiniteStroke.Transparency = 0.3
+			infiniteStroke.Parent = infiniteButton
+
+			local infiniteGradient = Instance.new("UIGradient")
+			infiniteGradient.Color = ColorSequence.new{
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 220, 120)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 200, 100))
+			}
+			infiniteGradient.Rotation = 90
+			infiniteGradient.Parent = infiniteButton
+
+			-- Hover effects
+			infiniteButton.MouseEnter:Connect(function()
+				infiniteButton.BackgroundColor3 = Color3.fromRGB(120, 220, 120)
+				infiniteStroke.Color = Color3.fromRGB(200, 255, 200)
+				infiniteStroke.Transparency = 0.1
+			end)
+			infiniteButton.MouseLeave:Connect(function()
+				infiniteButton.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+				infiniteStroke.Color = Color3.fromRGB(150, 255, 150)
+				infiniteStroke.Transparency = 0.3
+			end)
+		elseif upgradeId == "InventorySlots" and components.InfiniteStorageButton then
+			-- Make sure the button is visible if it exists
+			components.InfiniteStorageButton.Visible = true
+		end
+		-- Update button gradient for max level
+		local buttonGradient = components.UpgradeButton:FindFirstChild("UIGradient")
+		if buttonGradient then
+			buttonGradient.Color = ColorSequence.new{
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(90, 95, 105)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 75, 85))
+			}
+		else
+			buttonGradient = Instance.new("UIGradient")
+			buttonGradient.Color = ColorSequence.new{
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(90, 95, 105)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 75, 85))
+			}
+			buttonGradient.Rotation = 90
+			buttonGradient.Parent = components.UpgradeButton
+		end
 	else
 		components.UpgradeButton.Text = "Upgrade\n" .. NumberFormatter.FormatCurrency(upgradeData.cost or 0)
-		components.UpgradeButton.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+		components.UpgradeButton.BackgroundColor3 = Color3.fromRGB(60, 120, 60)
 		components.UpgradeButton.Active = true
+		
+		-- Hide Infinite Storage button if not at max level
+		if upgradeId == "InventorySlots" and components.InfiniteStorageButton then
+			components.InfiniteStorageButton.Visible = false
+		end
+		-- Update button gradient for active state
+		local buttonGradient = components.UpgradeButton:FindFirstChild("UIGradient")
+		if buttonGradient then
+			buttonGradient.Color = ColorSequence.new{
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 140, 80)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 120, 60))
+			}
+		else
+			buttonGradient = Instance.new("UIGradient")
+			buttonGradient.Color = ColorSequence.new{
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 140, 80)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 120, 60))
+			}
+			buttonGradient.Rotation = 90
+			buttonGradient.Parent = components.UpgradeButton
+		end
 	end
 end
 

@@ -17,6 +17,9 @@ local AssetPreviewService = require(Services:WaitForChild("AssetPreviewService")
 local LeaderboardService = require(Services:WaitForChild("LeaderboardService"))
 local UpgradeService = require(Services:WaitForChild("UpgradeService"))
 local EnchanterService = require(Services:WaitForChild("EnchanterService"))
+local AutoOpenService = require(Services:WaitForChild("AutoOpenService"))
+local AutoSellService = require(Services:WaitForChild("AutoSellService"))
+local InfiniteStorageService = require(Services:WaitForChild("InfiniteStorageService"))
 -- local other services will be added here
 
 -- Start Services
@@ -32,4 +35,7 @@ AvatarService.Start() -- Start the avatar service
 AssetPreviewService.Start() -- Start the asset preview service
 LeaderboardService.Start()
 EnchanterService.Start()
+AutoOpenService.Initialize()
+AutoSellService.Start()
+InfiniteStorageService.Start()
 -- other services will be started here 
