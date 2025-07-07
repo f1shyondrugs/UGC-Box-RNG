@@ -469,17 +469,17 @@ function ShopUI.Create(parentGui)
 		end
 
 		if gamepassData.UltraLucky then
-			-- Left-align icon and text for Ultra Lucky
-			icon.Position = UDim2.new(0, 20, 0, 20)
+			-- Left-align icon and text for Ultra Lucky, with more padding
+			icon.Position = UDim2.new(0, 32, 0, 28) -- more left/top padding
 			titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-			titleLabel.Position = UDim2.new(0, 70, 0, 25)
-			titleLabel.Size = UDim2.new(1, -80, 0, 32)
+			titleLabel.Position = UDim2.new(0, 90, 0, 32) -- more left/top padding
+			titleLabel.Size = UDim2.new(1, -110, 0, 36) -- more right padding, slightly taller
 			priceLabel.TextXAlignment = Enum.TextXAlignment.Left
-			priceLabel.Position = UDim2.new(0, 70, 0, 65)
-			priceLabel.Size = UDim2.new(1, -80, 0, 24)
-			buyButton.Position = UDim2.new(0, 70, 1, -50)
-			buyButton.Size = UDim2.new(1, -80, 0, 36)
-			-- 'Best Value!' badge for Ultra Lucky: smaller, less saturated
+			priceLabel.Position = UDim2.new(0, 90, 0, 78) -- more left/top padding
+			priceLabel.Size = UDim2.new(1, -110, 0, 28) -- more right padding, slightly taller
+			buyButton.Position = UDim2.new(0, 90, 1, -60) -- more left, more bottom padding
+			buyButton.Size = UDim2.new(1, -110, 0, 40) -- more right padding, slightly taller
+			-- 'Best Value!' badge for Ultra Lucky: smaller, less saturated, more padding from edge
 			if gamepassData.UltraLucky then
 				local badge = Instance.new("TextLabel")
 				badge.Name = "BestValueBadge"
@@ -489,8 +489,8 @@ function ShopUI.Create(parentGui)
 				badge.TextColor3 = Color3.fromRGB(255, 230, 120)
 				badge.BackgroundTransparency = 0.4
 				badge.BackgroundColor3 = Color3.fromRGB(200, 160, 80)
-				badge.Size = UDim2.new(0, 90, 0, 22)
-				badge.Position = UDim2.new(1, -100, 0, 10)
+				badge.Size = UDim2.new(0, 100, 0, 24)
+				badge.Position = UDim2.new(1, -120, 0, 16) -- more right/top padding
 				badge.ZIndex = 55
 				local badgeCorner = Instance.new("UICorner")
 				badgeCorner.CornerRadius = UDim.new(0, 8)

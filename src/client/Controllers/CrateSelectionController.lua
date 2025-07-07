@@ -9,6 +9,7 @@ local Shared = ReplicatedStorage.Shared
 
 local GameConfig = require(Shared.Modules.GameConfig)
 local CrateSelectionUI = require(script.Parent.Parent.UI.CrateSelectionUI)
+local Remotes = require(Shared.Remotes.Remotes)
 
 local CrateSelectionController = {}
 CrateSelectionController.ClassName = "CrateSelectionController"
@@ -86,6 +87,18 @@ function CrateSelectionController:InitializeCrates()
 		return
 	end
 	
+	-- Get unlocked crates from server
+	local unlockedCrates = {}
+	local success, result = pcall(function()
+		return Remotes.GetUnlockedCrates:InvokeServer()
+	end)
+	if success and result then
+		unlockedCrates = result
+	else
+		-- Fallback to default unlocked crates
+		unlockedCrates = {"FreeCrate", "StarterCrate", "PremiumCrate"}
+	end
+	
 	-- Clear existing cards
 	for _, card in pairs(crateCards) do
 		card:Destroy()
@@ -102,19 +115,37 @@ function CrateSelectionController:InitializeCrates()
 		if b.name == "FreeCrate" then return false end
 		return (a.config.Price or 0) < (b.config.Price or 0)
 	end)
+	
 	for i, crate in ipairs(crateList) do
 		local crateName = crate.name
 		local crateConfig = crate.config
+		local isUnlocked = false
+		
+		-- Check if crate is unlocked
+		for _, unlockedCrate in ipairs(unlockedCrates) do
+			if unlockedCrate == crateName then
+				isUnlocked = true
+				break
+			end
+		end
+		
 		local isSelected = (crateName == selectedCrate)
-		local card = CrateSelectionUI.CreateCrateCard(crateName, crateConfig, isSelected)
+		local card = CrateSelectionUI.CreateCrateCard(crateName, crateConfig, isSelected, isUnlocked)
 		card.LayoutOrder = i
 		card.Parent = components.CratesContainer
+		
 		local selectButton = card:FindFirstChild("SelectButton")
 		if selectButton then
 			selectButton.MouseButton1Click:Connect(function()
-				self:SelectCrate(crateName)
+				if isUnlocked then
+					self:SelectCrate(crateName)
+				else
+					-- Show locked message
+					print("[CrateSelectionController] Crate " .. crateName .. " is locked!")
+				end
 			end)
 		end
+		
 		local crateViewport = card:FindFirstChild("CrateViewport")
 		self:LoadCrateModel(crateViewport, crateName, crateConfig)
 		crateCards[crateName] = card
@@ -151,10 +182,32 @@ function CrateSelectionController:LoadCrateModel(viewport, crateName, crateConfi
 	if crateModel then
 		crateModel.Parent = viewport
 		
-		-- Position camera to show the model nicely
-		local cf, size = crateModel:GetBoundingBox()
-		local distance = math.max(size.X, size.Y, size.Z) * 2
-		camera.CFrame = CFrame.lookAt(cf.Position + Vector3.new(distance, distance * 0.5, distance), cf.Position)
+			-- Position camera to show the model nicely
+	local cf, size
+	if crateModel:IsA("Model") then
+		cf, size = crateModel:GetBoundingBox()
+	else
+		-- For UnionOperation or other objects, calculate bounding box manually
+		if crateModel:IsA("BasePart") or crateModel:IsA("UnionOperation") then
+			-- For BasePart or UnionOperation, use the object itself
+			cf = crateModel.CFrame
+			size = crateModel.Size
+		else
+			-- For other objects, try to find a BasePart
+			local basePart = crateModel:FindFirstChildOfClass("BasePart")
+			if basePart then
+				cf = basePart.CFrame
+				size = basePart.Size
+			else
+				-- Fallback for any object
+				cf = CFrame.new()
+				size = Vector3.new(4, 4, 4)
+			end
+		end
+	end
+	
+	local distance = math.max(size.X, size.Y, size.Z) * 2
+	camera.CFrame = CFrame.lookAt(cf.Position + Vector3.new(distance, distance * 0.5, distance), cf.Position)
 		
 		-- Optional: Set viewport lighting properties for better visuals
 		viewport.Ambient = Color3.fromRGB(100, 100, 100)
@@ -203,10 +256,18 @@ function CrateSelectionController:StartModelRotation(model, crateName)
 		false -- Reverse
 	)
 	
+	-- Get the part to rotate (handle UnionOperation properly)
+	local partToRotate
+	if model:IsA("BasePart") or model:IsA("UnionOperation") then
+		partToRotate = model
+	else
+		partToRotate = model.PrimaryPart or model:FindFirstChildOfClass("Part")
+	end
+	
 	local rotationTween = TweenService:Create(
-		model.PrimaryPart or model:FindFirstChildOfClass("Part"),
+		partToRotate,
 		rotationInfo,
-		{CFrame = (model.PrimaryPart or model:FindFirstChildOfClass("Part")).CFrame * CFrame.Angles(0, math.rad(360), 0)}
+		{CFrame = partToRotate.CFrame * CFrame.Angles(0, math.rad(360), 0)}
 	)
 	
 	rotationTweens[crateName] = rotationTween

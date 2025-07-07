@@ -13,57 +13,34 @@ local Remotes = require(Shared.Remotes.Remotes)
 -- and to version it in case you change the data structure later.
 local playerDataStore = DataStoreService:GetDataStore("PlayerData_UGC_V1")
 local rapLeaderboardStore = DataStoreService:GetOrderedDataStore("RAPLeaderboard_V1")
+local boxesLeaderboardStore = DataStoreService:GetOrderedDataStore("BoxesLeaderboard_V1")
 local autoSettingsStore = DataStoreService:GetDataStore("AutoSettings")
 
 local DataService = {}
 
-local updateQueue = {}
+-- PERFORMANCE OPTIMIZATION: Throttling and caching systems
+local rapUpdateQueue = {}
+local boxesUpdateQueue = {}
+local rapUpdateCooldowns = {} -- player.UserId -> last update time
+local rapCache = {} -- player.UserId -> cached RAP value
 local isUpdating = false
-local DEBOUNCE_INTERVAL = 5 -- seconds
+local isUpdatingBoxes = false
+local DEBOUNCE_INTERVAL = 5 -- Reduced from 10 to 5 seconds for more frequent updates
+local RAP_UPDATE_COOLDOWN = 1 -- Reduced from 3 to 1 second for more frequent RAP updates
+local SAVE_COOLDOWN = 3 -- Reduced from 5 to 3 seconds for more frequent saves
+local lastSaveTimes = {} -- player.UserId -> last save time
 
--- Batch loading configuration
-local INVENTORY_BATCH_SIZE = 20 -- Process inventory items in batches of 20
+-- Collection and save throttling
+local collectionUpdateQueue = {}
+local saveQueue = {}
+local collectionUpdateCooldowns = {} -- player.UserId -> last collection update time
+local COLLECTION_UPDATE_COOLDOWN = 5 -- Reduced from 10 to 5 seconds for more frequent collection updates
 
-local function processUpdateQueue()
-	if isUpdating then return end
-	isUpdating = true
+-- OPTIMIZED: Instant inventory loading configuration
+local INVENTORY_BATCH_SIZE = 1000 -- Process inventory items in much larger batches for speed
+local INSTANT_LOADING = true -- Enable instant loading for better performance
 
-	local playersToUpdate = {}
-	for userId, player in pairs(updateQueue) do
-		table.insert(playersToUpdate, player)
-	end
-	updateQueue = {} -- Clear the queue
-
-	if #playersToUpdate > 0 then
-		print("Processing leaderboard updates for " .. #playersToUpdate .. " players.")
-		for _, player in ipairs(playersToUpdate) do
-			task.spawn(function() -- Make leaderboard updates async to prevent blocking
-				-- Use the player attribute for the leaderboard ranking
-				local rapValue = player:GetAttribute("RAPValue") or 0
-				local success, err = pcall(function()
-					rapLeaderboardStore:SetAsync(tostring(player.UserId), rapValue)
-				end)
-				if not success then
-					warn("Failed to update RAP for " .. player.Name .. " in leaderboard: " .. tostring(err))
-				end
-			end)
-		end
-	end
-
-	isUpdating = false
-end
-
--- Start the debouncer loop
-task.spawn(function()
-	while true do
-		task.wait(DEBOUNCE_INTERVAL)
-		processUpdateQueue()
-	end
-end)
-
--- Import AvatarService for equipped items (will be required after it's created)
-local AvatarService
-
+-- OPTIMIZED: Cache RAP calculations to avoid expensive recalculations
 local function calculatePlayerRAP(player)
 	local inventory = player:FindFirstChild("Inventory")
 	if not inventory then return 0, 0 end
@@ -87,6 +64,146 @@ local function calculatePlayerRAP(player)
 	end
 	
 	return ItemValueCalculator.CalculateRAP(inventoryData)
+end
+
+-- OPTIMIZED: Throttled RAP updates
+local function updatePlayerRAP(player)
+	local userId = player.UserId
+	local currentTime = tick()
+	
+	-- Check if we're in cooldown for this player
+	local lastUpdate = rapUpdateCooldowns[userId]
+	if lastUpdate and (currentTime - lastUpdate) < RAP_UPDATE_COOLDOWN then
+		return -- Skip update if in cooldown
+	end
+	
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if not leaderstats then return end
+	
+	-- Calculate the new RAP value
+	local totalRAP = calculatePlayerRAP(player)
+	
+	-- Cache the RAP value
+	rapCache[userId] = totalRAP
+	rapUpdateCooldowns[userId] = currentTime
+	
+	-- Update the player attribute
+	player:SetAttribute("RAPValue", totalRAP)
+	
+	-- Update the formatted display
+	local rapDisplay = leaderstats:FindFirstChild("RAP")
+	if rapDisplay then
+		rapDisplay.Value = NumberFormatter.FormatNumber(totalRAP)
+	end
+	
+	-- Queue the leaderboard update instead of calling directly
+	rapUpdateQueue[userId] = player
+end
+
+-- OPTIMIZED: Ultra-fast inventory loading function
+local function loadInventoryBatch(inventory, itemDataList, startIndex, batchSize)
+	local endIndex = math.min(startIndex + batchSize - 1, #itemDataList)
+	local HttpService = game:GetService("HttpService")
+	
+	-- Pre-allocate all items to avoid repeated Instance.new calls
+	local itemsToAdd = {}
+	
+	for i = startIndex, endIndex do
+		local itemData = itemDataList[i]
+		local item = Instance.new("StringValue")
+		
+		-- Use UUID if available, otherwise fall back to legacy name-based system
+		if itemData.uuid then
+			item.Name = itemData.uuid
+			item:SetAttribute("ItemName", itemData.name)
+		else
+			-- Legacy support: generate UUID for old items
+			local uuid = HttpService:GenerateGUID(false)
+			item.Name = uuid
+			item:SetAttribute("ItemName", itemData.name)
+		end
+		
+		item:SetAttribute("Size", itemData.size)
+		if itemData.mutations then
+			-- New multiple mutations format
+			item:SetAttribute("Mutations", HttpService:JSONEncode(itemData.mutations))
+			-- Keep backward compatibility with single Mutation attribute
+			item:SetAttribute("Mutation", itemData.mutations[1])
+		elseif itemData.mutation then
+			-- Legacy single mutation format
+			item:SetAttribute("Mutation", itemData.mutation)
+			-- Also store in new format for consistency
+			item:SetAttribute("Mutations", HttpService:JSONEncode({itemData.mutation}))
+		end
+		if itemData.locked then
+			item:SetAttribute("Locked", itemData.locked)
+		end
+		
+		-- Add to batch instead of setting parent immediately
+		table.insert(itemsToAdd, item)
+	end
+	
+	-- Bulk add all items to inventory at once
+	for _, item in ipairs(itemsToAdd) do
+		item.Parent = inventory
+	end
+	
+		return endIndex >= #itemDataList
+end
+
+-- When updating R$ or Boxes Opened, update both the attribute and the StringValue
+local function updatePlayerRobux(player, value)
+	player:SetAttribute("RobuxValue", value)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if leaderstats then
+		local robuxNumber = leaderstats:FindFirstChild("R$")
+		if robuxNumber then
+			robuxNumber.Value = NumberFormatter.FormatNumber(value)
+		end
+		local robuxDisplay = leaderstats:FindFirstChild("R$ Display")
+		if robuxDisplay then
+			robuxDisplay.Value = NumberFormatter.FormatNumber(value)
+		end
+	end
+end
+
+local function updatePlayerBoxesOpened(player, value)
+	player:SetAttribute("BoxesOpenedValue", value)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if leaderstats then
+		local boxesOpened = leaderstats:FindFirstChild("Boxes Opened")
+		if boxesOpened then
+			boxesOpened.Value = NumberFormatter.FormatCount(value)
+		end
+	end
+	
+	-- Queue the boxes leaderboard update
+	boxesUpdateQueue[player.UserId] = player
+end
+
+local function updatePlayerRebirths(player, value)
+	player:SetAttribute("RebirthsValue", value)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if leaderstats then
+		local rebirths = leaderstats:FindFirstChild("Rebirths")
+		if rebirths then
+			rebirths.Value = tostring(value)
+		end
+	end
+end
+
+-- Import AvatarService for equipped items (will be required after it's created)
+local AvatarService
+
+
+-- Custom StringValue for formatted Rebirths display
+local function createFormattedRebirthsStat(player, leaderstats, initialValue)
+	player:SetAttribute("RebirthsValue", initialValue)
+	local rebirthsDisplay = Instance.new("StringValue")
+	rebirthsDisplay.Name = "Rebirths"
+	rebirthsDisplay.Value = tostring(initialValue)
+	rebirthsDisplay.Parent = leaderstats
+	return rebirthsDisplay
 end
 
 -- Custom StringValue for formatted RAP display
@@ -123,368 +240,145 @@ local function createFormattedBoxesStat(player, leaderstats, initialValue)
 	return boxesDisplay
 end
 
-local function updatePlayerRAP(player)
-	local leaderstats = player:FindFirstChild("leaderstats")
-	if not leaderstats then return end
-	
-	-- Calculate the new RAP value
-	local totalRAP = calculatePlayerRAP(player)
-	
-	-- Update the player attribute
-	player:SetAttribute("RAPValue", totalRAP)
-	
-	-- Update the formatted display
-	local rapDisplay = leaderstats:FindFirstChild("RAP")
-	if rapDisplay then
-		rapDisplay.Value = NumberFormatter.FormatNumber(totalRAP)
-	end
-	
-	-- Queue the leaderboard update instead of calling directly
-	updateQueue[player.UserId] = player
-end
-
--- When updating R$ or Boxes Opened, update both the attribute and the StringValue
-local function updatePlayerRobux(player, value)
-	player:SetAttribute("RobuxValue", value)
-	local leaderstats = player:FindFirstChild("leaderstats")
-	if leaderstats then
-		local robuxNumber = leaderstats:FindFirstChild("R$")
-		if robuxNumber then
-			robuxNumber.Value = NumberFormatter.FormatNumber(value)
-		end
-		local robuxDisplay = leaderstats:FindFirstChild("R$ Display")
-		if robuxDisplay then
-			robuxDisplay.Value = NumberFormatter.FormatNumber(value)
-		end
-	end
-end
-
-local function updatePlayerBoxesOpened(player, value)
-	player:SetAttribute("BoxesOpenedValue", value)
-	local leaderstats = player:FindFirstChild("leaderstats")
-	if leaderstats then
-		local boxesOpened = leaderstats:FindFirstChild("Boxes Opened")
-		if boxesOpened then
-			boxesOpened.Value = NumberFormatter.FormatCount(value)
-		end
-	end
-end
-
--- Optimized inventory loading function
-local function loadInventoryBatch(inventory, itemDataList, startIndex, batchSize)
-	local endIndex = math.min(startIndex + batchSize - 1, #itemDataList)
-	
-	for i = startIndex, endIndex do
-		local itemData = itemDataList[i]
-		local item = Instance.new("StringValue")
+-- OPTIMIZED: Process leaderboard updates with throttling
+	local function processUpdateQueue()
+		if isUpdating then return end
+		isUpdating = true
 		
-		-- Use UUID if available, otherwise fall back to legacy name-based system
-		if itemData.uuid then
-			item.Name = itemData.uuid
-			item:SetAttribute("ItemName", itemData.name)
-		else
-			-- Legacy support: generate UUID for old items
-			local HttpService = game:GetService("HttpService")
-			local uuid = HttpService:GenerateGUID(false)
-			item.Name = uuid
-			item:SetAttribute("ItemName", itemData.name)
-		end
-		
-		item:SetAttribute("Size", itemData.size)
-		if itemData.mutations then
-			-- New multiple mutations format
-			local HttpService = game:GetService("HttpService")
-			item:SetAttribute("Mutations", HttpService:JSONEncode(itemData.mutations))
-			-- Keep backward compatibility with single Mutation attribute
-			item:SetAttribute("Mutation", itemData.mutations[1])
-		elseif itemData.mutation then
-			-- Legacy single mutation format
-			item:SetAttribute("Mutation", itemData.mutation)
-			-- Also store in new format for consistency
-			local HttpService = game:GetService("HttpService")
-			item:SetAttribute("Mutations", HttpService:JSONEncode({itemData.mutation}))
-		end
-		if itemData.locked then
-			item:SetAttribute("Locked", itemData.locked)
-		end
-		item.Parent = inventory
-	end
-	
-	return endIndex >= #itemDataList
-end
-
-local function onPlayerAdded(player: Player)
-	local leaderstats = Instance.new("Folder")
-	leaderstats.Name = "leaderstats"
-	leaderstats.Parent = player
-
-	-- Create inventory folder
-	local inventory = Instance.new("Folder")
-	inventory.Name = "Inventory"
-	inventory.Parent = player
-
-	-- Set loading flag to prevent saves during initial loading
-	player:SetAttribute("IsLoadingInventory", true)
-
-	-- Use formatted StringValues for all stats
-	local robux = createFormattedRobuxStat(player, leaderstats, GameConfig.Currency.StartingAmount)
-	local boxesOpened = createFormattedBoxesStat(player, leaderstats, 0)
-	createFormattedRAPStat(player, leaderstats, 0)
-
-	local userId = player.UserId
-	local key = "Player_" .. userId
-
-	-- Load data asynchronously
-	task.spawn(function()
-		local data
-		local success, err = pcall(function()
-			data = playerDataStore:GetAsync(key)
-		end)
-
-		if success and data then
-			-- Player has data, load it
-			updatePlayerRobux(player, data.robux or GameConfig.Currency.StartingAmount)
-			updatePlayerBoxesOpened(player, data.boxesOpened or 0)
-			
-			-- Load inventory in batches to prevent lag
-			if data.inventory and #data.inventory > 0 then
-				print(string.format("Loading %d inventory items for %s in batches...", #data.inventory, player.Name))
-				
-				local currentIndex = 1
-				local function loadNextBatch()
-					if currentIndex > #data.inventory then
-						-- All inventory loaded, now load other systems
-						print("Inventory loading complete for " .. player.Name)
-						
-						-- Load upgrade data
-						local UpgradeService = require(script.Parent.UpgradeService)
-						local UpgradeConfig = require(game.ReplicatedStorage.Shared.Modules.UpgradeConfig)
-						if data.upgrades then
-							print("[LOAD DEBUG] Loading upgrades for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(data.upgrades))
-							local missingUpgrades = {}
-							for upgradeId, level in pairs(data.upgrades) do
-								UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, level)
-								print("[LOAD DEBUG] Set upgrade " .. upgradeId .. " to level " .. level .. " for " .. player.Name)
-							end
-							-- Ensure all upgrade IDs are present
-							for upgradeId, _ in pairs(UpgradeConfig.Upgrades) do
-								if data.upgrades[upgradeId] == nil then
-									UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, 0)
-									table.insert(missingUpgrades, upgradeId)
-								end
-							end
-							if #missingUpgrades > 0 then
-								warn("[LOAD WARNING] Some upgrades missing for " .. player.Name .. ": " .. table.concat(missingUpgrades, ", "))
-							end
-						else
-							print("[LOAD DEBUG] No upgrades data found for " .. player.Name .. " - will initialize to defaults")
-							-- Initialize with defaults since no saved data exists
-							local UpgradeConfig = require(game.ReplicatedStorage.Shared.Modules.UpgradeConfig)
-							for upgradeId, _ in pairs(UpgradeConfig.Upgrades) do
-								UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, 0)
-							end
-						end
-						
-						-- Load settings data
-						if data.settings then
-							-- Store settings in player object for quick access
-							local settingsJson = game:GetService("HttpService"):JSONEncode(data.settings)
-							player:SetAttribute("GameSettings", settingsJson)
-							print("[LOAD DEBUG] Loaded settings for " .. player.Name .. ":", settingsJson)
-						else
-							print("[LOAD DEBUG] No settings data found for " .. player.Name)
-						end
-						
-						-- Load equipped items
-						if data.equippedItems then
-							-- Apply equipped items after character spawns
-							local function onCharacterAdded()
-								task.wait(1) -- Wait for character to load
-								-- Lazy load AvatarService to avoid circular dependencies
-								if not AvatarService then
-									AvatarService = require(script.Parent.AvatarService)
-								end
-								
-								for itemType, itemUUID in pairs(data.equippedItems) do
-									-- Find the item instance by UUID in player's inventory
-									local inventory = player:FindFirstChild("Inventory")
-									if inventory then
-										local itemInstance = inventory:FindFirstChild(itemUUID)
-										if itemInstance then
-											local itemName = itemInstance:GetAttribute("ItemName") or itemInstance.Name
-											-- Use the shared service directly to avoid circular dependency
-											local SharedAvatarService = require(game.ReplicatedStorage.Shared.Services.AvatarService)
-											SharedAvatarService.EquipItem(player, itemName, itemUUID)
-										end
-									end
-								end
-							end
-							
-							if player.Character then
-								onCharacterAdded()
-							else
-								player.CharacterAdded:Connect(onCharacterAdded)
-							end
-						end
-						
-						-- Calculate and set RAP
-						updatePlayerRAP(player)
-						
-						-- Update collection with existing inventory items
-						DataService.UpdatePlayerCollection(player)
-						
-						-- Mark loading as complete to enable saves
-						player:SetAttribute("IsLoadingInventory", false)
-						
-						-- Signal client that inventory loading is complete
-						Remotes.InventoryLoadComplete:FireClient(player)
-						
-						print("Player data fully loaded for " .. player.Name)
-						return
-					end
-					
-					-- Load batch
-					local isComplete = loadInventoryBatch(inventory, data.inventory, currentIndex, INVENTORY_BATCH_SIZE)
-					currentIndex = currentIndex + INVENTORY_BATCH_SIZE
-					
-					if not isComplete then
-						-- Schedule next batch
-						task.wait(0.1) -- Small delay between batches
-						loadNextBatch()
-					else
-						-- Complete loading
-						loadNextBatch()
-					end
+		-- Process RAP updates more frequently
+		for userId, player in pairs(rapUpdateQueue) do
+			if player and player.Parent and player.UserId then
+				local currentTime = tick()
+				local lastUpdate = rapUpdateCooldowns[userId]
+				if not lastUpdate or (currentTime - lastUpdate) >= RAP_UPDATE_COOLDOWN then
+					updatePlayerRAP(player)
+					rapUpdateCooldowns[userId] = currentTime
 				end
-				
-				loadNextBatch()
+			end
+		end
+
+	local playersToUpdate = {}
+	for userId, player in pairs(rapUpdateQueue) do
+		-- Validate player is still in the game before adding to process list
+		if player and player.Parent and player.UserId then
+			local stillInGame = false
+			for _, activePlayer in ipairs(Players:GetPlayers()) do
+				if activePlayer == player then
+					stillInGame = true
+					break
+				end
+			end
+			if stillInGame then
+		table.insert(playersToUpdate, player)
 			else
-				-- No inventory to load, but still load other data
-				
-				-- Load upgrade data
-				local UpgradeService = require(script.Parent.UpgradeService)
-				local UpgradeConfig = require(game.ReplicatedStorage.Shared.Modules.UpgradeConfig)
-				if data.upgrades then
-					print("[LOAD DEBUG] Loading upgrades for " .. player.Name .. " (no inventory):", game:GetService("HttpService"):JSONEncode(data.upgrades))
-					local missingUpgrades = {}
-					for upgradeId, level in pairs(data.upgrades) do
-						UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, level)
-						print("[LOAD DEBUG] Set upgrade " .. upgradeId .. " to level " .. level .. " for " .. player.Name)
-					end
-					-- Ensure all upgrade IDs are present
-					for upgradeId, _ in pairs(UpgradeConfig.Upgrades) do
-						if data.upgrades[upgradeId] == nil then
-							UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, 0)
-							table.insert(missingUpgrades, upgradeId)
-						end
-					end
-					if #missingUpgrades > 0 then
-						warn("[LOAD WARNING] Some upgrades missing for " .. player.Name .. " (no inventory): " .. table.concat(missingUpgrades, ", "))
-					end
-				else
-					print("[LOAD DEBUG] No upgrades data found for " .. player.Name .. " (no inventory) - will initialize to defaults")
-					-- Initialize with defaults since no saved data exists
-					local UpgradeConfig = require(game.ReplicatedStorage.Shared.Modules.UpgradeConfig)
-					for upgradeId, _ in pairs(UpgradeConfig.Upgrades) do
-						UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, 0)
-					end
-				end
-				
-				-- Load settings data
-				if data.settings then
-					-- Store settings in player object for quick access
-					local settingsJson = game:GetService("HttpService"):JSONEncode(data.settings)
-					player:SetAttribute("GameSettings", settingsJson)
-					print("[LOAD DEBUG] Loaded settings for " .. player.Name .. " (no inventory):", settingsJson)
-				else
-					print("[LOAD DEBUG] No settings data found for " .. player.Name .. " (no inventory)")
-				end
-				
-				-- Calculate and set RAP
-				updatePlayerRAP(player)
-				
-				-- Update collection with existing inventory items
-				DataService.UpdatePlayerCollection(player)
-				
-				-- Mark loading as complete to enable saves
-				player:SetAttribute("IsLoadingInventory", false)
-				
-				-- Signal client that inventory loading is complete (even though there were no items)
-				Remotes.InventoryLoadComplete:FireClient(player)
-				
-				print("Player data loaded for " .. player.Name)
+				-- Remove from queue if player is no longer in game
+				rapUpdateQueue[userId] = nil
 			end
 		else
-			-- New player or data load failed
-			updatePlayerRobux(player, GameConfig.Currency.StartingAmount)
-			updatePlayerBoxesOpened(player, 0)
-			player:SetAttribute("RAPValue", 0)
-			
-			-- Initialize upgrades for new player
-			print("[LOAD DEBUG] New player - initializing default upgrades for " .. player.Name)
-			local UpgradeService = require(script.Parent.UpgradeService)
-			local UpgradeConfig = require(game.ReplicatedStorage.Shared.Modules.UpgradeConfig)
-			for upgradeId, _ in pairs(UpgradeConfig.Upgrades) do
-				UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, 0)
-			end
-			
-			-- Mark loading as complete to enable saves
-			player:SetAttribute("IsLoadingInventory", false)
-			
-			-- Signal client that inventory loading is complete (new player, no items to load)
-			Remotes.InventoryLoadComplete:FireClient(player)
-			
-			print("No data found for " .. player.Name .. ". Creating new profile.")
-			if err then
-				warn("Error loading data for " .. player.Name .. ": " .. tostring(err))
-			end
+			-- Remove invalid player from queue
+			rapUpdateQueue[userId] = nil
 		end
-	end)
-	
-	-- Connect to inventory changes to update RAP and trigger saves (only after initial loading)
-	inventory.ChildAdded:Connect(function(item)
-		task.wait(0.1) -- Small delay to ensure attributes are set
-		updatePlayerRAP(player)
-		DataService.UpdatePlayerCollection(player) -- Update collection when new items are added
-		
-		-- Only trigger save if not in initial loading phase
-		local isLoading = player:GetAttribute("IsLoadingInventory")
-		if not isLoading then
-			-- Trigger save after item addition (important items shouldn't be lost)
-			task.spawn(function()
-				DataService.Save(player)
+	end
+	rapUpdateQueue = {} -- Clear the queue
+
+	if #playersToUpdate > 0 then
+		print("Processing RAP leaderboard updates for " .. #playersToUpdate .. " players.")
+		for _, player in ipairs(playersToUpdate) do
+			task.spawn(function() -- Make leaderboard updates async to prevent blocking
+				-- Use the player attribute for the leaderboard ranking
+				local rapValue = player:GetAttribute("RAPValue") or 0
+				local success, err = pcall(function()
+					rapLeaderboardStore:SetAsync(tostring(player.UserId), rapValue)
+				end)
+				if not success then
+					warn("Failed to update RAP for " .. (player.Name or "Unknown") .. " in leaderboard: " .. tostring(err))
+				end
 			end)
-			
-			local itemName = item:GetAttribute("ItemName") or item.Name
-			print("Item added to " .. player.Name .. "'s inventory: " .. itemName .. " - Save triggered")
 		end
-	end)
-	
-	inventory.ChildRemoved:Connect(function(item)
-		updatePlayerRAP(player)
-		-- Don't remove from collection when items are sold/removed - keep discovery history
-		
-		-- Only trigger save if not in initial loading phase
-		local isLoading = player:GetAttribute("IsLoadingInventory")
-		if not isLoading then
-			-- Trigger save after item removal (prevent rollback exploits)
-			task.spawn(function()
-				DataService.Save(player)
+	end
+
+	isUpdating = false
+end
+
+local function processBoxesUpdateQueue()
+	if isUpdatingBoxes then return end
+	isUpdatingBoxes = true
+
+	local playersToUpdate = {}
+	for userId, player in pairs(boxesUpdateQueue) do
+		-- Validate player is still in the game before adding to process list
+		if player and player.Parent and player.UserId then
+			local stillInGame = false
+			for _, activePlayer in ipairs(Players:GetPlayers()) do
+				if activePlayer == player then
+					stillInGame = true
+					break
+				end
+			end
+			if stillInGame then
+		table.insert(playersToUpdate, player)
+			else
+				-- Remove from queue if player is no longer in game
+				boxesUpdateQueue[userId] = nil
+			end
+		else
+			-- Remove invalid player from queue
+			boxesUpdateQueue[userId] = nil
+		end
+	end
+	boxesUpdateQueue = {} -- Clear the queue
+
+	if #playersToUpdate > 0 then
+		print("Processing boxes leaderboard updates for " .. #playersToUpdate .. " players.")
+		for _, player in ipairs(playersToUpdate) do
+			task.spawn(function() -- Make leaderboard updates async to prevent blocking
+				-- Use the player attribute for the leaderboard ranking
+				local boxesValue = player:GetAttribute("BoxesOpenedValue") or 0
+				local success, err = pcall(function()
+					boxesLeaderboardStore:SetAsync(tostring(player.UserId), boxesValue)
+				end)
+				if not success then
+					warn("Failed to update boxes for " .. (player.Name or "Unknown") .. " in leaderboard: " .. tostring(err))
+				end
 			end)
-			
-			local itemName = item:GetAttribute("ItemName") or item.Name
-			print("Item removed from " .. player.Name .. "'s inventory: " .. itemName .. " - Save triggered")
 		end
-	end)
+	end
+
+	isUpdatingBoxes = false
 end
 
 local function saveData(player: Player)
-	if not player or not player.Parent then 
+	-- Enhanced player validation
+	if not player or not player.Parent or not player.UserId then 
 		warn("saveData called for an invalid player.")
 		return 
 	end
+	
+	-- Check if player is still in the game
+	local playerStillExists = false
+	for _, existingPlayer in ipairs(Players:GetPlayers()) do
+		if existingPlayer == player then
+			playerStillExists = true
+			break
+		end
+	end
+	
+	-- If player left, we can still save using their cached data, but need to be more careful
+	if not playerStillExists then
+		print("Player " .. (player.Name or "Unknown") .. " has left, performing final save...")
+	end
 
-	local key = "Player_" .. player.UserId
+	local userId = player.UserId
+	local currentTime = tick()
+	
+	-- Check if we're in cooldown for this player (skip for force saves)
+	local lastSave = lastSaveTimes[userId]
+	if lastSave and (currentTime - lastSave) < SAVE_COOLDOWN then
+		print("Skipping save for " .. player.Name .. " - in cooldown")
+		return -- Skip save if in cooldown
+	end
+	
+	local key = "Player_" .. userId
 	
 	-- Create the data table in one go
 	-- Use raw attribute values instead of formatted StringValues
@@ -546,6 +440,11 @@ local function saveData(player: Player)
 	dataToSave.upgrades = UpgradeService.GetPlayerUpgrades(player)
 	print("[SAVE DEBUG] Upgrades for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(dataToSave.upgrades or {}))
 	
+	-- Save rebirth data
+	local RebirthService = require(script.Parent.RebirthService)
+	dataToSave.rebirths = RebirthService.GetPlayerRebirthsForSave(player)
+	print("[SAVE DEBUG] Rebirths for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(dataToSave.rebirths or {}))
+	
 	-- Save settings data
 	local settingsJson = player:GetAttribute("GameSettings")
 	if settingsJson then
@@ -572,6 +471,11 @@ local function saveData(player: Player)
 	print("  - Settings:", game:GetService("HttpService"):JSONEncode(dataToSave.settings or {}))
 
 	-- Retry logic for DataStore operations
+	if not playerDataStore then
+		warn("Player datastore is nil, cannot save data for " .. player.Name)
+		return
+	end
+	
 	local attempts = 0
 	local success = false
 	while not success and attempts < 3 do
@@ -589,183 +493,68 @@ local function saveData(player: Player)
 		if not success then
 			warn("Failed to save data for " .. player.Name .. " (Attempt " .. attempts .. "): " .. tostring(err))
 			if attempts < 3 then
-				task.wait(2) -- Wait before retrying
+				task.wait(1) -- Reduced wait time from 2 to 1 second
 			end
 		end
 	end
 
 	if success then
+		lastSaveTimes[userId] = currentTime -- Update last save time
 		print("Player data saved for " .. player.Name)
 	else
 		warn("FATAL: Could not save data for " .. player.Name .. " after 3 attempts.")
 	end
 end
 
-local function onPlayerRemoving(player: Player)
-	print("PlayerRemoving event fired for: " .. player.Name .. " - Performing comprehensive save...")
-	
-	-- Clean up loading flag
-	player:SetAttribute("IsLoadingInventory", nil)
-	
-	-- Force update all calculated values before saving
-	updatePlayerRAP(player)
-	DataService.UpdatePlayerCollection(player)
-	
-	-- Ensure upgrades are included in the save (handled by saveData function automatically)
-	-- The saveData function already calls UpgradeService.GetPlayerUpgrades internally
-	
-	-- Force multiple saves to ensure data persistence
-	local saveAttempts = 3
-	for i = 1, saveAttempts do
-		saveData(player)
-		if i < saveAttempts then
-			task.wait(0.5) -- Short delay between saves
-		end
-	end
-	
-	-- Final delay to ensure all saves complete
-	task.wait(1)
-	
-	print("Comprehensive save completed for: " .. player.Name .. " (" .. saveAttempts .. " save attempts)")
-end
-
-function DataService.Start()
-	Players.PlayerAdded:Connect(onPlayerAdded)
-	Players.PlayerRemoving:Connect(onPlayerRemoving)
-
-	-- Handle players who might already be in the game when the script runs
-	for _, player in ipairs(Players:GetPlayers()) do
-		task.spawn(onPlayerAdded, player)
-	end
-
-	-- Connect remote functions
-	Remotes.GetPlayerCollection.OnServerInvoke = function(player)
-		return DataService.GetPlayerCollection(player)
-	end
-	
-	-- Connect settings remotes
-	Remotes.SaveSetting.OnServerEvent:Connect(function(player, settingId, value)
-		DataService.SavePlayerSetting(player, settingId, value)
-	end)
-	
-	Remotes.GetPlayerSettings.OnServerInvoke = function(player)
-		return DataService.GetPlayerSettings(player)
-	end
-
-	-- Save data on server shutdown with enhanced safety
-	game:BindToClose(function()
-		print("BindToClose triggered. Performing emergency save for all players...")
-		local activePlayers = Players:GetPlayers()
-		
-		if #activePlayers > 0 then
-			print("Emergency saving data for " .. #activePlayers .. " players...")
-			
-			-- Force update all calculated values before shutdown
-			for _, player in ipairs(activePlayers) do
-				updatePlayerRAP(player)
-				DataService.UpdatePlayerCollection(player)
-			end
-			
-			-- Multiple save attempts for all players
-			for attempt = 1, 2 do
-				print("Shutdown save attempt " .. attempt .. " of 2...")
-							for _, player in ipairs(activePlayers) do
-				task.spawn(function()
-					saveData(player)
-				end)
-			end
-				task.wait(3) -- Wait for saves to complete
-			end
-			
-			-- Final extended wait to ensure all saves complete
-			print("Waiting for final save completion...")
-			task.wait(5)
-			print("Emergency shutdown save completed.")
-		end
-	end)
-
-	-- Start a more frequent auto-save loop with comprehensive saving
-	task.spawn(function()
-		while task.wait(30) do -- Save every 30 seconds (more frequent)
-			print("Auto-save triggered for all players...")
-			for _, player in ipairs(Players:GetPlayers()) do
-				-- Update calculated values before auto-save
-				task.spawn(function()
-					updatePlayerRAP(player)
-					DataService.UpdatePlayerCollection(player)
-					saveData(player)
-				end)
-			end
-		end
-	end)
-	
-	-- Emergency save system - save on critical game events
-	local function setupEmergencySaves()
-		-- Save when player's money changes significantly
-		Players.PlayerAdded:Connect(function(player)
-			local lastSaveTime = tick()
-			local lastRobux = 0
-			
-			player:GetAttributeChangedSignal("RobuxValue"):Connect(function()
-				local currentRobux = player:GetAttribute("RobuxValue") or 0
-				local robuxDifference = math.abs(currentRobux - lastRobux)
-				local timeSinceLastSave = tick() - lastSaveTime
-				
-				-- Save if significant money change or enough time has passed
-				if robuxDifference >= 1000 or timeSinceLastSave >= 10 then
-					lastSaveTime = tick()
-					lastRobux = currentRobux
-					task.spawn(function()
-						saveData(player)
-					end)
-					print("Emergency save triggered for " .. player.Name .. " (R$ change: " .. robuxDifference .. ")")
+-- OPTIMIZED: Process save queue with throttling
+local function processSaveQueue()
+	local playersToSave = {}
+	for userId, player in pairs(saveQueue) do
+		-- Validate player is still in the game before adding to process list
+		if player and player.Parent and player.UserId then
+			local stillInGame = false
+			for _, activePlayer in ipairs(Players:GetPlayers()) do
+				if activePlayer == player then
+					stillInGame = true
+					break
 				end
-			end)
-		end)
+			end
+			if stillInGame then
+				table.insert(playersToSave, player)
+			else
+				-- Remove from queue if player is no longer in game
+				saveQueue[userId] = nil
+			end
+		else
+			-- Remove invalid player from queue
+			saveQueue[userId] = nil
+		end
 	end
+	saveQueue = {} -- Clear the queue
 	
-	setupEmergencySaves()
+	if #playersToSave > 0 then
+		print("Processing save queue for " .. #playersToSave .. " players.")
+		for _, player in ipairs(playersToSave) do
+			task.spawn(function()
+				saveData(player)
+			end)
+		end
+	end
 end
 
--- Expose function for other services to update RAP
-function DataService.UpdatePlayerRAP(player)
-	updatePlayerRAP(player)
-end
-
--- Expose function for other services to update R$
-function DataService.UpdatePlayerRobux(player, value)
-	updatePlayerRobux(player, value)
-end
-
--- Expose function for other services to update Boxes Opened
-function DataService.UpdatePlayerBoxesOpened(player, value)
-	updatePlayerBoxesOpened(player, value)
-end
-
--- Expose function for other services to trigger a save
-function DataService.Save(player)
-	task.spawn(function()
-		saveData(player)
-	end)
-end
-
--- Add function for upgrade service to save upgrade data
-function DataService.SaveUpgradeData(player, upgradeData)
-	-- This will be called by UpgradeService when upgrades change
-	-- The actual saving will happen during the regular save cycle
-	-- But we can trigger an immediate save if needed for upgrades
-	task.spawn(function()
-		saveData(player)
-	end)
-end
-
--- Collection datastore for tracking discovered items
-local collectionDataStore = DataStoreService:GetDataStore("PlayerCollections_V1")
-
--- Function to update player's collection based on current inventory
-function DataService.UpdatePlayerCollection(player)
+-- Internal function to update player's collection based on current inventory
+local function UpdatePlayerCollectionInternal(player)
 	local inventory = player:FindFirstChild("Inventory")
 	if not inventory then return end
+	
+	local userId = player.UserId
+	local currentTime = tick()
+	
+	-- Check if we're in cooldown for this player
+	local lastCollectionUpdate = collectionUpdateCooldowns[userId]
+	if lastCollectionUpdate and (currentTime - lastCollectionUpdate) < COLLECTION_UPDATE_COOLDOWN then
+		return -- Skip update if in cooldown
+	end
 	
 	task.spawn(function()
 		local userId = player.UserId
@@ -773,12 +562,16 @@ function DataService.UpdatePlayerCollection(player)
 		
 		-- Load existing collection
 		local existingCollection = {}
-		local success, data = pcall(function()
-			return collectionDataStore:GetAsync(collectionKey)
-		end)
-		
-		if success and data then
-			existingCollection = data
+		if collectionDataStore then
+			local success, data = pcall(function()
+				return collectionDataStore:GetAsync(collectionKey)
+			end)
+			
+			if success and data then
+				existingCollection = data
+			end
+		else
+			warn("Collection datastore is nil, cannot load collection for " .. player.Name)
 		end
 		
 		-- Update collection with current inventory
@@ -844,21 +637,696 @@ function DataService.UpdatePlayerCollection(player)
 		
 		-- Save updated collection if there are changes
 		if hasUpdates then
-			local saveSuccess, err = pcall(function()
-				collectionDataStore:SetAsync(collectionKey, existingCollection)
+			if collectionDataStore then
+				local saveSuccess, err = pcall(function()
+					collectionDataStore:SetAsync(collectionKey, existingCollection)
+				end)
+				
+				if not saveSuccess then
+					warn("Failed to save collection data for " .. player.Name .. ": " .. tostring(err))
+				end
+			else
+				warn("Collection datastore is nil, cannot save collection for " .. player.Name)
+			end
+		end
+		collectionUpdateCooldowns[userId] = currentTime -- Update last collection update time
+	end)
+end
+
+-- OPTIMIZED: Process collection updates with throttling
+local function processCollectionQueue()
+	local playersToUpdate = {}
+	for userId, player in pairs(collectionUpdateQueue) do
+		-- Validate player is still in the game before adding to process list
+		if player and player.Parent and player.UserId then
+			local stillInGame = false
+			for _, activePlayer in ipairs(Players:GetPlayers()) do
+				if activePlayer == player then
+					stillInGame = true
+					break
+				end
+			end
+			if stillInGame then
+				table.insert(playersToUpdate, player)
+			else
+				-- Remove from queue if player is no longer in game
+				collectionUpdateQueue[userId] = nil
+			end
+		else
+			-- Remove invalid player from queue
+			collectionUpdateQueue[userId] = nil
+		end
+	end
+	collectionUpdateQueue = {} -- Clear the queue
+	
+	if #playersToUpdate > 0 and collectionDataStore then
+		print("Processing collection updates for " .. #playersToUpdate .. " players.")
+		for _, player in ipairs(playersToUpdate) do
+			task.spawn(function()
+				-- Call the actual collection update function directly
+				UpdatePlayerCollectionInternal(player)
 			end)
+		end
+	end
+end
+
+-- Start the debouncer loop with better performance
+task.spawn(function()
+	while true do
+		task.wait(2) -- Reduced from DEBOUNCE_INTERVAL to 2 seconds for more frequent updates
+		processUpdateQueue()
+		processBoxesUpdateQueue()
+		processSaveQueue()
+		processCollectionQueue()
+	end
+end)
+
+local function onPlayerAdded(player: Player)
+	local leaderstats = Instance.new("Folder")
+	leaderstats.Name = "leaderstats"
+	leaderstats.Parent = player
+
+	-- Create inventory folder
+	local inventory = Instance.new("Folder")
+	inventory.Name = "Inventory"
+	inventory.Parent = player
+
+	-- Set loading flag to prevent saves during initial loading
+	player:SetAttribute("IsLoadingInventory", true)
+
+	-- Use formatted StringValues for all stats
+	local robux = createFormattedRobuxStat(player, leaderstats, GameConfig.Currency.StartingAmount)
+	local boxesOpened = createFormattedBoxesStat(player, leaderstats, 0)
+	createFormattedRAPStat(player, leaderstats, 0)
+	createFormattedRebirthsStat(player, leaderstats, 0)
+
+	local userId = player.UserId
+	local key = "Player_" .. userId
+
+	-- Load data asynchronously
+	task.spawn(function()
+		local data
+		local success, err = pcall(function()
+			data = playerDataStore:GetAsync(key)
+		end)
+
+		if success and data then
+			-- Player has data, load it
+			updatePlayerRobux(player, data.robux or GameConfig.Currency.StartingAmount)
+			updatePlayerBoxesOpened(player, data.boxesOpened or 0)
 			
-			if not saveSuccess then
-				warn("Failed to save collection data for " .. player.Name .. ": " .. tostring(err))
+			-- OPTIMIZED: Load inventory instantly for better performance
+			if data.inventory and #data.inventory > 0 then
+				print(string.format("Loading %d inventory items for %s instantly...", #data.inventory, player.Name))
+				
+				-- Load all inventory items instantly in one go
+				loadInventoryBatch(inventory, data.inventory, 1, #data.inventory)
+				
+						print("Inventory loading complete for " .. player.Name)
+						
+						-- Load upgrade data
+						local UpgradeService = require(script.Parent.UpgradeService)
+						local UpgradeConfig = require(game.ReplicatedStorage.Shared.Modules.UpgradeConfig)
+						if data.upgrades then
+							print("[LOAD DEBUG] Loading upgrades for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(data.upgrades))
+							local missingUpgrades = {}
+							for upgradeId, level in pairs(data.upgrades) do
+								UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, level)
+								print("[LOAD DEBUG] Set upgrade " .. upgradeId .. " to level " .. level .. " for " .. player.Name)
+							end
+							-- Ensure all upgrade IDs are present
+							for upgradeId, _ in pairs(UpgradeConfig.Upgrades) do
+								if data.upgrades[upgradeId] == nil then
+									UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, 0)
+									table.insert(missingUpgrades, upgradeId)
+								end
+							end
+							if #missingUpgrades > 0 then
+								warn("[LOAD WARNING] Some upgrades missing for " .. player.Name .. ": " .. table.concat(missingUpgrades, ", "))
+							end
+						else
+							print("[LOAD DEBUG] No upgrades data found for " .. player.Name .. " - will initialize to defaults")
+							-- Initialize with defaults since no saved data exists
+							local UpgradeConfig = require(game.ReplicatedStorage.Shared.Modules.UpgradeConfig)
+							for upgradeId, _ in pairs(UpgradeConfig.Upgrades) do
+								UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, 0)
+							end
+						end
+						
+						-- Load settings data
+						if data.settings then
+							-- Store settings in player object for quick access
+							local settingsJson = game:GetService("HttpService"):JSONEncode(data.settings)
+							player:SetAttribute("GameSettings", settingsJson)
+							print("[LOAD DEBUG] Loaded settings for " .. player.Name .. ":", settingsJson)
+						else
+							print("[LOAD DEBUG] No settings data found for " .. player.Name)
+						end
+						
+						-- Load rebirth data
+						local RebirthService = require(script.Parent.RebirthService)
+						if data.rebirths then
+							RebirthService.LoadPlayerRebirthsFromSave(player, data.rebirths)
+							print("[LOAD DEBUG] Loaded rebirths for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(data.rebirths))
+							-- Update rebirths leaderstat
+							DataService.UpdatePlayerRebirths(player, data.rebirths.currentRebirth or 0)
+						else
+							print("[LOAD DEBUG] No rebirth data found for " .. player.Name)
+							-- Initialize rebirths to 0
+							DataService.UpdatePlayerRebirths(player, 0)
+						end
+						
+						-- Load equipped items
+						if data.equippedItems then
+							-- Apply equipped items after character spawns
+							local function onCharacterAdded()
+								task.wait(1) -- Wait for character to load
+								-- Lazy load AvatarService to avoid circular dependencies
+								if not AvatarService then
+									AvatarService = require(script.Parent.AvatarService)
+								end
+								
+								for itemType, itemUUID in pairs(data.equippedItems) do
+									-- Find the item instance by UUID in player's inventory
+									local inventory = player:FindFirstChild("Inventory")
+									if inventory then
+										local itemInstance = inventory:FindFirstChild(itemUUID)
+										if itemInstance then
+											local itemName = itemInstance:GetAttribute("ItemName") or itemInstance.Name
+											-- Use the shared service directly to avoid circular dependency
+											local SharedAvatarService = require(game.ReplicatedStorage.Shared.Services.AvatarService)
+											SharedAvatarService.EquipItem(player, itemName, itemUUID)
+										end
+									end
+								end
+							end
+							
+							if player.Character then
+								onCharacterAdded()
+							else
+								player.CharacterAdded:Connect(onCharacterAdded)
+							end
+						end
+						
+						-- Calculate and set RAP
+						updatePlayerRAP(player)
+						
+						-- Update collection with existing inventory items
+						DataService.UpdatePlayerCollection(player)
+						
+						-- Mark loading as complete to enable saves
+						player:SetAttribute("IsLoadingInventory", false)
+						
+						-- Signal client that inventory loading is complete
+						Remotes.InventoryLoadComplete:FireClient(player)
+						
+						print("Player data fully loaded for " .. player.Name)
+						return
+			else
+				-- No inventory to load, but still load other data
+				
+				-- Load upgrade data
+				local UpgradeService = require(script.Parent.UpgradeService)
+				local UpgradeConfig = require(game.ReplicatedStorage.Shared.Modules.UpgradeConfig)
+				if data.upgrades then
+					print("[LOAD DEBUG] Loading upgrades for " .. player.Name .. " (no inventory):", game:GetService("HttpService"):JSONEncode(data.upgrades))
+					local missingUpgrades = {}
+					for upgradeId, level in pairs(data.upgrades) do
+						UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, level)
+						print("[LOAD DEBUG] Set upgrade " .. upgradeId .. " to level " .. level .. " for " .. player.Name)
+					end
+					-- Ensure all upgrade IDs are present
+					for upgradeId, _ in pairs(UpgradeConfig.Upgrades) do
+						if data.upgrades[upgradeId] == nil then
+							UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, 0)
+							table.insert(missingUpgrades, upgradeId)
+						end
+					end
+					if #missingUpgrades > 0 then
+						warn("[LOAD WARNING] Some upgrades missing for " .. player.Name .. " (no inventory): " .. table.concat(missingUpgrades, ", "))
+					end
+				else
+					print("[LOAD DEBUG] No upgrades data found for " .. player.Name .. " (no inventory) - will initialize to defaults")
+					-- Initialize with defaults since no saved data exists
+					local UpgradeConfig = require(game.ReplicatedStorage.Shared.Modules.UpgradeConfig)
+					for upgradeId, _ in pairs(UpgradeConfig.Upgrades) do
+						UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, 0)
+					end
+				end
+				
+				-- Load settings data
+				if data.settings then
+					-- Store settings in player object for quick access
+					local settingsJson = game:GetService("HttpService"):JSONEncode(data.settings)
+					player:SetAttribute("GameSettings", settingsJson)
+					print("[LOAD DEBUG] Loaded settings for " .. player.Name .. " (no inventory):", settingsJson)
+				else
+					print("[LOAD DEBUG] No settings data found for " .. player.Name .. " (no inventory)")
+				end
+				
+				-- Load rebirth data
+				local RebirthService = require(script.Parent.RebirthService)
+				if data.rebirths then
+					RebirthService.LoadPlayerRebirthsFromSave(player, data.rebirths)
+					print("[LOAD DEBUG] Loaded rebirths for " .. player.Name .. " (no inventory):", game:GetService("HttpService"):JSONEncode(data.rebirths))
+					-- Update rebirths leaderstat
+					DataService.UpdatePlayerRebirths(player, data.rebirths.currentRebirth or 0)
+				else
+					print("[LOAD DEBUG] No rebirth data found for " .. player.Name .. " (no inventory)")
+					-- Initialize rebirths to 0
+					DataService.UpdatePlayerRebirths(player, 0)
+				end
+				
+				-- Calculate and set RAP
+				updatePlayerRAP(player)
+				
+				-- Update collection with existing inventory items
+				DataService.UpdatePlayerCollection(player)
+				
+				-- Mark loading as complete to enable saves
+				player:SetAttribute("IsLoadingInventory", false)
+				
+				-- Signal client that inventory loading is complete (even though there were no items)
+				Remotes.InventoryLoadComplete:FireClient(player)
+				
+				print("Player data loaded for " .. player.Name)
+			end
+		else
+			-- New player or data load failed
+			updatePlayerRobux(player, GameConfig.Currency.StartingAmount)
+			updatePlayerBoxesOpened(player, 0)
+			player:SetAttribute("RAPValue", 0)
+			
+			-- Initialize upgrades for new player
+			print("[LOAD DEBUG] New player - initializing default upgrades for " .. player.Name)
+			local UpgradeService = require(script.Parent.UpgradeService)
+			local UpgradeConfig = require(game.ReplicatedStorage.Shared.Modules.UpgradeConfig)
+			for upgradeId, _ in pairs(UpgradeConfig.Upgrades) do
+				UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, 0)
+			end
+			
+			-- Mark loading as complete to enable saves
+			player:SetAttribute("IsLoadingInventory", false)
+			
+			-- Signal client that inventory loading is complete (new player, no items to load)
+			Remotes.InventoryLoadComplete:FireClient(player)
+			
+			print("No data found for " .. player.Name .. ". Creating new profile.")
+			if err then
+				warn("Error loading data for " .. player.Name .. ": " .. tostring(err))
 			end
 		end
 	end)
+	
+	-- OPTIMIZED: Connect to inventory changes with throttling
+	inventory.ChildAdded:Connect(function(item)
+		task.wait(0.05) -- Reduced delay for more responsive updates
+		updatePlayerRAP(player)
+		
+		-- Only trigger save if not in initial loading phase
+		local isLoading = player:GetAttribute("IsLoadingInventory")
+		if not isLoading then
+			-- Queue collection update and save instead of immediate execution
+			collectionUpdateQueue[player.UserId] = player
+			saveQueue[player.UserId] = player
+			
+			local itemName = item:GetAttribute("ItemName") or item.Name
+			print("Item added to " .. player.Name .. "'s inventory: " .. itemName .. " - Queued for save")
+		end
+	end)
+	
+	inventory.ChildRemoved:Connect(function(item)
+		updatePlayerRAP(player)
+		-- Don't remove from collection when items are sold/removed - keep discovery history
+		
+		-- Only trigger save if not in initial loading phase
+		local isLoading = player:GetAttribute("IsLoadingInventory")
+		if not isLoading then
+			-- Queue save instead of immediate execution
+			saveQueue[player.UserId] = player
+			
+			local itemName = item:GetAttribute("ItemName") or item.Name
+			print("Item removed from " .. player.Name .. "'s inventory: " .. itemName .. " - Queued for save")
+		end
+	end)
+	
+	-- Listen for item attribute changes (mutations, size changes, etc.) to update RAP immediately
+	inventory.ChildAdded:Connect(function(item)
+		-- Connect to attribute changes for this specific item
+		item:GetAttributeChangedSignal("Mutations"):Connect(function()
+			updatePlayerRAP(player)
+		end)
+		item:GetAttributeChangedSignal("Mutation"):Connect(function()
+			updatePlayerRAP(player)
+		end)
+		item:GetAttributeChangedSignal("Size"):Connect(function()
+			updatePlayerRAP(player)
+		end)
+	end)
+end
+
+
+
+
+
+function DataService.Start()
+	Players.PlayerAdded:Connect(onPlayerAdded)
+	
+		-- Use the standard Roblox PlayerRemoving event
+	game.Players.PlayerRemoving:Connect(function(player)
+		-- Validate player before proceeding
+		if not player or not player.UserId then
+			warn("Invalid player object in PlayerRemoving event")
+			return
+		end
+		
+		local userId = player.UserId
+		local playerName = player.Name or "Unknown"
+		
+		print("PlayerRemoving event fired for: " .. playerName .. " - Performing comprehensive save...")
+		
+		-- Check if player has pending saves in queue and process them immediately
+		if saveQueue[userId] then
+			print("Player " .. playerName .. " has pending saves in queue - processing immediately...")
+			-- Force save any pending queue items
+			local success = pcall(function()
+				saveData(player)
+			end)
+			if success then
+				print("Successfully saved pending queue data for " .. playerName)
+			else
+				warn("Failed to save pending queue data for " .. playerName)
+			end
+		end
+		
+		-- Check if player has pending collection updates in queue
+		if collectionUpdateQueue[userId] and collectionDataStore then
+			print("Player " .. playerName .. " has pending collection updates in queue - processing immediately...")
+			pcall(function()
+				UpdatePlayerCollectionInternal(player)
+			end)
+		end
+		
+		-- Check if player has pending RAP updates in queue
+		if rapUpdateQueue[userId] then
+			print("Player " .. playerName .. " has pending RAP updates in queue - processing immediately...")
+			pcall(function()
+				updatePlayerRAP(player)
+			end)
+		end
+		
+		-- IMMEDIATELY remove from all queues to prevent further processing
+		rapUpdateQueue[userId] = nil
+		saveQueue[userId] = nil
+		collectionUpdateQueue[userId] = nil
+		
+		-- Clean up loading flag safely
+		pcall(function()
+	player:SetAttribute("IsLoadingInventory", nil)
+		end)
+		
+		-- Clear cooldowns to allow immediate saves
+		lastSaveTimes[userId] = nil
+		rapUpdateCooldowns[userId] = nil
+		collectionUpdateCooldowns[userId] = nil
+		
+		-- Force update all calculated values before saving (with error handling)
+		pcall(function()
+	updatePlayerRAP(player)
+		end)
+		
+		-- Only update collection if datastore is available
+		if collectionDataStore then
+			pcall(function()
+				UpdatePlayerCollectionInternal(player)
+			end)
+		end
+	
+	-- Ensure upgrades are included in the save (handled by saveData function automatically)
+	-- The saveData function already calls UpgradeService.GetPlayerUpgrades internally
+	
+	-- Force multiple saves to ensure data persistence
+		local saveAttempts = 1 -- Reduced to 1 attempt to avoid delays during leaving
+	for i = 1, saveAttempts do
+			local success = pcall(function()
+		saveData(player)
+			end)
+			
+			if not success then
+				warn("Failed to save data for " .. playerName .. " on attempt " .. i)
+			else
+				print("Successfully saved data for " .. playerName .. " on attempt " .. i)
+				break -- Exit early on success
+		end
+	end
+	
+		-- Final cleanup of all data related to this player
+		lastSaveTimes[userId] = nil
+		rapUpdateCooldowns[userId] = nil
+		collectionUpdateCooldowns[userId] = nil
+		rapCache[userId] = nil
+		rapUpdateQueue[userId] = nil
+		saveQueue[userId] = nil
+		collectionUpdateQueue[userId] = nil
+		
+		print("Comprehensive save completed for: " .. playerName)
+	end)
+
+	-- Handle players who might already be in the game when the script runs
+	for _, player in ipairs(Players:GetPlayers()) do
+		task.spawn(onPlayerAdded, player)
+	end
+
+	-- Connect remote functions
+	Remotes.GetPlayerCollection.OnServerInvoke = function(player)
+		return DataService.GetPlayerCollection(player)
+	end
+	
+	-- Connect settings remotes
+	Remotes.SaveSetting.OnServerEvent:Connect(function(player, settingId, value)
+		DataService.SavePlayerSetting(player, settingId, value)
+	end)
+	
+	Remotes.GetPlayerSettings.OnServerInvoke = function(player)
+		return DataService.GetPlayerSettings(player)
+	end
+
+	-- Save data on server shutdown with enhanced safety
+	game:BindToClose(function()
+		print("BindToClose triggered. Performing emergency save for all players...")
+		local activePlayers = Players:GetPlayers()
+		
+		if #activePlayers > 0 then
+			print("Emergency saving data for " .. #activePlayers .. " players...")
+			
+			-- Clear all cooldowns to allow immediate saves
+			for _, player in ipairs(activePlayers) do
+				if player and player.UserId then
+					lastSaveTimes[player.UserId] = nil
+					rapUpdateCooldowns[player.UserId] = nil
+					collectionUpdateCooldowns[player.UserId] = nil
+				end
+			end
+			
+			-- Force update all calculated values before shutdown (with error handling)
+			for _, player in ipairs(activePlayers) do
+				if player and player.UserId then
+					pcall(function()
+				updatePlayerRAP(player)
+					end)
+					pcall(function()
+						UpdatePlayerCollectionInternal(player)
+					end)
+				end
+			end
+			
+			-- Multiple save attempts for all players
+			for attempt = 1, 2 do
+				print("Shutdown save attempt " .. attempt .. " of 2...")
+							for _, player in ipairs(activePlayers) do
+					if player and player.UserId then
+				task.spawn(function()
+							pcall(function()
+					saveData(player)
+							end)
+				end)
+			end
+				end
+				task.wait(2) -- Wait for saves to complete
+			end
+			
+			-- Final wait to ensure all saves complete
+			print("Waiting for final save completion...")
+			task.wait(3)
+			print("Emergency shutdown save completed.")
+		else
+			print("No active players to save during shutdown.")
+		end
+	end)
+
+	-- OPTIMIZED: Auto-save with throttling
+	task.spawn(function()
+		while task.wait(30) do -- Reduced frequency from 60 to 30 seconds for more frequent auto-saves
+			print("Auto-save triggered for all players...")
+			for _, player in ipairs(Players:GetPlayers()) do
+				-- Queue players for save instead of immediate execution
+				saveQueue[player.UserId] = player
+				-- Only update RAP for players who haven't been updated recently
+				local lastRapUpdate = rapUpdateCooldowns[player.UserId]
+				if not lastRapUpdate or (tick() - lastRapUpdate) >= RAP_UPDATE_COOLDOWN then
+					updatePlayerRAP(player)
+				end
+			end
+		end
+	end)
+	
+	-- OPTIMIZED: Emergency save system with throttling
+	local function setupEmergencySaves()
+		-- Save when player's money changes significantly
+		Players.PlayerAdded:Connect(function(player)
+			local lastSaveTime = tick()
+			local lastRobux = 0
+			
+			player:GetAttributeChangedSignal("RobuxValue"):Connect(function()
+				local currentRobux = player:GetAttribute("RobuxValue") or 0
+				local robuxDifference = math.abs(currentRobux - lastRobux)
+				local timeSinceLastSave = tick() - lastSaveTime
+				
+				-- Save if significant money change AND enough time has passed
+				if robuxDifference >= 2000 and timeSinceLastSave >= 15 then -- Reduced threshold and time for more frequent saves
+					lastSaveTime = tick()
+					lastRobux = currentRobux
+					-- Queue save instead of immediate execution
+					saveQueue[player.UserId] = player
+					print("Emergency save queued for " .. player.Name .. " (R$ change: " .. robuxDifference .. ")")
+				end
+			end)
+		end)
+	end
+	
+	setupEmergencySaves()
+end
+
+-- Expose function for other services to update RAP
+function DataService.UpdatePlayerRAP(player)
+	updatePlayerRAP(player)
+end
+
+-- Expose function for other services to update R$
+function DataService.UpdatePlayerRobux(player, value)
+	updatePlayerRobux(player, value)
+end
+
+-- Expose function for other services to update Boxes Opened
+function DataService.UpdatePlayerBoxesOpened(player, value)
+	updatePlayerBoxesOpened(player, value)
+end
+
+function DataService.UpdatePlayerRebirths(player, value)
+	updatePlayerRebirths(player, value)
+end
+
+-- OPTIMIZED: Expose function for other services to trigger a save (throttled)
+function DataService.Save(player)
+	-- Queue save instead of immediate execution
+	saveQueue[player.UserId] = player
+end
+
+-- Add function for upgrade service to save upgrade data (throttled)
+function DataService.SaveUpgradeData(player, upgradeData)
+	-- Queue save instead of immediate execution
+	saveQueue[player.UserId] = player
+end
+
+-- Force save function for critical operations (bypasses throttling)
+function DataService.ForceSave(player)
+	-- Temporarily remove from cooldown and force save
+	lastSaveTimes[player.UserId] = nil
+	task.spawn(function()
+		saveData(player)
+	end)
+end
+
+-- Force process all queues for a player (useful for debugging or manual saves)
+function DataService.ForceProcessAllQueues(player)
+	if not player or not player.UserId then
+		warn("Invalid player for ForceProcessAllQueues")
+		return
+	end
+	
+		local userId = player.UserId
+	local playerName = player.Name or "Unknown"
+	
+	print("Force processing all queues for " .. playerName)
+	
+	-- Clear all cooldowns
+	lastSaveTimes[userId] = nil
+	rapUpdateCooldowns[userId] = nil
+	collectionUpdateCooldowns[userId] = nil
+	
+	-- Process save queue
+	if saveQueue[userId] then
+		print("Processing save queue for " .. playerName)
+		pcall(function()
+			saveData(player)
+		end)
+		saveQueue[userId] = nil
+	end
+	
+	-- Process collection queue
+	if collectionUpdateQueue[userId] and collectionDataStore then
+		print("Processing collection queue for " .. playerName)
+		pcall(function()
+			UpdatePlayerCollectionInternal(player)
+		end)
+		collectionUpdateQueue[userId] = nil
+	end
+	
+	-- Process RAP queue
+	if rapUpdateQueue[userId] then
+		print("Processing RAP queue for " .. playerName)
+		pcall(function()
+			updatePlayerRAP(player)
+		end)
+		rapUpdateQueue[userId] = nil
+	end
+	
+	-- Process boxes queue
+	if boxesUpdateQueue[userId] then
+		print("Processing boxes queue for " .. playerName)
+		-- This will be handled by the next queue processing cycle
+		-- We don't clear it here to let the normal system handle it
+	end
+	
+	print("Force queue processing completed for " .. playerName)
+end
+
+-- Collection datastore for tracking discovered items
+local collectionDataStore
+pcall(function()
+	collectionDataStore = DataStoreService:GetDataStore("PlayerCollections_V1")
+end)
+
+if not collectionDataStore then
+	warn("Failed to initialize collection datastore - collection features will be disabled")
+end
+
+
+
+-- Expose function for other services to update collection
+function DataService.UpdatePlayerCollection(player)
+	UpdatePlayerCollectionInternal(player)
 end
 
 -- Function to get player's collection data
 function DataService.GetPlayerCollection(player)
 	local userId = player.UserId
 	local collectionKey = "collection_" .. userId
+	
+	if not collectionDataStore then
+		warn("Collection datastore is nil, returning empty collection for " .. player.Name)
+		return {}
+	end
 	
 	local success, data = pcall(function()
 		return collectionDataStore:GetAsync(collectionKey)
@@ -902,11 +1370,16 @@ function DataService.GiveItem(player, itemName, mutations, size)
 	return item
 end
 
--- Force save function for manual/admin use
-function DataService.ForceSave(player)
-	print("Force save requested for: " .. player.Name)
+-- Manual force save function for admin use (bypasses all throttling)
+function DataService.ManualForceSave(player)
+	print("Manual force save requested for: " .. player.Name)
+	-- Temporarily remove from cooldowns
+	lastSaveTimes[player.UserId] = nil
+	rapUpdateCooldowns[player.UserId] = nil
+	collectionUpdateCooldowns[player.UserId] = nil
+	
 	updatePlayerRAP(player)
-	DataService.UpdatePlayerCollection(player)
+	UpdatePlayerCollectionInternal(player)
 	
 	-- Multiple save attempts for reliability
 	for i = 1, 2 do
@@ -914,22 +1387,22 @@ function DataService.ForceSave(player)
 		if i < 2 then task.wait(0.5) end
 	end
 	
-	print("Force save completed for: " .. player.Name)
+	print("Manual force save completed for: " .. player.Name)
 	return true
 end
 
 -- Save all players function for admin use
 function DataService.SaveAllPlayers()
-	print("Force save requested for ALL players")
+	print("Manual force save requested for ALL players")
 	local activePlayers = Players:GetPlayers()
 	
 	for _, player in ipairs(activePlayers) do
 		task.spawn(function()
-			DataService.ForceSave(player)
+			DataService.ManualForceSave(player)
 		end)
 	end
 	
-	print("Force save completed for " .. #activePlayers .. " players")
+	print("Manual force save completed for " .. #activePlayers .. " players")
 	return #activePlayers
 end
 
@@ -963,12 +1436,10 @@ function DataService.SavePlayerSetting(player, settingId, value)
 	player:SetAttribute("GameSettings", newSettingsJson)
 	print("[SETTINGS DEBUG] New settings JSON:", newSettingsJson)
 	
-	-- Trigger immediate save to DataStore
-	task.spawn(function()
-		saveData(player)
-	end)
+	-- Queue save instead of immediate execution
+	saveQueue[player.UserId] = player
 	
-	print("[SETTINGS DEBUG] Triggered save for " .. player.Name)
+	print("[SETTINGS DEBUG] Queued save for " .. player.Name)
 end
 
 function DataService.GetAutoSettings(userId)

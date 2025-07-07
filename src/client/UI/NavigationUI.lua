@@ -32,8 +32,8 @@ function NavigationUI.Create(parentGui)
 	-- Main Container Frame (draggable)
 	local containerFrame = Instance.new("Frame")
 	containerFrame.Name = "NavigationContainer"
-	containerFrame.Size = UDim2.new(0, 130, 0, 250) -- 2 buttons wide x 4 buttons tall
-	containerFrame.Position = UDim2.new(0, 15, 0.5, -95) -- Centered vertically on left side, adjusted for new height
+	containerFrame.Size = UDim2.new(0, 130, 0, 310) -- 2 buttons wide x 5 buttons tall (added rebirth)
+	containerFrame.Position = UDim2.new(0, 15, 0.5, -125) -- Centered vertically on left side, adjusted for new height
 	containerFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
 	containerFrame.BackgroundTransparency = 0.02
 	containerFrame.BorderSizePixel = 0
@@ -132,7 +132,7 @@ function NavigationUI.Create(parentGui)
 		return button
 	end
 
-	-- Create navigation buttons (2x3 grid)
+	-- Create navigation buttons (2x4 grid)
 	-- Row 1: Inventory, Collection 
 	components.Buttons.Inventory = createNavButton("Inventory", "📦", nil, 1)
 	components.Buttons.Collection = createNavButton("Collection", "📚", nil, 2)
@@ -144,6 +144,9 @@ function NavigationUI.Create(parentGui)
 	-- Row 3: Auto-Open, Shop
 	components.Buttons.AutoOpen = createNavButton("AutoOpen", "🤖", nil, 5)
 	components.Buttons.Shop = createNavButton("Shop", "🛒", nil, 6)
+	
+	-- Row 4: Rebirth
+	components.Buttons.Rebirth = createNavButton("Rebirth", "🌟", nil, 7)
 
 	-- Update scale when screen size changes
 	local function updateScale()

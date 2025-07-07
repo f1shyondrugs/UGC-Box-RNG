@@ -30,6 +30,12 @@ return {
 	StartFreeCrateCooldown = createRemote("RemoteEvent", "StartFreeCrateCooldown"),
 	InventoryLoadComplete = createRemote("RemoteEvent", "InventoryLoadComplete"),
 	
+	-- Rebirth System
+	GetRebirthData = createRemote("RemoteFunction", "GetRebirthData"),
+	GetUnlockedCrates = createRemote("RemoteFunction", "GetUnlockedCrates"),
+	PerformRebirth = createRemote("RemoteFunction", "PerformRebirth"),
+	RebirthUpdated = createRemote("RemoteEvent", "RebirthUpdated"),
+	
 	-- Avatar/Equipment Remotes
 	EquipItem = createRemote("RemoteEvent", "EquipItem"),
 	UnequipItem = createRemote("RemoteEvent", "UnequipItem"),

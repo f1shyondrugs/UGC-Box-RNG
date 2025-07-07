@@ -277,6 +277,11 @@ local function openBox(player: Player, boxPart: BasePart)
 
 	if ownsExtraLucky then baseLuckBoost = baseLuckBoost + 0.25 end -- 25% boost
 	if ownsUltraLucky then baseLuckBoost = baseLuckBoost + 0.4 end -- 40% boost
+	
+	-- Apply rebirth luck bonus
+	local RebirthService = require(script.Parent.RebirthService)
+	local rebirthLuckMultiplier = RebirthService.GetPlayerLuckMultiplier(player)
+	baseLuckBoost = baseLuckBoost + (rebirthLuckMultiplier - 1) -- Convert multiplier to additive bonus
 
 	-- Determine reward using a more robust method for fractional chances
 	local rewardItemName = nil
@@ -360,7 +365,9 @@ local function openBox(player: Player, boxPart: BasePart)
 				{min = 25.0, max = 75.0, weight = 0.2},  -- ~0.2% chance
 				-- Mythical & Godly Tiers
 				{min = 75.0, max = 200.0, weight = 0.07}, -- ~0.07% chance
-				{min = 200.0, max = 1000.0, weight = 0.03} -- ~0.03% chance
+				{min = 200.0, max = 1000.0, weight = 0.02999}, -- ~0.03% chance
+				-- Secret Tiers
+				{min = 1000.0, max = 10000.0, weight = 0.00001} -- ~0.00001% chance
 			}
 			
 			local totalWeight = 0

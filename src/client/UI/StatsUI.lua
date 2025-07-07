@@ -215,7 +215,7 @@ function StatsUI.Create(parentGui)
 	return components
 end
 
-function StatsUI.UpdateStats(components, robux, rap, boxesOpened)
+function StatsUI.UpdateStats(components, robux, rap, boxesOpened, rebirths)
 	-- Update R$ with formatting (center display - no R$ prefix since icon shows it)
 	components.RobuxLabel.Text = NumberFormatter.FormatNumber(robux)
 	
@@ -224,6 +224,13 @@ function StatsUI.UpdateStats(components, robux, rap, boxesOpened)
 	
 	-- Update Boxes Opened with formatting
 	components.BoxesLabel.Text = NumberFormatter.FormatCount(boxesOpened)
+	
+	-- Update Rebirths (if rebirths parameter is provided)
+	if rebirths then
+		-- For now, we'll just update the boxes label to show rebirths
+		-- You might want to add a separate rebirths display later
+		components.BoxesLabel.Text = NumberFormatter.FormatCount(boxesOpened) .. " | " .. tostring(rebirths) .. "R"
+	end
 end
 
 return StatsUI 

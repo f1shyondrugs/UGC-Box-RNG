@@ -1,4 +1,4 @@
-# Bobolox RNG Game
+# 📦 UGC Box RNG 📦
 
 This is a box-opening RNG game created for Roblox and managed with Rojo.
 

@@ -244,7 +244,7 @@ function CrateSelectionUI.Create(parentGui)
 end
 
 -- Create a crate card
-function CrateSelectionUI.CreateCrateCard(crateName, crateConfig, isSelected)
+function CrateSelectionUI.CreateCrateCard(crateName, crateConfig, isSelected, isUnlocked)
 	local card = Instance.new("Frame")
 	card.Name = crateName .. "Card"
 	card.Size = UDim2.new(1, 0, 0, 180) -- Much bigger cards
@@ -258,7 +258,7 @@ function CrateSelectionUI.CreateCrateCard(crateName, crateConfig, isSelected)
 	cardCorner.Parent = card
 
 	local cardStroke = Instance.new("UIStroke")
-	cardStroke.Color = isSelected and Color3.fromRGB(120, 80, 255) or Color3.fromRGB(50, 55, 70)
+	cardStroke.Color = isSelected and Color3.fromRGB(120, 80, 255) or (isUnlocked and Color3.fromRGB(50, 55, 70) or Color3.fromRGB(150, 50, 50))
 	cardStroke.Thickness = isSelected and 2 or 1
 	cardStroke.Transparency = 0.5
 	cardStroke.Parent = card
@@ -270,6 +270,12 @@ function CrateSelectionUI.CreateCrateCard(crateName, crateConfig, isSelected)
 			ColorSequenceKeypoint.new(0, Color3.fromRGB(35, 30, 50)),
 			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(25, 22, 38)),
 			ColorSequenceKeypoint.new(1, Color3.fromRGB(18, 15, 28))
+		}
+	elseif not isUnlocked then
+		cardGradient.Color = ColorSequence.new{
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(45, 20, 20)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(35, 15, 15)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 10, 10))
 		}
 	else
 		cardGradient.Color = ColorSequence.new{
@@ -391,8 +397,18 @@ function CrateSelectionUI.CreateCrateCard(crateName, crateConfig, isSelected)
 	selectButton.Name = "SelectButton"
 	selectButton.Size = UDim2.new(0, 140, 0, 50) -- Much bigger button
 	selectButton.Position = UDim2.new(1, -150, 0.5, -25)
-	selectButton.BackgroundColor3 = isSelected and Color3.fromRGB(60, 140, 60) or Color3.fromRGB(120, 80, 255)
-	selectButton.Text = isSelected and "✓ SELECTED" or "SELECT CRATE"
+	
+	if not isUnlocked then
+		selectButton.BackgroundColor3 = Color3.fromRGB(100, 50, 50)
+		selectButton.Text = "🔒 LOCKED"
+	elseif isSelected then
+		selectButton.BackgroundColor3 = Color3.fromRGB(60, 140, 60)
+		selectButton.Text = "✓ SELECTED"
+	else
+		selectButton.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
+		selectButton.Text = "SELECT CRATE"
+	end
+	
 	selectButton.Font = Enum.Font.GothamBold
 	selectButton.TextSize = 16 -- Bigger button text
 	selectButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -405,7 +421,12 @@ function CrateSelectionUI.CreateCrateCard(crateName, crateConfig, isSelected)
 	selectCorner.Parent = selectButton
 
 	local selectGradient = Instance.new("UIGradient")
-	if isSelected then
+	if not isUnlocked then
+		selectGradient.Color = ColorSequence.new{
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 80, 80)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 50, 50))
+		}
+	elseif isSelected then
 		selectGradient.Color = ColorSequence.new{
 			ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 160, 80)),
 			ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 140, 60))
@@ -420,7 +441,13 @@ function CrateSelectionUI.CreateCrateCard(crateName, crateConfig, isSelected)
 	selectGradient.Parent = selectButton
 
 	local selectStroke = Instance.new("UIStroke")
-	selectStroke.Color = isSelected and Color3.fromRGB(100, 200, 100) or Color3.fromRGB(200, 160, 255)
+	if not isUnlocked then
+		selectStroke.Color = Color3.fromRGB(200, 100, 100)
+	elseif isSelected then
+		selectStroke.Color = Color3.fromRGB(100, 200, 100)
+	else
+		selectStroke.Color = Color3.fromRGB(200, 160, 255)
+	end
 	selectStroke.Thickness = 1
 	selectStroke.Transparency = 0.3
 	selectStroke.Parent = selectButton
@@ -435,6 +462,9 @@ function CrateSelectionUI.UpdateCardSelection(card, isSelected)
 	local selectButton = card:FindFirstChild("SelectButton")
 	local selectGradient = selectButton and selectButton:FindFirstChild("UIGradient")
 	local selectStroke = selectButton and selectButton:FindFirstChild("UIStroke")
+	
+	-- Check if crate is locked by looking at button text
+	local isLocked = selectButton and selectButton.Text == "🔒 LOCKED"
 	
 	if isSelected then
 		-- Update card stroke
@@ -473,36 +503,60 @@ function CrateSelectionUI.UpdateCardSelection(card, isSelected)
 	else
 		-- Update card stroke
 		if cardStroke then
-			cardStroke.Color = Color3.fromRGB(50, 55, 70)
+			cardStroke.Color = isLocked and Color3.fromRGB(150, 50, 50) or Color3.fromRGB(50, 55, 70)
 			cardStroke.Thickness = 1
 		end
 		
 		-- Update card gradient
 		if cardGradient then
-			cardGradient.Color = ColorSequence.new{
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(25, 30, 45)),
-				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(18, 22, 32)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 15, 22))
-			}
+			if isLocked then
+				cardGradient.Color = ColorSequence.new{
+					ColorSequenceKeypoint.new(0, Color3.fromRGB(45, 20, 20)),
+					ColorSequenceKeypoint.new(0.5, Color3.fromRGB(35, 15, 15)),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 10, 10))
+				}
+			else
+				cardGradient.Color = ColorSequence.new{
+					ColorSequenceKeypoint.new(0, Color3.fromRGB(25, 30, 45)),
+					ColorSequenceKeypoint.new(0.5, Color3.fromRGB(18, 22, 32)),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 15, 22))
+				}
+			end
 		end
 		
 		-- Update button
 		if selectButton then
-			selectButton.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
-			selectButton.Text = "SELECT CRATE"
+			if isLocked then
+				selectButton.BackgroundColor3 = Color3.fromRGB(100, 50, 50)
+				selectButton.Text = "🔒 LOCKED"
+			else
+				selectButton.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
+				selectButton.Text = "SELECT CRATE"
+			end
 		end
 		
 		-- Update button gradient
 		if selectGradient then
-			selectGradient.Color = ColorSequence.new{
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 100, 255)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 80, 255))
-			}
+			if isLocked then
+				selectGradient.Color = ColorSequence.new{
+					ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 80, 80)),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 50, 50))
+				}
+			else
+				selectGradient.Color = ColorSequence.new{
+					ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 100, 255)),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 80, 255))
+				}
+			end
 		end
 		
 		-- Update button stroke
 		if selectStroke then
-			selectStroke.Color = Color3.fromRGB(200, 160, 255)
+			if isLocked then
+				selectStroke.Color = Color3.fromRGB(200, 100, 100)
+			else
+				selectStroke.Color = Color3.fromRGB(200, 160, 255)
+			end
 		end
 	end
 end

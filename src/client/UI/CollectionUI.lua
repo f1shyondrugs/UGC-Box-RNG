@@ -453,22 +453,51 @@ function CollectionUI.CreateItemCard(itemName, itemConfig, collectionData)
 	stroke.Transparency = isDiscovered and 0.3 or 0.7
 	stroke.Parent = card
 	
-	-- Item preview or placeholder
-	local preview = Instance.new("Frame")
-	preview.Name = "Preview"
-	preview.Size = UDim2.new(0, 60, 0, 60)
-	preview.Position = UDim2.new(0, 10, 0, 10)
-	preview.BackgroundColor3 = isDiscovered and Color3.fromRGB(45, 50, 65) or Color3.fromRGB(35, 35, 45)
-	preview.BorderSizePixel = 0
-	preview.ZIndex = 54
-	preview.Parent = card
-	
-	local previewCorner = Instance.new("UICorner")
-	previewCorner.CornerRadius = UDim.new(0, 8)
-	previewCorner.Parent = preview
-	
-	-- Question mark for undiscovered items
-	if not isDiscovered then
+	-- Item preview (3D ViewportFrame for discovered items, placeholder for undiscovered)
+	local preview
+	if isDiscovered then
+		-- Use ViewportFrame for 3D preview of discovered items
+		preview = Instance.new("ViewportFrame")
+		preview.Name = "Preview"
+		preview.Size = UDim2.new(0, 60, 0, 60)
+		preview.Position = UDim2.new(0, 10, 0, 10)
+		preview.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
+		preview.BorderSizePixel = 0
+		preview.ZIndex = 54
+		preview.Parent = card
+		
+		local previewCorner = Instance.new("UICorner")
+		previewCorner.CornerRadius = UDim.new(0, 8)
+		previewCorner.Parent = preview
+		
+		-- Add glow effect to viewport
+		local viewportStroke = Instance.new("UIStroke")
+		viewportStroke.Color = rarityConfig and rarityConfig.Color or Color3.fromRGB(120, 120, 120)
+		viewportStroke.Thickness = 1.5
+		viewportStroke.Transparency = 0.6
+		viewportStroke.Parent = preview
+		
+		-- Store item config reference in a StringValue for the controller to use
+		local itemConfigRef = Instance.new("StringValue")
+		itemConfigRef.Name = "ItemConfigRef"
+		itemConfigRef.Value = itemName -- Store item name instead of config object
+		itemConfigRef.Parent = preview
+	else
+		-- Use simple frame for undiscovered items
+		preview = Instance.new("Frame")
+		preview.Name = "Preview"
+		preview.Size = UDim2.new(0, 60, 0, 60)
+		preview.Position = UDim2.new(0, 10, 0, 10)
+		preview.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+		preview.BorderSizePixel = 0
+		preview.ZIndex = 54
+		preview.Parent = card
+		
+		local previewCorner = Instance.new("UICorner")
+		previewCorner.CornerRadius = UDim.new(0, 8)
+		previewCorner.Parent = preview
+		
+		-- Question mark for undiscovered items
 		local questionMark = Instance.new("TextLabel")
 		questionMark.Size = UDim2.new(1, 0, 1, 0)
 		questionMark.Text = "?"

@@ -153,7 +153,7 @@ function BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationNames, 
 		if isShiny then
 			light = Instance.new("PointLight")
 			light.Brightness = 0
-			light.Range = 15
+			light.Range = 5
 			light.Color = Color3.fromRGB(255, 255, 150)
 			light.Parent = boxPart
 
@@ -327,7 +327,7 @@ function BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationNames, 
 
 		if isShiny then
 			light.Brightness = 100
-			light.Range = 50
+			light.Range = 5
 			Debris:AddItem(light, 1)
 			Debris:AddItem(shineGui, 1)
 		end
@@ -337,6 +337,9 @@ function BoxAnimator.PlayAddictiveAnimation(boxPart, itemConfig, mutationNames, 
 		particleEmitter:Emit(250)
 		
 		boxPart.Transparency = 1 -- Vanish within the explosion
+		boxPart.CanCollide = false
+		boxPart.CastShadow = false
+		boxPart.CanTouch = false
 		
 		-- Clean up the ColorLight if it exists
 		local colorLight = boxPart:FindFirstChild("ColorLight")

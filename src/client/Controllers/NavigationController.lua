@@ -71,6 +71,13 @@ function NavigationController.Start(parentGui, soundControllerRef)
 			controllers.Shop.toggle()
 		end
 	end)
+
+	NavigationUI.ConnectButton(navigationUI, "Rebirth", function()
+		if soundController then soundController:playUIClick() end
+		if controllers.Rebirth then
+			controllers.Rebirth.toggle()
+		end
+	end)
 end
 
 -- Function for individual controllers to register their toggle functions

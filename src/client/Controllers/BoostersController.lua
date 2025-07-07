@@ -101,6 +101,8 @@ function BoostersController.Start(parent)
 	boostersGui.Parent = parent
 
 	BoostersUI.Create(boostersGui, boosters, onBoosterClick)
+	
+	return boostersGui
 end
 
 return BoostersController 

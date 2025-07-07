@@ -27,6 +27,7 @@ local CrateSelectionController = require(script.Parent.Controllers.CrateSelectio
 local EnchanterController = require(script.Parent.Controllers.EnchanterController)
 local AutoOpenController = require(script.Parent.Controllers.AutoOpenController)
 local ShopController = require(script.Parent.Controllers.ShopController)
+local RebirthController = require(script.Parent.Controllers.RebirthController)
 local BuyButtonUI = require(script.Parent.UI.BuyButtonUI)
 local StatsUI = require(script.Parent.UI.StatsUI)
 local BoostersController = require(script.Parent.Controllers.BoostersController)
@@ -41,6 +42,49 @@ local isOnCooldown = false
 local isFreeCrateOnCooldown = false
 local openingBoxes = {} -- A set of box parts that are currently being opened
 
+-- Setup GUI hiding until LoadingScreen is finished
+local loadingScreen = PlayerGui:FindFirstChild("LoadingScreen") or PlayerGui:WaitForChild("LoadingScreen", 5)
+local hiddenGuis = {}
+
+-- Helper to hide a ScreenGui if loading is still active
+local function tryHideGui(gui)
+	if gui:IsA("ScreenGui") and gui ~= loadingScreen and loadingScreen and loadingScreen.Enabled then
+		hiddenGuis[gui] = true
+		gui.Enabled = false
+	end
+end
+
+-- Hide any existing ScreenGuis that are already present (created by earlier code/controllers)
+for _, gui in ipairs(PlayerGui:GetChildren()) do
+	tryHideGui(gui)
+end
+
+-- Listen for new ScreenGuis that might be added while loading is active
+local childConn
+childConn = PlayerGui.ChildAdded:Connect(function(child)
+	tryHideGui(child)
+end)
+
+-- When the LoadingScreen finishes, restore all GUIs and disconnect listener
+if loadingScreen then
+	if not loadingScreen.Enabled then
+		-- Already finished, nothing to do
+		childConn:Disconnect()
+	else
+		loadingScreen:GetPropertyChangedSignal("Enabled"):Connect(function()
+			if not loadingScreen.Enabled then
+				for gui, _ in pairs(hiddenGuis) do
+					if gui and gui.Parent then
+						gui.Enabled = true
+					end
+				end
+				hiddenGuis = {}
+				if childConn then childConn:Disconnect() end
+			end
+		end)
+	end
+end
+
 -- Initialize Services
 local soundController = SoundController.new()
 soundController:playMusic()
@@ -54,6 +98,7 @@ UpgradeController.Start(PlayerGui, soundController)
 SettingsController.Start(PlayerGui, soundController)
 AutoOpenController.Start(PlayerGui, soundController)
 ShopController.Start(PlayerGui, soundController)
+RebirthController:Start()
 CrateSelectionController:Start()
 EnchanterController:Start()
 
@@ -65,11 +110,17 @@ BuyButtonUI.SetCrateSelectionController(CrateSelectionController)
 
 -- Connect sound controller to controllers
 EnchanterController:SetSoundController(soundController)
+RebirthController:SetSoundController(soundController)
 
 -- Connect sound controller, box animator, and notifier to settings controller for effect checking
 soundController:setSettingsController(SettingsController)
 BoxAnimator.SetSettingsController(SettingsController)
 Notifier.SetSettingsController(SettingsController)
+
+-- Register rebirth controller with navigation
+NavigationController.RegisterController("Rebirth", function()
+	RebirthController:Toggle()
+end)
 
 NameplateController.Start()
 
@@ -79,8 +130,18 @@ local statsGui = StatsUI.Create(PlayerGui)
 -- Create and manage the Buy UGC Crate button with dropdown
 local buyButtonGui = BuyButtonUI.Create(PlayerGui)
 
--- Create Boosters UI in the bottom left
-BoostersController.Start(PlayerGui)
+-- Create Boosters UI in the bottom left (includes rebirth luck)
+local boostersGui = BoostersController.Start(PlayerGui)
+
+-- Connect rebirth luck updates
+local function updateRebirthLuckDisplay()
+	local luckBonus = LocalPlayer:GetAttribute("LuckBonus") or 0
+	local BoostersUI = require(script.Parent.UI.BoostersUI)
+	BoostersUI.UpdateRebirthLuck(luckBonus)
+end
+
+LocalPlayer:GetAttributeChangedSignal("LuckBonus"):Connect(updateRebirthLuckDisplay)
+updateRebirthLuckDisplay()
 
 -- Set crate to match the current CrateSelectionController selection
 local currentSelectedCrate = CrateSelectionController:GetSelectedCrate()
@@ -90,12 +151,14 @@ BuyButtonUI.SetSelectedCrate(buyButtonGui, currentSelectedCrate)
 local leaderstats = LocalPlayer:WaitForChild("leaderstats")
 local robuxStat = leaderstats:WaitForChild("R$")
 local boxesOpenedStat = leaderstats:WaitForChild("Boxes Opened")
+local rebirthsStat = leaderstats:WaitForChild("Rebirths")
 
 local function updateStatsDisplay()
 	local robuxValue = LocalPlayer:GetAttribute("RobuxValue") or 0
 	local rapValue = LocalPlayer:GetAttribute("RAPValue") or 0
 	local boxesOpenedValue = LocalPlayer:GetAttribute("BoxesOpenedValue") or 0
-	StatsUI.UpdateStats(statsGui, robuxValue, rapValue, boxesOpenedValue)
+	local rebirthsValue = LocalPlayer:GetAttribute("RebirthsValue") or 0
+	StatsUI.UpdateStats(statsGui, robuxValue, rapValue, boxesOpenedValue, rebirthsValue)
 	BuyButtonUI.UpdateAffordability(buyButtonGui, robuxValue)
 end
 
@@ -103,6 +166,7 @@ end
 LocalPlayer:GetAttributeChangedSignal("RobuxValue"):Connect(updateStatsDisplay)
 LocalPlayer:GetAttributeChangedSignal("RAPValue"):Connect(updateStatsDisplay)
 LocalPlayer:GetAttributeChangedSignal("BoxesOpenedValue"):Connect(updateStatsDisplay)
+LocalPlayer:GetAttributeChangedSignal("RebirthsValue"):Connect(updateStatsDisplay)
 
 -- Initial update
 updateStatsDisplay()
@@ -130,7 +194,7 @@ end)
 task.spawn(function()
 	local lastSelectedCrate = CrateSelectionController:GetSelectedCrate()
 	while true do
-		task.wait(0.1) -- Check every 100ms
+		task.wait(0.05) -- Check every 50ms for more responsive updates
 		local currentSelectedCrate = CrateSelectionController:GetSelectedCrate()
 		if currentSelectedCrate ~= lastSelectedCrate then
 			lastSelectedCrate = currentSelectedCrate
@@ -307,13 +371,13 @@ else
 			-- Handle existing boxes that might have been created before the script ran
 			for _, boxPart in ipairs(boxesFolder:GetChildren()) do
 				task.spawn(function()
-					task.wait(0.1)
+					task.wait(0.05) -- Reduced delay for more responsive updates
 					onBoxAdded(boxPart)
 				end)
 			end
 			boxesFolder.ChildAdded:Connect(function(boxPart)
 				task.spawn(function()
-					task.wait(0.1) -- Small delay for replication
+					task.wait(0.05) -- Reduced delay for more responsive updates
 					onBoxAdded(boxPart)
 				end)
 			end)
@@ -423,8 +487,10 @@ local function tryReconnect()
 end
 
 -- Roblox disconnects after 20 minutes of idling. We'll use a timer and user input detection to reset it.
+-- This system is only active when auto-open is enabled to prevent unnecessary reconnects.
 local idleTime = 0
 local idleLimit = 19 * 60 -- 19 minutes, to be safe
+local idleCheckConnection = nil
 
 -- Save function for all controllers/services that need to persist state
 local function saveAllData()
@@ -441,23 +507,62 @@ local function resetIdle()
 	idleTime = 0
 end
 
--- Listen for user input
+-- Function to start idle detection (only when auto-open is enabled)
+local function startIdleDetection()
+	if idleCheckConnection then return end -- Already running
+	
+	print("[Reconnect] Starting idle detection for auto-open users...")
+	idleTime = 0
+	idleCheckConnection = RunService.Heartbeat:Connect(function(dt)
+		idleTime = idleTime + dt
+		if idleTime > idleLimit then
+			print("[Reconnect] Idle limit reached, saving and reconnecting...")
+			saveAllData()
+			task.wait(1)
+			tryReconnect()
+		end
+	end)
+end
+
+-- Function to stop idle detection
+local function stopIdleDetection()
+	if idleCheckConnection then
+		idleCheckConnection:Disconnect()
+		idleCheckConnection = nil
+		print("[Reconnect] Stopped idle detection.")
+	end
+end
+
+-- Listen for user input (only when idle detection is active)
 if UserInputService then
 	UserInputService.InputBegan:Connect(resetIdle)
 	UserInputService.InputChanged:Connect(resetIdle)
 	UserInputService.InputEnded:Connect(resetIdle)
 end
 
--- Main idle check loop
-RunService.Heartbeat:Connect(function(dt)
-	idleTime = idleTime + dt
-	if idleTime > idleLimit then
-		print("[Reconnect] Idle limit reached, saving and reconnecting...")
-		saveAllData()
-		task.wait(1)
-		tryReconnect()
+-- Monitor auto-open settings to start/stop idle detection
+local function checkAutoOpenStatus()
+	local AutoOpenController = require(script.Parent.Controllers.AutoOpenController)
+	if AutoOpenController then
+		local settings = AutoOpenController.GetSettings()
+		if settings and settings.enabled then
+			startIdleDetection()
+		else
+			stopIdleDetection()
+		end
+	end
+end
+
+-- Check auto-open status every 30 seconds
+task.spawn(function()
+	while task.wait(30) do
+		checkAutoOpenStatus()
 	end
 end)
+
+-- Initial check
+task.wait(2) -- Wait for AutoOpenController to initialize
+checkAutoOpenStatus()
 
 -- On teleport, reload auto-open and other persistent features
 LocalPlayer.OnTeleport:Connect(function(teleportState)

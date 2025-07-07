@@ -7,9 +7,10 @@ local InsertService = game:GetService("InsertService")
 
 local ItemValueCalculator = require(ReplicatedStorage.Shared.Modules.ItemValueCalculator)
 local GameConfig = require(ReplicatedStorage.Shared.Modules.GameConfig)
-local rapLeaderboardStore = DataStoreService:GetOrderedDataStore("RAPLeaderboard_V1")
+local NumberFormatter = require(ReplicatedStorage.Shared.Modules.NumberFormatter)
+local boxesLeaderboardStore = DataStoreService:GetOrderedDataStore("BoxesLeaderboard_V1")
 
-local LeaderboardService = {}
+local BoxesLeaderboardService = {}
 
 local LEADERBOARD_UPDATE_INTERVAL = 30 -- Reduced from 60 to 30 seconds for more frequent updates
 local TOP_N_PLAYERS = 100
@@ -28,12 +29,12 @@ local function createLeaderboardGUI()
 		leaderboardsFolder.Parent = Workspace
 	end
 
-	leaderboardPart = leaderboardsFolder:FindFirstChild("RAPLeaderboard")
+	leaderboardPart = leaderboardsFolder:FindFirstChild("BoxesLeaderboard")
 	if not leaderboardPart then
 		leaderboardPart = Instance.new("Part")
-		leaderboardPart.Name = "RAPLeaderboard"
+		leaderboardPart.Name = "BoxesLeaderboard"
 		leaderboardPart.Size = Vector3.new(18, 30, 1)
-		leaderboardPart.Position = Vector3.new(0, 15, -20)
+		leaderboardPart.Position = Vector3.new(20, 15, -20) -- Position next to RAP leaderboard
 		leaderboardPart.Anchored = true
 		leaderboardPart.Parent = leaderboardsFolder
 	end
@@ -41,7 +42,7 @@ local function createLeaderboardGUI()
 	surfaceGui = leaderboardPart:FindFirstChildOfClass("SurfaceGui")
 	if not surfaceGui then
 		surfaceGui = Instance.new("SurfaceGui")
-		surfaceGui.Name = "RAPLeaderboardGui"
+		surfaceGui.Name = "BoxesLeaderboardGui"
 		surfaceGui.Parent = leaderboardPart
 		surfaceGui.Face = Enum.NormalId.Front
 		surfaceGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
@@ -53,20 +54,20 @@ local function createLeaderboardGUI()
 	backgroundFrame.Name = "Background"
 	backgroundFrame.Parent = surfaceGui
 	backgroundFrame.Size = UDim2.new(1, 0, 1, 0)
-	backgroundFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
-	backgroundFrame.BorderColor3 = Color3.fromRGB(80, 80, 120)
+	backgroundFrame.BackgroundColor3 = Color3.fromRGB(86, 64, 44) -- Specified bg color
+	backgroundFrame.BorderColor3 = Color3.fromRGB(75, 57, 47) -- Specified border color
 	backgroundFrame.BorderSizePixel = 3
 
 	local titleLabel = backgroundFrame:FindFirstChild("Title") or Instance.new("TextLabel")
 	titleLabel.Name = "Title"
 	titleLabel.Parent = backgroundFrame
 	titleLabel.Size = UDim2.new(1, 0, 0.1, 0)
-	titleLabel.Text = "TOP 100 RAP"
+	titleLabel.Text = "TOP 100 BOXES"
 	titleLabel.Font = Enum.Font.Highway
 	titleLabel.TextSize = 80
 	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	titleLabel.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
-	titleLabel.BorderColor3 = Color3.fromRGB(80, 80, 120)
+	titleLabel.BackgroundColor3 = Color3.fromRGB(75, 57, 47) -- Specified toppart color
+	titleLabel.BorderColor3 = Color3.fromRGB(75, 57, 47) -- Specified border color
 	titleLabel.BorderSizePixel = 3
 
 	listFrame = backgroundFrame:FindFirstChild("ListFrame") or Instance.new("ScrollingFrame")
@@ -74,7 +75,7 @@ local function createLeaderboardGUI()
 	listFrame.Parent = backgroundFrame
 	listFrame.Position = UDim2.new(0, 0, 0.1, 0)
 	listFrame.Size = UDim2.new(1, 0, 0.9, 0)
-	listFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+	listFrame.BackgroundColor3 = Color3.fromRGB(86, 64, 44) -- Specified bg color
 	listFrame.BorderSizePixel = 0
 	listFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 	listFrame.ScrollBarThickness = 12
@@ -88,7 +89,7 @@ local function createLeaderboardGUI()
 	local headerFrame = listFrame:FindFirstChild("Header") or Instance.new("Frame")
 	headerFrame.Name = "Header"
 	headerFrame.Parent = listFrame
-	headerFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 65)
+	headerFrame.BackgroundColor3 = Color3.fromRGB(75, 57, 47) -- Specified toppart color
 	headerFrame.Size = UDim2.new(1, -12, 0, 50) -- Leave space for scrollbar
 	headerFrame.LayoutOrder = 0
 
@@ -113,16 +114,16 @@ local function createLeaderboardGUI()
 	nameHeader.TextColor3 = Color3.fromRGB(200, 200, 200)
 	nameHeader.BackgroundTransparency = 1
 
-	local rapHeader = headerFrame:FindFirstChild("RAP") or Instance.new("TextLabel")
-	rapHeader.Name = "RAP"
-	rapHeader.Parent = headerFrame
-	rapHeader.Position = UDim2.new(0.7, 0, 0, 0)
-	rapHeader.Size = UDim2.new(0.3, 0, 1, 0)
-	rapHeader.Text = "RAP"
-	rapHeader.Font = Enum.Font.SourceSansBold
-	rapHeader.TextSize = 36
-	rapHeader.TextColor3 = Color3.fromRGB(200, 200, 200)
-	rapHeader.BackgroundTransparency = 1
+	local boxesHeader = headerFrame:FindFirstChild("Boxes") or Instance.new("TextLabel")
+	boxesHeader.Name = "Boxes"
+	boxesHeader.Parent = headerFrame
+	boxesHeader.Position = UDim2.new(0.7, 0, 0, 0)
+	boxesHeader.Size = UDim2.new(0.3, 0, 1, 0)
+	boxesHeader.Text = "Boxes"
+	boxesHeader.Font = Enum.Font.SourceSansBold
+	boxesHeader.TextSize = 36
+	boxesHeader.TextColor3 = Color3.fromRGB(200, 200, 200)
+	boxesHeader.BackgroundTransparency = 1
 
 	statusLabel = listFrame:FindFirstChild("Status") or Instance.new("TextLabel")
 	statusLabel.Name = "Status"
@@ -134,155 +135,6 @@ local function createLeaderboardGUI()
 	statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 	statusLabel.BackgroundTransparency = 1
 	statusLabel.LayoutOrder = 1
-end
-
--- Simplified function to update a leaderboard rig (without expensive avatar loading)
-local function updateLeaderboardRig(rigNumber, userId, playerName, rapValue)
-	local leaderboardsFolder = Workspace:FindFirstChild("leaderboards")
-	if not leaderboardsFolder then
-		warn("No leaderboards folder found in Workspace")
-		return
-	end
-	
-	local rig = leaderboardsFolder:FindFirstChild(tostring(rigNumber))
-	if not rig then
-		warn("No rig found for position " .. rigNumber .. " in Workspace.leaderboards")
-		return
-	end
-	
-	-- Don't update if it's the same player already
-	if rig:GetAttribute("CurrentUserId") == userId then
-		return
-	end
-	
-	-- Clear existing avatar items and cosmetics with safety check
-	local success, err = pcall(function()
-		for _, child in pairs(rig:GetChildren()) do
-			if child:IsA("Accessory") or child:IsA("Shirt") or child:IsA("Pants") or child:IsA("TShirt") then
-				child:Destroy()
-			end
-		end
-	end)
-	
-	if not success then
-		warn("Error clearing rig " .. rigNumber .. " items: " .. tostring(err))
-		return
-	end
-	
-	-- Mark this rig as being updated
-	rig:SetAttribute("CurrentUserId", userId)
-	rig:SetAttribute("PlayerName", playerName)
-	rig:SetAttribute("RAP", rapValue)
-	
-	-- Load player's avatar asynchronously (simplified version)
-	task.spawn(function()
-		local success, result = pcall(function()
-			return Players:GetCharacterAppearanceAsync(userId)
-		end)
-		
-		if success and result then
-			-- Apply the avatar items to the rig (basic version)
-			for _, item in pairs(result:GetChildren()) do
-				if item:IsA("Accessory") or item:IsA("Shirt") or item:IsA("Pants") or item:IsA("TShirt") then
-					local clonedItem = item:Clone()
-					clonedItem.Parent = rig
-					
-					-- For accessories, weld them to the correct body part
-					if clonedItem:IsA("Accessory") then
-						local handle = clonedItem:FindFirstChild("Handle")
-						local humanoid = rig:FindFirstChildOfClass("Humanoid")
-						if handle and humanoid then
-							humanoid:AddAccessory(clonedItem)
-						end
-					end
-				end
-			end
-			
-			print("Updated leaderboard rig " .. rigNumber .. " with " .. playerName .. "'s avatar")
-		else
-			warn("Failed to load avatar for user " .. userId .. ": " .. tostring(result))
-		end
-	end)
-end
-
--- Function to update all leaderboard rigs (optimized version)
-local function updateLeaderboardRigs()
-	local leaderboardsFolder = Workspace:FindFirstChild("leaderboards")
-	if not leaderboardsFolder then
-		warn("No leaderboards folder found in Workspace - skipping rig updates")
-		return
-	end
-	
-	if not leaderboardData or #leaderboardData == 0 then
-		-- Clear all rigs if no data
-		for i = 1, 3 do
-			local rig = leaderboardsFolder:FindFirstChild(tostring(i))
-			if rig then
-				rig:SetAttribute("CurrentUserId", nil)
-				rig:SetAttribute("PlayerName", "")
-				rig:SetAttribute("RAP", 0)
-				
-				-- Clear avatar items and cosmetics with safety check
-				pcall(function()
-					for _, child in pairs(rig:GetChildren()) do
-						if child:IsA("Accessory") or child:IsA("Shirt") or child:IsA("Pants") or child:IsA("TShirt") then
-							child:Destroy()
-						end
-					end
-				end)
-			else
-				warn("Leaderboard rig " .. i .. " not found in Workspace.leaderboards")
-			end
-		end
-		return
-	end
-	
-	-- Update top 3 rigs with player data (simplified - just update attributes)
-	local numPlayersToShow = math.min(3, #leaderboardData)
-	
-	for i = 1, numPlayersToShow do
-		local entry = leaderboardData[i]
-		local userId = tonumber(entry.key)
-		local rapValue = entry.value
-		
-		-- Get player name
-		local playerName = "[Deleted User]"
-		local success, result = pcall(function()
-			return Players:GetNameFromUserIdAsync(userId)
-		end)
-		if success then
-			playerName = result
-		end
-		
-		-- Update the rig with simplified avatar loading
-		local rig = leaderboardsFolder:FindFirstChild(tostring(i))
-		if rig then
-			updateLeaderboardRig(i, userId, playerName, rapValue)
-		else
-			warn("Leaderboard rig " .. i .. " not found in Workspace.leaderboards")
-		end
-	end
-	
-	-- Clear unused rig positions if there are fewer than 3 players
-	for i = numPlayersToShow + 1, 3 do
-		local rig = leaderboardsFolder:FindFirstChild(tostring(i))
-		if rig then
-			rig:SetAttribute("CurrentUserId", nil)
-			rig:SetAttribute("PlayerName", "")
-			rig:SetAttribute("RAP", 0)
-			
-			-- Clear avatar items and cosmetics with safety check
-			pcall(function()
-				for _, child in pairs(rig:GetChildren()) do
-					if child:IsA("Accessory") or child:IsA("Shirt") or child:IsA("Pants") or child:IsA("TShirt") then
-						child:Destroy()
-					end
-				end
-			end)
-		else
-			warn("Leaderboard rig " .. i .. " not found in Workspace.leaderboards")
-		end
-	end
 end
 
 local function updateLeaderboard()
@@ -300,11 +152,11 @@ local function updateLeaderboard()
 	-- 2. Get top 100 from OrderedDataStore
 	local pages
 	local success, err = pcall(function()
-		pages = rapLeaderboardStore:GetSortedAsync(false, TOP_N_PLAYERS)
+		pages = boxesLeaderboardStore:GetSortedAsync(false, TOP_N_PLAYERS)
 	end)
 
 	if not success then
-		warn("Could not get leaderboard pages: " .. tostring(err))
+		warn("Could not get boxes leaderboard pages: " .. tostring(err))
 		statusLabel.Text = "Error loading leaderboard data."
 		return
 	end
@@ -316,8 +168,8 @@ local function updateLeaderboard()
 	end
 	
 	leaderboardData = topPage
-	local leaderboardValue = ReplicatedStorage:FindFirstChild("LeaderboardData") or Instance.new("StringValue")
-	leaderboardValue.Name = "LeaderboardData"
+	local leaderboardValue = ReplicatedStorage:FindFirstChild("BoxesLeaderboardData") or Instance.new("StringValue")
+	leaderboardValue.Name = "BoxesLeaderboardData"
 	leaderboardValue.Value = HttpService:JSONEncode(leaderboardData)
 	leaderboardValue.Parent = ReplicatedStorage
 	
@@ -332,7 +184,7 @@ local function updateLeaderboard()
 	for _, entry in ipairs(topPage) do
 		rank = rank + 1
 		local userId = tonumber(entry.key)
-		local rapValue = entry.value
+		local boxesValue = entry.value
 		
 		-- Fetch player info with pcalls for safety
 		local playerName = "[Deleted User]"
@@ -344,19 +196,19 @@ local function updateLeaderboard()
 		if avatarSuccess then avatarUrl, isReady = avatarResult, true end
 		
 		-- Define sizes based on rank
-		local entryHeight, rankTextSize, avatarSize, nameTextSize, rapTextSize
+		local entryHeight, rankTextSize, avatarSize, nameTextSize, boxesTextSize
 		if rank <= 3 then
 			entryHeight = 85
 			rankTextSize = 38
 			avatarSize = 72
 			nameTextSize = 34
-			rapTextSize = 34
+			boxesTextSize = 34
 		else
 			entryHeight = 70
 			rankTextSize = 34
 			avatarSize = 60
 			nameTextSize = 30
-			rapTextSize = 30
+			boxesTextSize = 30
 		end
 		totalContentHeight = totalContentHeight + entryHeight
 
@@ -365,7 +217,7 @@ local function updateLeaderboard()
 		entryFrame.Name = "Entry" .. rank
 		entryFrame.Parent = listFrame
 		entryFrame.Size = UDim2.new(1, -12, 0, entryHeight)
-		entryFrame.BackgroundColor3 = rank % 2 == 1 and Color3.fromRGB(35, 35, 55) or Color3.fromRGB(40, 40, 60)
+		entryFrame.BackgroundColor3 = rank % 2 == 1 and Color3.fromRGB(96, 74, 54) or Color3.fromRGB(106, 84, 64) -- Lighter variations of bg color
 		entryFrame.BorderSizePixel = 0
 		entryFrame.LayoutOrder = rank
 
@@ -413,17 +265,17 @@ local function updateLeaderboard()
 		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 		nameLabel.BackgroundTransparency = 1
 
-		local rapLabel = Instance.new("TextLabel")
-		rapLabel.Name = "RAP"
-		rapLabel.Parent = entryFrame
-		rapLabel.Position = UDim2.new(0.7, 0, 0, 0)
-		rapLabel.Size = UDim2.new(0.3, -10, 1, 0)
-		rapLabel.Text = ItemValueCalculator.GetFormattedRAP(rapValue)
-		rapLabel.Font = Enum.Font.SourceSansSemibold
-		rapLabel.TextSize = rapTextSize
-		rapLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-		rapLabel.TextXAlignment = Enum.TextXAlignment.Right
-		rapLabel.BackgroundTransparency = 1
+		local boxesLabel = Instance.new("TextLabel")
+		boxesLabel.Name = "Boxes"
+		boxesLabel.Parent = entryFrame
+		boxesLabel.Position = UDim2.new(0.7, 0, 0, 0)
+		boxesLabel.Size = UDim2.new(0.3, -10, 1, 0)
+		boxesLabel.Text = NumberFormatter.FormatCount(boxesValue)
+		boxesLabel.Font = Enum.Font.SourceSansSemibold
+		boxesLabel.TextSize = boxesTextSize
+		boxesLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		boxesLabel.TextXAlignment = Enum.TextXAlignment.Right
+		boxesLabel.BackgroundTransparency = 1
 	end
 	
 	-- Update canvas size
@@ -432,15 +284,12 @@ local function updateLeaderboard()
 		local headerHeight = listFrame:FindFirstChild("Header").Size.Y.Offset
 		listFrame.CanvasSize = UDim2.new(0, 0, 0, headerHeight + (numEntries * padding) + totalContentHeight)
 	end
-	
-	-- Update leaderboard rigs with top 3 players
-	updateLeaderboardRigs()
 end
 
-function LeaderboardService.Start()
+function BoxesLeaderboardService.Start()
 	createLeaderboardGUI()
 	
-	-- Initial update - removed the 5 second delay for faster startup
+	-- Initial update
 	task.spawn(function()
 		-- Small delay to ensure player data is loaded
 		task.wait(1)
@@ -456,4 +305,4 @@ function LeaderboardService.Start()
 	end)
 end
 
-return LeaderboardService
+return BoxesLeaderboardService 

@@ -199,7 +199,7 @@ function AutoOpenUI.Create(parentGui)
 	components.CountSection = countSection
 
 	-- Money Threshold Section
-	local moneySection = AutoOpenUI.CreateNumberSection(leftPanel, "Stop Below R$", "Stop when money is below this amount", 0, 999999999, 1000, UDim2.new(0, 10, 0, 250), true)
+	local moneySection = AutoOpenUI.CreateNumberSection(leftPanel, "Stop Below R$", "Stop when money is below this amount", 0, 1e50, 1000, UDim2.new(0, 10, 0, 250), true)
 	components.MoneyInput = moneySection.Input
 	components.MoneySection = moneySection
 
@@ -267,9 +267,83 @@ function AutoOpenUI.Create(parentGui)
 	components.SizeSection = sizeSection
 
 	-- Value Threshold Section  
-	local valueSection = AutoOpenUI.CreateNumberSection(rightPanel, "Auto-Sell Below Value", "Auto-sell items worth less than this amount", 0, 999999999, 100, UDim2.new(0, 10, 0, 230))
+	local valueSection = AutoOpenUI.CreateNumberSection(rightPanel, "Auto-Sell Below Value", "Auto-sell items worth less than this amount", 0, 1e50, 100, UDim2.new(0, 10, 0, 230))
 	components.ValueInput = valueSection.Input
 	components.ValueSection = valueSection
+
+	-- Auto-Sell Features Preview Section
+	local featuresSection = Instance.new("Frame")
+	featuresSection.Name = "AutoSellFeaturesSection"
+	featuresSection.Size = UDim2.new(1, -20, 0, 120)
+	featuresSection.Position = UDim2.new(0, 10, 0, 320)
+	featuresSection.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
+	featuresSection.BorderSizePixel = 0
+	featuresSection.ZIndex = 202
+	featuresSection.Parent = rightPanel
+	components.FeaturesSection = featuresSection
+
+	local featuresCorner = Instance.new("UICorner")
+	featuresCorner.CornerRadius = UDim.new(0, 8)
+	featuresCorner.Parent = featuresSection
+
+	local featuresTitle = Instance.new("TextLabel")
+	featuresTitle.Name = "FeaturesTitle"
+	featuresTitle.Size = UDim2.new(1, -20, 0, 25)
+	featuresTitle.Position = UDim2.new(0, 15, 0, 5)
+	featuresTitle.Text = "🔒 Auto-Sell Features"
+	featuresTitle.Font = Enum.Font.GothamBold
+	featuresTitle.TextSize = 16
+	featuresTitle.TextColor3 = Color3.fromRGB(255, 150, 50)
+	featuresTitle.BackgroundTransparency = 1
+	featuresTitle.TextXAlignment = Enum.TextXAlignment.Left
+	featuresTitle.ZIndex = 203
+	featuresTitle.Parent = featuresSection
+
+	local featuresList = Instance.new("TextLabel")
+	featuresList.Name = "FeaturesList"
+	featuresList.Size = UDim2.new(1, -20, 0, 80)
+	featuresList.Position = UDim2.new(0, 15, 0, 30)
+	featuresList.Text = "• Auto-sell items below size threshold\n• Auto-sell items below value threshold\n• Automatic inventory management\n• Save time on manual selling"
+	featuresList.Font = Enum.Font.Gotham
+	featuresList.TextSize = 12
+	featuresList.TextColor3 = Color3.fromRGB(180, 180, 180)
+	featuresList.BackgroundTransparency = 1
+	featuresList.TextXAlignment = Enum.TextXAlignment.Left
+	featuresList.TextYAlignment = Enum.TextYAlignment.Top
+	featuresList.ZIndex = 203
+	featuresList.Parent = featuresSection
+
+	-- Purchase Button
+	local purchaseButton = Instance.new("TextButton")
+	purchaseButton.Name = "PurchaseButton"
+	purchaseButton.Size = UDim2.new(1, -20, 0, 35)
+	purchaseButton.Position = UDim2.new(0, 10, 0, 450)
+	purchaseButton.BackgroundColor3 = Color3.fromRGB(255, 150, 50)
+	purchaseButton.Text = "🔓 Purchase Auto-Sell (99 R$)"
+	purchaseButton.Font = Enum.Font.GothamBold
+	purchaseButton.TextSize = 16
+	purchaseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	purchaseButton.ZIndex = 204
+	purchaseButton.Parent = rightPanel
+	components.PurchaseButton = purchaseButton
+
+	local purchaseCorner = Instance.new("UICorner")
+	purchaseCorner.CornerRadius = UDim.new(0, 8)
+	purchaseCorner.Parent = purchaseButton
+
+	local purchaseGradient = Instance.new("UIGradient")
+	purchaseGradient.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 170, 70)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 130, 30))
+	}
+	purchaseGradient.Rotation = 90
+	purchaseGradient.Parent = purchaseButton
+
+	local purchaseStroke = Instance.new("UIStroke")
+	purchaseStroke.Color = Color3.fromRGB(255, 180, 80)
+	purchaseStroke.Thickness = 1
+	purchaseStroke.Transparency = 0.5
+	purchaseStroke.Parent = purchaseButton
 
 	-- Update canvas size for scrolling frames
 	task.wait() -- Wait for layout to complete
@@ -510,13 +584,25 @@ function AutoOpenUI.CreateNumberSection(parent, title, subtitle, minValue, maxVa
 
 	-- Button functionality
 	decreaseButton.MouseButton1Click:Connect(function()
-		local current = tonumber(input.Text) or defaultValue
+		local NumberFormatter = require(game.ReplicatedStorage.Shared.Modules.NumberFormatter)
+		local current = NumberFormatter.ParseFormattedNumber(input.Text)
+		-- If parsing returns 0, it might be because the input is just "0" or invalid
+		-- So we only fall back to regular parsing if the input doesn't contain any letters
+		if current == 0 and not string.match(input.Text, "[%a]") then
+			current = tonumber(input.Text) or defaultValue
+		end
 		local newValue = math.max(minValue, current - 1)
 		input.Text = tostring(newValue)
 	end)
 
 	increaseButton.MouseButton1Click:Connect(function()
-		local current = tonumber(input.Text) or defaultValue
+		local NumberFormatter = require(game.ReplicatedStorage.Shared.Modules.NumberFormatter)
+		local current = NumberFormatter.ParseFormattedNumber(input.Text)
+		-- If parsing returns 0, it might be because the input is just "0" or invalid
+		-- So we only fall back to regular parsing if the input doesn't contain any letters
+		if current == 0 and not string.match(input.Text, "[%a]") then
+			current = tonumber(input.Text) or defaultValue
+		end
 		-- Remove maxValue constraint - allow infinite input
 		local newValue = current + 1
 		input.Text = tostring(newValue)
@@ -524,7 +610,15 @@ function AutoOpenUI.CreateNumberSection(parent, title, subtitle, minValue, maxVa
 
 	-- Validate input
 	input.FocusLost:Connect(function()
-		local value = tonumber(input.Text)
+		-- Try to parse formatted numbers first (like "100Q")
+		local NumberFormatter = require(game.ReplicatedStorage.Shared.Modules.NumberFormatter)
+		local value = NumberFormatter.ParseFormattedNumber(input.Text)
+		-- If parsing returns 0, it might be because the input is just "0" or invalid
+		-- So we only fall back to regular parsing if the input doesn't contain any letters
+		if value == 0 and not string.match(input.Text, "[%a]") then
+			-- Fall back to regular number parsing only for pure numbers
+			value = tonumber(input.Text)
+		end
 		if not value then
 			input.Text = tostring(defaultValue)
 		else

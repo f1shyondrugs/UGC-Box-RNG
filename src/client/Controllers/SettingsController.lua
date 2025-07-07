@@ -18,6 +18,68 @@ local settings = {}
 local isVisible = false
 local soundController = nil
 local hiddenUIs = {}
+-- Connection to track new crates being spawned so we can hide/show them based on the
+-- "ShowOthersCrates" setting.
+local cratesFolderConnection = nil
+
+-- Helper that sets transparency for every BasePart / Decal / Texture of the given crate
+-- root instance. A transparency of 1 completely hides the object, 0 shows it.
+local function setCrateTransparency(crateRoot, transparency)
+    for _, descendant in ipairs(crateRoot:GetDescendants()) do
+        if descendant:IsA("BasePart") then
+            -- Use LocalTransparencyModifier so we do not interfere with server driven
+            -- transparency changes (e.g. during animations)
+            descendant.LocalTransparencyModifier = transparency
+            descendant.Transparency = transparency
+        elseif descendant:IsA("Decal") or descendant:IsA("Texture") then
+            descendant.Transparency = transparency
+        end
+    end
+end
+
+-- Updates visibility for all existing crates and (re)configures the ChildAdded
+-- listener so future crates respect the current setting.
+local function updateCrateVisibility()
+    local boxesFolder = workspace:FindFirstChild("Boxes")
+    if not boxesFolder then return end
+
+    -- First apply to currently present crates
+    for _, crate in ipairs(boxesFolder:GetChildren()) do
+        local ownerId = crate:GetAttribute("Owner")
+        if ownerId and ownerId ~= LocalPlayer.UserId then
+            if settings.ShowOthersCrates and not settings.HideOtherPlayers then
+                setCrateTransparency(crate, 0)
+            else
+                setCrateTransparency(crate, 1)
+            end
+        end
+    end
+
+    -- Manage child-added connection depending on current preference
+    if settings.ShowOthersCrates and not settings.HideOtherPlayers then
+        if cratesFolderConnection then
+            cratesFolderConnection:Disconnect()
+            cratesFolderConnection = nil
+        end
+    else
+        -- Hide new crates as they spawn
+        if not cratesFolderConnection then
+            cratesFolderConnection = boxesFolder.ChildAdded:Connect(function(crate)
+                -- Defer slightly to ensure attributes replicate
+                task.defer(function()
+                    local ownerId = crate:GetAttribute("Owner")
+                    if ownerId and ownerId ~= LocalPlayer.UserId then
+                        if settings.ShowOthersCrates and not settings.HideOtherPlayers then
+                            -- Should be visible, do nothing (they will have default transparency)
+                        else
+                            setCrateTransparency(crate, 1)
+                        end
+                    end
+                end)
+            end)
+        end
+    end
+end
 
 -- Animation settings
 local ANIMATION_TIME = 0.3
@@ -110,6 +172,9 @@ local function applyEffects()
 			end
 		end
 	end
+
+	-- Apply "Show Others' Crates" visibility preference
+	updateCrateVisibility()
 end
 
 -- Handle new players joining (for hide players setting)
@@ -179,8 +244,8 @@ local function toggleSetting(settingId)
 			-- Special notifications for certain settings
 			if settingId == "ShowOthersCrates" then
 				local message = settings[settingId] and 
-					"You will now see other players' crate animations" or 
-					"Other players' crate animations are now hidden"
+					"You will now see other players' crates" or 
+					"Other players' crates are now hidden"
 				-- Could show notification if Notifier is available
 			elseif settingId == "DisableEffects" then
 				local message = settings[settingId] and 
@@ -411,11 +476,19 @@ function SettingsController.Start(parentGui, soundControllerRef)
 	
 	-- Apply effects on start
 	applyEffects()
-	
-	-- Monitor for character respawning to reapply effects
+
+	-- Reapply effects whenever the local player's character respawns
 	LocalPlayer.CharacterAdded:Connect(function()
-		task.wait(2) -- Wait for character to load
+		task.wait(2) -- Wait for character to fully load
 		applyEffects()
+	end)
+ 
+	-- Also listen for the Boxes folder being added later in case the map loads it after
+	-- this script has run. Once it appears, immediately update visibility.
+	workspace.ChildAdded:Connect(function(child)
+	    if child.Name == "Boxes" then
+	        task.defer(updateCrateVisibility)
+	    end
 	end)
 	
 	-- Initial settings display

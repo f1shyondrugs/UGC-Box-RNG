@@ -6,12 +6,23 @@ Box.__index = Box
 function Box.new(owner: Player, crateId: string)
 	local self = setmetatable({}, Box)
 
-	-- Always use the same crate model from ReplicatedStorage.Models.Crates.Crate
+	-- Use crate-specific model from ReplicatedStorage.Models.Crates.[CrateID]
 	local customCrate = nil
 	if ReplicatedStorage:FindFirstChild("Models") then
 		local cratesFolder = ReplicatedStorage.Models:FindFirstChild("Crates")
 		if cratesFolder then
-			customCrate = cratesFolder:FindFirstChild("Crate")
+			-- First try to find a model with the specific crate ID
+			customCrate = cratesFolder:FindFirstChild(crateId)
+			
+			-- If not found, fall back to generic "Crate" model
+			if not customCrate then
+				customCrate = cratesFolder:FindFirstChild("Crate")
+				if customCrate then
+					print("[Box] No specific model found for " .. crateId .. ", using generic Crate model")
+				end
+			else
+				print("[Box] Using specific model for " .. crateId)
+			end
 		end
 	end
 
@@ -54,7 +65,7 @@ function Box.new(owner: Player, crateId: string)
 	end
 
 	if not self.Part then
-		warn("Custom crate model not found or unusable at ReplicatedStorage.Models.Crates.Crate, using default Part")
+		warn("Custom crate model not found or unusable at ReplicatedStorage.Models.Crates." .. crateId .. " or ReplicatedStorage.Models.Crates.Crate, using default Part")
 		local boxPart = Instance.new("Part")
 		boxPart.Size = Vector3.new(4, 4, 4)
 		boxPart.Anchored = true

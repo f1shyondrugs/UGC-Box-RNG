@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
 local NavigationController = require(script.Parent.NavigationController)
@@ -161,6 +162,99 @@ local function formatDropChance(chance)
 	return NumberFormatter.FormatPercentage(chance)
 end
 
+-- Setup 3D item preview for collection cards
+local function setup3DItemPreview(viewport, itemConfig)
+	if not viewport or not itemConfig or not itemConfig.AssetId then return end
+
+	viewport:ClearAllChildren()
+
+	local camera = Instance.new("Camera")
+	camera.Parent = viewport
+	viewport.CurrentCamera = camera
+
+	local light = Instance.new("PointLight")
+	light.Brightness = 2
+	light.Color = Color3.new(1, 1, 1)
+	light.Range = 40
+	light.Parent = camera
+
+	task.spawn(function()
+		local assetPreviewContainer = ReplicatedStorage:WaitForChild("AssetPreviews")
+		local asset = assetPreviewContainer:FindFirstChild(tostring(itemConfig.AssetId))
+
+		if not asset then
+			local success, err = pcall(function()
+				return Remotes.LoadAssetForPreview:InvokeServer(itemConfig.AssetId)
+			end)
+
+			if not success then
+				warn("Error invoking LoadAssetForPreview on server:", err)
+				return
+			end
+			
+			asset = assetPreviewContainer:WaitForChild(tostring(itemConfig.AssetId), 10)
+		end
+
+		local modelToDisplay
+		local isLegacyClothing = false
+
+		if asset then
+			local assetClone = asset:Clone()
+			if assetClone:IsA("Model") or assetClone:IsA("Accessory") then
+				modelToDisplay = assetClone
+			elseif assetClone:IsA("Shirt") or assetClone:IsA("Pants") or assetClone:IsA("TShirt") then
+				isLegacyClothing = true
+				-- Create a simple mannequin for clothing
+				local mannequin = Instance.new("Model")
+				local torso = Instance.new("Part")
+				torso.Name = "Torso"
+				torso.Size = Vector3.new(2, 1, 1)
+				torso.Material = Enum.Material.SmoothPlastic
+				torso.Color = Color3.fromRGB(255, 255, 255)
+				torso.Anchored = true
+				torso.Parent = mannequin
+				mannequin.PrimaryPart = torso
+				assetClone.Parent = mannequin
+				modelToDisplay = mannequin
+			end
+		end
+
+		if modelToDisplay then
+			modelToDisplay.Parent = viewport
+			
+			local modelCFrame, modelSize = modelToDisplay:GetBoundingBox()
+			local modelCenter = modelCFrame.Position
+			
+			local maxDimension = math.max(modelSize.X, modelSize.Y, modelSize.Z)
+			local distance = maxDimension * 1.5 + (isLegacyClothing and 4 or 2)
+			
+			local angle = 0
+			local connection
+			connection = RunService.RenderStepped:Connect(function(dt)
+				if not modelToDisplay.Parent then
+					connection:Disconnect()
+					return
+				end
+				
+				angle = angle + dt * 45
+				local rotation = CFrame.Angles(math.rad(10), math.rad(angle), 0)
+				local cameraPosition = modelCenter + rotation:VectorToWorldSpace(Vector3.new(0, 0, distance))
+				camera.CFrame = CFrame.lookAt(cameraPosition, modelCenter)
+			end)
+		else
+			warn("Asset could not be displayed:", itemConfig.AssetId)
+			local part = Instance.new("Part")
+			part.Name = "PlaceholderPreview"
+			part.Size = Vector3.new(2, 2, 2)
+			part.Material = Enum.Material.ForceField
+			part.Anchored = true
+			part.Color = Color3.fromRGB(255, 0, 0)
+			part.Parent = viewport
+			camera.CFrame = CFrame.lookAt(Vector3.new(4, 2, 4), part.Position)
+		end
+	end)
+end
+
 -- Create tooltip content
 local function createTooltipContent(itemName, itemConfig, collectionData)
 	local content = {}
@@ -282,6 +376,14 @@ local function displayItems(ui, crateName)
 	for _, itemData in ipairs(crateItems) do
 		local card = CollectionUI.CreateItemCard(itemData.Name, itemData.Config, itemData.Collection)
 		card.Parent = ui.ItemsContainer
+		
+		-- Setup 3D preview for discovered items
+		if itemData.Collection and itemData.Collection.Discovered then
+			local preview = card:FindFirstChild("Preview")
+			if preview and preview:IsA("ViewportFrame") then
+				setup3DItemPreview(preview, itemData.Config)
+			end
+		end
 		
 		-- Add hover functionality
 		card.MouseEnter:Connect(function()

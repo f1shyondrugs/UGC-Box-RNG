@@ -26,12 +26,12 @@ UpgradeConfig.Upgrades = {
 		CostExponent = 5,
 		BaseValue = 1, -- Starting max boxes
 		ValuePerLevel = 1, -- +1 box per level
-		MaxLevel = 49, -- Up to 5 boxes total (1 + 4 levels)
+		MaxLevel = 99, -- Up to 5 boxes total (1 + 4 levels)
 		Icon = "📦",
 		Effects = function(level)
 			return {
-				CurrentBoxes = math.min(1 + level, 50),
-				NextBoxes = math.min(1 + level + 1, 50)
+				CurrentBoxes = math.min(1 + level, 100),
+				NextBoxes = math.min(1 + level + 1, 100)
 			}
 		end
 	},

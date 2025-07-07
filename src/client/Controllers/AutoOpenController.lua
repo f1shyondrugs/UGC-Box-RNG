@@ -11,6 +11,7 @@ local LocalPlayer = Players.LocalPlayer
 local Shared = ReplicatedStorage.Shared
 local Remotes = require(Shared.Remotes.Remotes)
 local GameConfig = require(Shared.Modules.GameConfig)
+local NumberFormatter = require(Shared.Modules.NumberFormatter)
 local AutoOpenUI = require(script.Parent.Parent.UI.AutoOpenUI)
 local NavigationController = require(script.Parent.Parent.Controllers.NavigationController)
 local CrateSelectionController = require(script.Parent.Parent.Controllers.CrateSelectionController)
@@ -233,13 +234,13 @@ local function updateUI()
 		ui.CountSection.SetInfinite(settings.infiniteCrates)
 	end
 	
-	ui.MoneyInput.Text = tostring(settings.moneyThreshold)
+	ui.MoneyInput.Text = NumberFormatter.FormatNumber(settings.moneyThreshold)
 	if ui.MoneySection.SetInfinite then
 		ui.MoneySection.SetInfinite(settings.infiniteMoney)
 	end
 	
 	ui.SizeInput.Text = tostring(settings.sizeThreshold)
-	ui.ValueInput.Text = tostring(settings.valueThreshold)
+	ui.ValueInput.Text = NumberFormatter.FormatNumber(settings.valueThreshold)
 	
 	-- Update crate selection button text
 	if ui.CrateSelectButton then
@@ -248,23 +249,157 @@ local function updateUI()
 		ui.CrateSelectButton.Text = "📦 " .. displayName
 	end
 	
-	-- Toggle visibility of auto-sell sections (show if enabled AND has gamepass)
+	-- Show auto-sell sections but make them visually disabled when auto-sell is off
 	if ui.SizeSection and ui.SizeSection.Section then
-		ui.SizeSection.Section.Visible = settings.autoSellEnabled and hasAutoSellGamepass
+		ui.SizeSection.Section.Visible = hasAutoSellGamepass
+		-- Make section appear disabled when auto-sell is off
+		ui.SizeSection.Section.BackgroundTransparency = (hasAutoSellGamepass and settings.autoSellEnabled) and 0 or 0.7
+		-- Disable input when auto-sell is off
+		if ui.SizeInput then
+			ui.SizeInput.TextEditable = hasAutoSellGamepass and settings.autoSellEnabled
+			ui.SizeInput.TextColor3 = (hasAutoSellGamepass and settings.autoSellEnabled) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(120, 120, 120)
+		end
+		-- Disable buttons when auto-sell is off
+		if ui.SizeSection.DecreaseButton then
+			ui.SizeSection.DecreaseButton.BackgroundColor3 = (hasAutoSellGamepass and settings.autoSellEnabled) and Color3.fromRGB(80, 80, 80) or Color3.fromRGB(50, 50, 50)
+		end
+		if ui.SizeSection.IncreaseButton then
+			ui.SizeSection.IncreaseButton.BackgroundColor3 = (hasAutoSellGamepass and settings.autoSellEnabled) and Color3.fromRGB(80, 80, 80) or Color3.fromRGB(50, 50, 50)
+		end
 	end
 	if ui.ValueSection and ui.ValueSection.Section then
-		ui.ValueSection.Section.Visible = settings.autoSellEnabled and hasAutoSellGamepass
+		ui.ValueSection.Section.Visible = hasAutoSellGamepass
+		-- Make section appear disabled when auto-sell is off
+		ui.ValueSection.Section.BackgroundTransparency = (hasAutoSellGamepass and settings.autoSellEnabled) and 0 or 0.7
+		-- Disable input when auto-sell is off
+		if ui.ValueInput then
+			ui.ValueInput.TextEditable = hasAutoSellGamepass and settings.autoSellEnabled
+			ui.ValueInput.TextColor3 = (hasAutoSellGamepass and settings.autoSellEnabled) and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(120, 120, 120)
+		end
+		-- Disable buttons when auto-sell is off
+		if ui.ValueSection.DecreaseButton then
+			ui.ValueSection.DecreaseButton.BackgroundColor3 = (hasAutoSellGamepass and settings.autoSellEnabled) and Color3.fromRGB(80, 80, 80) or Color3.fromRGB(50, 50, 50)
+		end
+		if ui.ValueSection.IncreaseButton then
+			ui.ValueSection.IncreaseButton.BackgroundColor3 = (hasAutoSellGamepass and settings.autoSellEnabled) and Color3.fromRGB(80, 80, 80) or Color3.fromRGB(50, 50, 50)
+		end
 	end
 	
-	-- Update section transparency based on gamepass ownership
+	-- Show/hide features section and purchase button based on gamepass ownership
+	if ui.FeaturesSection then
+		ui.FeaturesSection.Visible = not hasAutoSellGamepass
+	end
+	if ui.PurchaseButton then
+		ui.PurchaseButton.Visible = not hasAutoSellGamepass
+	end
+	
+	-- Update section transparency and add lock indicators based on gamepass ownership
 	if ui.AutoSellSection and ui.AutoSellSection.Section then
 		ui.AutoSellSection.Section.BackgroundTransparency = hasAutoSellGamepass and 0 or 0.7
+		-- Add lock indicator if no gamepass
+		if not hasAutoSellGamepass then
+			if not ui.AutoSellSection.Section:FindFirstChild("LockIcon") then
+				local lockIcon = Instance.new("TextLabel")
+				lockIcon.Name = "LockIcon"
+				lockIcon.Size = UDim2.new(0, 20, 0, 20)
+				lockIcon.Position = UDim2.new(1, -25, 0, 5)
+				lockIcon.Text = "🔒"
+				lockIcon.Font = Enum.Font.GothamBold
+				lockIcon.TextSize = 14
+				lockIcon.TextColor3 = Color3.fromRGB(255, 150, 50)
+				lockIcon.BackgroundTransparency = 1
+				lockIcon.ZIndex = 206
+				lockIcon.Parent = ui.AutoSellSection.Section
+			end
+		else
+			local lockIcon = ui.AutoSellSection.Section:FindFirstChild("LockIcon")
+			if lockIcon then
+				lockIcon:Destroy()
+			end
+		end
+		
+		-- Update title to show disabled state when auto-sell is off
+		if ui.AutoSellSection.Title then
+			if hasAutoSellGamepass and not settings.autoSellEnabled then
+				ui.AutoSellSection.Title.Text = "Enable Auto-Sell (Disabled)"
+				ui.AutoSellSection.Title.TextColor3 = Color3.fromRGB(150, 150, 150)
+			else
+				ui.AutoSellSection.Title.Text = "Enable Auto-Sell"
+				ui.AutoSellSection.Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+			end
+		end
 	end
+	
 	if ui.SizeSection and ui.SizeSection.Section then
 		ui.SizeSection.Section.BackgroundTransparency = hasAutoSellGamepass and 0 or 0.7
+		-- Add lock indicator if no gamepass
+		if not hasAutoSellGamepass then
+			if not ui.SizeSection.Section:FindFirstChild("LockIcon") then
+				local lockIcon = Instance.new("TextLabel")
+				lockIcon.Name = "LockIcon"
+				lockIcon.Size = UDim2.new(0, 20, 0, 20)
+				lockIcon.Position = UDim2.new(1, -25, 0, 5)
+				lockIcon.Text = "🔒"
+				lockIcon.Font = Enum.Font.GothamBold
+				lockIcon.TextSize = 14
+				lockIcon.TextColor3 = Color3.fromRGB(255, 150, 50)
+				lockIcon.BackgroundTransparency = 1
+				lockIcon.ZIndex = 206
+				lockIcon.Parent = ui.SizeSection.Section
+			end
+		else
+			local lockIcon = ui.SizeSection.Section:FindFirstChild("LockIcon")
+			if lockIcon then
+				lockIcon:Destroy()
+			end
+		end
+		
+		-- Update title to show disabled state when auto-sell is off
+		if ui.SizeSection.Title then
+			if hasAutoSellGamepass and not settings.autoSellEnabled then
+				ui.SizeSection.Title.Text = "Auto-Sell Below Size (Disabled)"
+				ui.SizeSection.Title.TextColor3 = Color3.fromRGB(150, 150, 150)
+			else
+				ui.SizeSection.Title.Text = "Auto-Sell Below Size"
+				ui.SizeSection.Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+			end
+		end
 	end
+	
 	if ui.ValueSection and ui.ValueSection.Section then
 		ui.ValueSection.Section.BackgroundTransparency = hasAutoSellGamepass and 0 or 0.7
+		-- Add lock indicator if no gamepass
+		if not hasAutoSellGamepass then
+			if not ui.ValueSection.Section:FindFirstChild("LockIcon") then
+				local lockIcon = Instance.new("TextLabel")
+				lockIcon.Name = "LockIcon"
+				lockIcon.Size = UDim2.new(0, 20, 0, 20)
+				lockIcon.Position = UDim2.new(1, -25, 0, 5)
+				lockIcon.Text = "🔒"
+				lockIcon.Font = Enum.Font.GothamBold
+				lockIcon.TextSize = 14
+				lockIcon.TextColor3 = Color3.fromRGB(255, 150, 50)
+				lockIcon.BackgroundTransparency = 1
+				lockIcon.ZIndex = 206
+				lockIcon.Parent = ui.ValueSection.Section
+			end
+		else
+			local lockIcon = ui.ValueSection.Section:FindFirstChild("LockIcon")
+			if lockIcon then
+				lockIcon:Destroy()
+			end
+		end
+		
+		-- Update title to show disabled state when auto-sell is off
+		if ui.ValueSection.Title then
+			if hasAutoSellGamepass and not settings.autoSellEnabled then
+				ui.ValueSection.Title.Text = "Auto-Sell Below Value (Disabled)"
+				ui.ValueSection.Title.TextColor3 = Color3.fromRGB(150, 150, 150)
+			else
+				ui.ValueSection.Title.Text = "Auto-Sell Below Value"
+				ui.ValueSection.Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+			end
+		end
 	end
 	
 	-- Removed AutoOpenButton UI update logic as it is now part of NavigationUI
@@ -273,19 +408,49 @@ end
 local function collectSettingsFromUI()
 	if not ui then return end
 	
+	local NumberFormatter = require(game.ReplicatedStorage.Shared.Modules.NumberFormatter)
+	
 	-- Collect input values and infinite states
 	if ui.CountSection.IsInfinite and not ui.CountSection.IsInfinite() then
-		settings.crateCount = math.max(tonumber(ui.CountInput.Text) or 10, 1)
+		local parsedValue = NumberFormatter.ParseFormattedNumber(ui.CountInput.Text)
+		-- If parsing returns 0, it might be because the input is just "0" or invalid
+		-- So we only fall back to regular parsing if the input doesn't contain any letters
+		if parsedValue == 0 and not string.match(ui.CountInput.Text, "[%a]") then
+			parsedValue = tonumber(ui.CountInput.Text) or 10
+		end
+		settings.crateCount = math.max(parsedValue, 1)
 	end
 	settings.infiniteCrates = ui.CountSection.IsInfinite and ui.CountSection.IsInfinite() or false
 	
 	if ui.MoneySection.IsInfinite and not ui.MoneySection.IsInfinite() then
-		settings.moneyThreshold = math.max(tonumber(ui.MoneyInput.Text) or 1000, 0)
+		local parsedValue = NumberFormatter.ParseFormattedNumber(ui.MoneyInput.Text)
+		-- If parsing returns 0, it might be because the input is just "0" or invalid
+		-- So we only fall back to regular parsing if the input doesn't contain any letters
+		if parsedValue == 0 and not string.match(ui.MoneyInput.Text, "[%a]") then
+			parsedValue = tonumber(ui.MoneyInput.Text) or 1000
+		end
+		settings.moneyThreshold = math.max(parsedValue, 0)
 	end
 	settings.infiniteMoney = ui.MoneySection.IsInfinite and ui.MoneySection.IsInfinite() or false
 	
-	settings.sizeThreshold = math.max(tonumber(ui.SizeInput.Text) or 3, 0)
-	settings.valueThreshold = math.max(tonumber(ui.ValueInput.Text) or 100, 0)
+	-- Only update auto-sell settings if player has the gamepass and auto-sell is enabled
+	if hasAutoSellGamepass and settings.autoSellEnabled then
+		local parsedSizeValue = NumberFormatter.ParseFormattedNumber(ui.SizeInput.Text)
+		-- If parsing returns 0, it might be because the input is just "0" or invalid
+		-- So we only fall back to regular parsing if the input doesn't contain any letters
+		if parsedSizeValue == 0 and not string.match(ui.SizeInput.Text, "[%a]") then
+			parsedSizeValue = tonumber(ui.SizeInput.Text) or 3
+		end
+		settings.sizeThreshold = math.max(parsedSizeValue, 0)
+		
+		local parsedValueThreshold = NumberFormatter.ParseFormattedNumber(ui.ValueInput.Text)
+		-- If parsing returns 0, it might be because the input is just "0" or invalid
+		-- So we only fall back to regular parsing if the input doesn't contain any letters
+		if parsedValueThreshold == 0 and not string.match(ui.ValueInput.Text, "[%a]") then
+			parsedValueThreshold = tonumber(ui.ValueInput.Text) or 100
+		end
+		settings.valueThreshold = math.max(parsedValueThreshold, 0)
+	end
 	
 	saveSettings()
 end
@@ -530,6 +695,7 @@ function AutoOpenController.Start(parentGui, soundControllerRef)
 				updateUI()
 				saveSettings()
 			else
+				if soundController then soundController:playUIClick() end
 				promptAutoSellGamepassPurchase()
 			end
 		end)
@@ -555,8 +721,15 @@ function AutoOpenController.Start(parentGui, soundControllerRef)
 	-- Connect input change events
 	local function setupInputConnection(input, settingName, min)
 		input.FocusLost:Connect(function()
-			local value = tonumber(input.Text)
-			if value then
+			-- Try to parse formatted numbers first (like "100Q")
+			local value = NumberFormatter.ParseFormattedNumber(input.Text)
+			-- If parsing returns 0, it might be because the input is just "0" or invalid
+			-- So we only fall back to regular parsing if the input doesn't contain any letters
+			if value == 0 and not string.match(input.Text, "[%a]") then
+				-- Fall back to regular number parsing only for pure numbers
+				value = tonumber(input.Text)
+			end
+			if value and value > 0 then
 				-- Remove max constraint - only enforce minimum
 				settings[settingName] = math.max(value, min or 0)
 				input.Text = tostring(settings[settingName])
@@ -567,13 +740,149 @@ function AutoOpenController.Start(parentGui, soundControllerRef)
 	
 	setupInputConnection(ui.CountInput, "crateCount", 1)
 	setupInputConnection(ui.MoneyInput, "moneyThreshold", 0)
-	setupInputConnection(ui.SizeInput, "sizeThreshold", 0)
-	setupInputConnection(ui.ValueInput, "valueThreshold", 0)
+	
+	-- Auto-sell input connections with gamepass check
+	if ui.SizeInput then
+		ui.SizeInput.FocusLost:Connect(function()
+			if hasAutoSellGamepass and settings.autoSellEnabled then
+				-- Try to parse formatted numbers first (like "100Q")
+				local value = NumberFormatter.ParseFormattedNumber(ui.SizeInput.Text)
+				-- If parsing returns 0, it might be because the input is just "0" or invalid
+				-- So we only fall back to regular parsing if the input doesn't contain any letters
+				if value == 0 and not string.match(ui.SizeInput.Text, "[%a]") then
+					-- Fall back to regular number parsing only for pure numbers
+					value = tonumber(ui.SizeInput.Text)
+				end
+				if value and value > 0 then
+					settings.sizeThreshold = math.max(value, 0)
+					ui.SizeInput.Text = NumberFormatter.FormatNumber(settings.sizeThreshold)
+					saveSettings()
+				end
+			elseif not hasAutoSellGamepass then
+				if soundController then soundController:playUIClick() end
+				promptAutoSellGamepassPurchase()
+			end
+		end)
+	end
+	
+	if ui.ValueInput then
+		ui.ValueInput.FocusLost:Connect(function()
+			if hasAutoSellGamepass and settings.autoSellEnabled then
+				-- Try to parse formatted numbers first (like "100Q")
+				local value = NumberFormatter.ParseFormattedNumber(ui.ValueInput.Text)
+				-- If parsing returns 0, it might be because the input is just "0" or invalid
+				-- So we only fall back to regular parsing if the input doesn't contain any letters
+				if value == 0 and not string.match(ui.ValueInput.Text, "[%a]") then
+					-- Fall back to regular number parsing only for pure numbers
+					value = tonumber(ui.ValueInput.Text)
+				end
+				if value and value > 0 then
+					settings.valueThreshold = math.max(value, 0)
+					ui.ValueInput.Text = NumberFormatter.FormatNumber(settings.valueThreshold)
+					saveSettings()
+				end
+			elseif not hasAutoSellGamepass then
+				if soundController then soundController:playUIClick() end
+				promptAutoSellGamepassPurchase()
+			end
+		end)
+	end
+	
+	-- Auto-sell button handlers with gamepass check
+	if ui.SizeSection and ui.SizeSection.DecreaseButton then
+		ui.SizeSection.DecreaseButton.MouseButton1Click:Connect(function()
+			if hasAutoSellGamepass and settings.autoSellEnabled then
+				local current = NumberFormatter.ParseFormattedNumber(ui.SizeInput.Text)
+				-- If parsing returns 0, it might be because the input is just "0" or invalid
+				-- So we only fall back to regular parsing if the input doesn't contain any letters
+				if current == 0 and not string.match(ui.SizeInput.Text, "[%a]") then
+					current = tonumber(ui.SizeInput.Text) or 3
+				end
+				local newValue = math.max(0, current - 1)
+				ui.SizeInput.Text = NumberFormatter.FormatNumber(newValue)
+				settings.sizeThreshold = newValue
+				saveSettings()
+			elseif not hasAutoSellGamepass then
+				if soundController then soundController:playUIClick() end
+				promptAutoSellGamepassPurchase()
+			end
+		end)
+	end
+	
+	if ui.SizeSection and ui.SizeSection.IncreaseButton then
+		ui.SizeSection.IncreaseButton.MouseButton1Click:Connect(function()
+			if hasAutoSellGamepass and settings.autoSellEnabled then
+				local current = NumberFormatter.ParseFormattedNumber(ui.SizeInput.Text)
+				-- If parsing returns 0, it might be because the input is just "0" or invalid
+				-- So we only fall back to regular parsing if the input doesn't contain any letters
+				if current == 0 and not string.match(ui.SizeInput.Text, "[%a]") then
+					current = tonumber(ui.SizeInput.Text) or 3
+				end
+				local newValue = current + 1
+				ui.SizeInput.Text = NumberFormatter.FormatNumber(newValue)
+				settings.sizeThreshold = newValue
+				saveSettings()
+			elseif not hasAutoSellGamepass then
+				if soundController then soundController:playUIClick() end
+				promptAutoSellGamepassPurchase()
+			end
+		end)
+	end
+	
+	if ui.ValueSection and ui.ValueSection.DecreaseButton then
+		ui.ValueSection.DecreaseButton.MouseButton1Click:Connect(function()
+			if hasAutoSellGamepass and settings.autoSellEnabled then
+				local current = NumberFormatter.ParseFormattedNumber(ui.ValueInput.Text)
+				-- If parsing returns 0, it might be because the input is just "0" or invalid
+				-- So we only fall back to regular parsing if the input doesn't contain any letters
+				if current == 0 and not string.match(ui.ValueInput.Text, "[%a]") then
+					current = tonumber(ui.ValueInput.Text) or 100
+				end
+				local newValue = math.max(0, current - 1)
+				ui.ValueInput.Text = NumberFormatter.FormatNumber(newValue)
+				settings.valueThreshold = newValue
+				saveSettings()
+			elseif not hasAutoSellGamepass then
+				if soundController then soundController:playUIClick() end
+				promptAutoSellGamepassPurchase()
+			end
+		end)
+	end
+	
+	if ui.ValueSection and ui.ValueSection.IncreaseButton then
+		ui.ValueSection.IncreaseButton.MouseButton1Click:Connect(function()
+			if hasAutoSellGamepass and settings.autoSellEnabled then
+				local current = NumberFormatter.ParseFormattedNumber(ui.ValueInput.Text)
+				-- If parsing returns 0, it might be because the input doesn't contain any letters
+				-- So we only fall back to regular parsing if the input doesn't contain any letters
+				if current == 0 and not string.match(ui.ValueInput.Text, "[%a]") then
+					current = tonumber(ui.ValueInput.Text) or 100
+				end
+				local newValue = current + 1
+				ui.ValueInput.Text = NumberFormatter.FormatNumber(newValue)
+				settings.valueThreshold = newValue
+				saveSettings()
+			elseif not hasAutoSellGamepass then
+				if soundController then soundController:playUIClick() end
+				promptAutoSellGamepassPurchase()
+			end
+		end)
+	end
 	
 	-- Connect crate selection button
 	if ui.CrateSelectButton then
 		ui.CrateSelectButton.MouseButton1Click:Connect(function()
 			CrateSelectionController:Show()
+		end)
+	end
+	
+	-- Connect purchase button
+	if ui.PurchaseButton then
+		ui.PurchaseButton.MouseButton1Click:Connect(function()
+			if soundController then
+				soundController:playUIClick()
+			end
+			promptAutoSellGamepassPurchase()
 		end)
 	end
 	

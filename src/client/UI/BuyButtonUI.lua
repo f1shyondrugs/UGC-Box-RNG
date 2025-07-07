@@ -7,6 +7,7 @@ local UserInputService = game:GetService("UserInputService")
 local BuyButtonUI = {}
 
 local GameConfig = require(game.ReplicatedStorage.Shared.Modules.GameConfig)
+local NumberFormatter = require(game.ReplicatedStorage.Shared.Modules.NumberFormatter)
 
 -- Function to calculate appropriate UI scale based on screen size
 local function calculateUIScale()
@@ -244,7 +245,7 @@ function BuyButtonUI.SetSelectedCrate(components, crateType)
 		-- Paid crate styling
 		components.BuyButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
 		components.TitleLabel.Text = "Buy UGC Crate"
-		components.CostLabel.Text = "Cost: " .. crateConfig.Price .. " R$"
+		components.CostLabel.Text = "Cost: " .. NumberFormatter.FormatCurrency(crateConfig.Price) .. " R$"
 		components.CostLabel.TextColor3 = Color3.fromRGB(200, 205, 255)
 	end
 end
@@ -296,11 +297,11 @@ function BuyButtonUI.UpdateAffordability(components, playerRobux)
 	local costLabel = components.CostLabel
 	
 	if canAfford then
-		costLabel.Text = "Cost: " .. selectedConfig.Price .. " R$"
+		costLabel.Text = "Cost: " .. NumberFormatter.FormatCurrency(selectedConfig.Price) .. " R$"
 		costLabel.TextColor3 = Color3.fromRGB(200, 205, 255)
 	else
 		local needed = selectedConfig.Price - playerRobux
-		costLabel.Text = "Need " .. needed .. " more R$!"
+		costLabel.Text = "Need " .. NumberFormatter.FormatCurrency(needed) .. " more R$!"
 		costLabel.TextColor3 = Color3.fromRGB(255, 100, 100) -- Red for insufficient funds
 	end
 end

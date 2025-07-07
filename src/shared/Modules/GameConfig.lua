@@ -19,9 +19,11 @@ Config.Rarities = {
     Vintage = { Color = Color3.fromRGB(184, 134, 11) },     -- Antique Gold - For vintage items
     Exclusive = { Color = Color3.fromRGB(138, 43, 226) },   -- Blue Violet - For exclusive limiteds
     Ultimate = { Color = Color3.fromRGB(255, 0, 0) },       -- Pure Red - For ultimate limiteds
-    Dominus = { Color = Color3.fromRGB(0, 0, 0) },          -- Pure Black - For Dominus items only
+    Dominus = { Color = Color3.fromRGB(0, 0, 0) },          -- Pure Black - For Dominus items
     BRAINROT = { Color = Color3.fromRGB(180, 0, 255) },     -- Purple-pink for brainrot meme rarity
     Huzz = { Color = Color3.fromRGB(255, 182, 193) },       -- Pink for huzz items
+    EightBit = { Color = Color3.fromRGB(255, 165, 0) },     -- Orange for 8-Bit items
+    Anime = { Color = Color3.fromRGB(255, 105, 180) },      -- Hot pink for anime items
 }
 
 Config.Items = {
@@ -692,6 +694,941 @@ Config.Items = {
         Type = "Hat",
         Description = "Astolfo, the legendary companion."
     },
+    
+    -- 8-Bit Items (Special Pixel-Themed Collection)
+    ["Black 8-Bit Wings"] = { 
+        Rarity = "EightBit", 
+        Value = 300000000000000, -- 300T
+        AssetId = 17422376123,
+        Type = "Back",
+        Description = "Pixelated wings with a dark, mysterious aura."
+    },
+    ["8-Bit Roblox Coin"] = { 
+        Rarity = "EightBit", 
+        Value = 150000000000000, -- 150T
+        AssetId = 10159622004,
+        Type = "Front",
+        Description = "A classic Roblox coin in 8-bit pixel art style."
+    },
+    ["Damaged Pixel Heart Meme HP"] = { 
+        Rarity = "EightBit", 
+        Value = 100000000000000, -- 100T
+        AssetId = 16258039952,
+        Type = "Front",
+        Description = "A damaged pixel heart meme that's seen better days."
+    },
+    ["8-Bit Royal Crown"] = { 
+        Rarity = "EightBit", 
+        Value = 800000000000000, -- 800T
+        AssetId = 10159600649,
+        Type = "Hat",
+        Description = "A royal crown rendered in beautiful 8-bit pixel art."
+    },
+    ["8-Bit Snowboard Goggles"] = { 
+        Rarity = "EightBit", 
+        Value = 60000000000000, -- 60T
+        AssetId = 583136875,
+        Type = "Face",
+        Description = "Cool snowboard goggles with an 8-bit aesthetic."
+    },
+    ["8-Bit Dominus Infernus"] = { 
+        Rarity = "EightBit", 
+        Value = 2000000000000000000, -- 2Q
+        AssetId = 17232200909,
+        Type = "Hat",
+        Description = "The legendary Dominus Infernus in 8-bit pixel form."
+    },
+    ["8-Bit Extra Life"] = { 
+        Rarity = "EightBit", 
+        Value = 200000000000000, -- 200T
+        AssetId = 10159606132,
+        Type = "Front",
+        Description = "An extra life power-up in classic 8-bit style."
+    },
+    ["8-Bit Helmet"] = { 
+        Rarity = "EightBit", 
+        Value = 80000000000000, -- 80T
+        AssetId = 17176601857,
+        Type = "Hat",
+        Description = "A protective helmet with retro 8-bit graphics."
+    },
+    ["8-Bit Immortal Sword Venoms Byte"] = { 
+        Rarity = "EightBit", 
+        Value = 500000000000000, -- 500T
+        AssetId = 4390848511,
+        Type = "Front",
+        Description = "An immortal sword with venomous properties in 8-bit style."
+    },
+    ["Pixel Pistol"] = { 
+        Rarity = "EightBit", 
+        Value = 120000000000000, -- 120T
+        AssetId = 84619076952401,
+        Type = "Front",
+        Description = "A pixelated pistol for the retro gamer aesthetic."
+    },
+    ["Horn Pixel Red"] = { 
+        Rarity = "EightBit", 
+        Value = 50000000000000, -- 50T
+        AssetId = 72213798637315,
+        Type = "Hat",
+        Description = "A red pixel horn that adds a touch of retro charm."
+    },
+
+    -- Anime Plush Items (Special Anime-Themed Collection)
+    ["Kurumi Plush"] = { 
+        Rarity = "Anime", 
+        Value = 100000000000000, -- 100T
+        AssetId = 80286655940144,
+        Type = "Hat",
+        Description = "A cute Kurumi plush from Date A Live."
+    },
+    ["Kaguya Plush"] = { 
+        Rarity = "Anime", 
+        Value = 120000000000000, -- 120T
+        AssetId = 120979169980923,
+        Type = "Hat",
+        Description = "A lovely Kaguya plush from Kaguya-sama."
+    },
+    ["Esdeath Chibi"] = { 
+        Rarity = "Anime", 
+        Value = 150000000000000, -- 150T
+        AssetId = 103619451636916,
+        Type = "Hat",
+        Description = "A fierce Esdeath chibi from Akame ga Kill."
+    },
+    ["Tohsaka Plush"] = { 
+        Rarity = "Anime", 
+        Value = 180000000000000, -- 180T
+        AssetId = 101759867782685,
+        Type = "Hat",
+        Description = "A magical Tohsaka plush from Fate series."
+    },
+    ["Toga Plush"] = { 
+        Rarity = "Anime", 
+        Value = 200000000000000, -- 200T
+        AssetId = 118298586003684,
+        Type = "Hat",
+        Description = "A mischievous Toga plush from My Hero Academia."
+    },
+    ["Eren Plush"] = { 
+        Rarity = "Anime", 
+        Value = 250000000000000, -- 250T
+        AssetId = 85860750818215,
+        Type = "Hat",
+        Description = "A determined Eren plush from Attack on Titan."
+    },
+    ["Rikka Plush"] = { 
+        Rarity = "Anime", 
+        Value = 300000000000000, -- 300T
+        AssetId = 140546431532941,
+        Type = "Hat",
+        Description = "A chuunibyou Rikka plush from Chuunibyou."
+    },
+    ["Otonose Kanade Plush"] = { 
+        Rarity = "Anime", 
+        Value = 350000000000000, -- 350T
+        AssetId = 81978788112291,
+        Type = "Hat",
+        Description = "A musical Kanade plush from Bocchi the Rock."
+    },
+    ["Ichigo Plush"] = { 
+        Rarity = "Anime", 
+        Value = 400000000000000, -- 400T
+        AssetId = 90697073846805,
+        Type = "Hat",
+        Description = "A soul reaper Ichigo plush from Bleach."
+    },
+    ["Yumeko Plush"] = { 
+        Rarity = "Anime", 
+        Value = 450000000000000, -- 450T
+        AssetId = 138458406285335,
+        Type = "Hat",
+        Description = "A gambling Yumeko plush from Kakegurui."
+    },
+    ["Nino Plush"] = { 
+        Rarity = "Anime", 
+        Value = 500000000000000, -- 500T
+        AssetId = 111992428705947,
+        Type = "Hat",
+        Description = "A tsundere Nino plush from Quintessential Quintuplets."
+    },
+    ["Karane Plush"] = { 
+        Rarity = "Anime", 
+        Value = 600000000000000, -- 600T
+        AssetId = 83039184707965,
+        Type = "Hat",
+        Description = "A shy Karane plush from 100 Girlfriends."
+    },
+    ["Futaba Plush"] = { 
+        Rarity = "Anime", 
+        Value = 700000000000000, -- 700T
+        AssetId = 81446708266860,
+        Type = "Hat",
+        Description = "A hacker Futaba plush from Persona 5."
+    },
+    ["Marin Plush"] = { 
+        Rarity = "Anime", 
+        Value = 800000000000000, -- 800T
+        AssetId = 98964265478838,
+        Type = "Hat",
+        Description = "A cosplay Marin plush from My Dress-Up Darling."
+    },
+    ["Akame Plush"] = { 
+        Rarity = "Anime", 
+        Value = 900000000000000, -- 900T
+        AssetId = 100919375769067,
+        Type = "Hat",
+        Description = "A deadly Akame plush from Akame ga Kill."
+    },
+    ["Draken Plush"] = { 
+        Rarity = "Anime", 
+        Value = 1000000000000000, -- 1Qa
+        AssetId = 118432867259524,
+        Type = "Hat",
+        Description = "A tough Draken plush from Tokyo Revengers."
+    },
+    ["2B Plush"] = { 
+        Rarity = "Anime", 
+        Value = 1200000000000000, -- 1.2Qa
+        AssetId = 123571220493920,
+        Type = "Hat",
+        Description = "A beautiful 2B plush from NieR: Automata."
+    },
+    ["Kanae Plush"] = { 
+        Rarity = "Anime", 
+        Value = 1500000000000000, -- 1.5Qa
+        AssetId = 131679242236794,
+        Type = "Hat",
+        Description = "A demon Kanae plush from Demon Slayer."
+    },
+    ["Kirito Plush"] = { 
+        Rarity = "Anime", 
+        Value = 1800000000000000, -- 1.8Qa
+        AssetId = 127859451705974,
+        Type = "Hat",
+        Description = "A swordsman Kirito plush from Sword Art Online."
+    },
+    ["Shinobu Plush"] = { 
+        Rarity = "Anime", 
+        Value = 2000000000000000, -- 2Qa
+        AssetId = 135124570654797,
+        Type = "Hat",
+        Description = "A vampire Shinobu plush from Monogatari."
+    },
+    ["Rukia Plush"] = { 
+        Rarity = "Anime", 
+        Value = 2500000000000000, -- 2.5Qa
+        AssetId = 121551978558798,
+        Type = "Hat",
+        Description = "A noble Rukia plush from Bleach."
+    },
+    ["Tomori Plush"] = { 
+        Rarity = "Anime", 
+        Value = 3000000000000000, -- 3Qa
+        AssetId = 74332967658986,
+        Type = "Hat",
+        Description = "A mysterious Tomori plush from Charlotte."
+    },
+    ["Evergarden Plush"] = { 
+        Rarity = "Anime", 
+        Value = 3500000000000000, -- 3.5Qa
+        AssetId = 134668098666301,
+        Type = "Hat",
+        Description = "A graceful Violet plush from Violet Evergarden."
+    },
+    ["Hange Plush"] = { 
+        Rarity = "Anime", 
+        Value = 4000000000000000, -- 4Qa
+        AssetId = 88445953503719,
+        Type = "Hat",
+        Description = "A curious Hange plush from Attack on Titan."
+    },
+    ["Nico Plush"] = { 
+        Rarity = "Anime", 
+        Value = 4500000000000000, -- 4.5Qa
+        AssetId = 112979422108886,
+        Type = "Hat",
+        Description = "A cute Nico plush from Love Live."
+    },
+    ["Zero Two Plush"] = { 
+        Rarity = "Anime", 
+        Value = 5000000000000000, -- 5Qa
+        AssetId = 77393117608031,
+        Type = "Hat",
+        Description = "A darling Zero Two plush from Darling in the Franxx."
+    },
+    ["Miku Nakano Plush"] = { 
+        Rarity = "Anime", 
+        Value = 6000000000000000, -- 6Qa
+        AssetId = 114534510268326,
+        Type = "Hat",
+        Description = "A perfect Miku plush from Quintessential Quintuplets."
+    },
+    ["Lucy Plush"] = { 
+        Rarity = "Anime", 
+        Value = 7000000000000000, -- 7Qa
+        AssetId = 139414524076855,
+        Type = "Hat",
+        Description = "A powerful Lucy plush from Fairy Tail."
+    },
+    ["Albedo Plush"] = { 
+        Rarity = "Anime", 
+        Value = 8000000000000000, -- 8Qa
+        AssetId = 112939317392211,
+        Type = "Hat",
+        Description = "A devoted Albedo plush from Overlord."
+    },
+    ["Aqua Plush"] = { 
+        Rarity = "Anime", 
+        Value = 10000000000000000, -- 10Qa
+        AssetId = 96637948387504,
+        Type = "Hat",
+        Description = "A goddess Aqua plush from Konosuba."
+    },
+    ["Mikasa Plush"] = { 
+        Rarity = "Anime", 
+        Value = 12000000000000000, -- 12Qa
+        AssetId = 106783515664964,
+        Type = "Hat",
+        Description = "A loyal Mikasa plush from Attack on Titan."
+    },
+    ["Kurisu Plush"] = { 
+        Rarity = "Anime", 
+        Value = 15000000000000000, -- 15Qa
+        AssetId = 133801904347240,
+        Type = "Hat",
+        Description = "A brilliant Kurisu plush from Steins;Gate."
+    },
+    ["Asuna Plush"] = { 
+        Rarity = "Anime", 
+        Value = 20000000000000000, -- 20Qa
+        AssetId = 129248523610728,
+        Type = "Hat",
+        Description = "A knight Asuna plush from Sword Art Online."
+    },
+    ["Akutagawa Plush"] = { 
+        Rarity = "Anime", 
+        Value = 25000000000000000, -- 25Qa
+        AssetId = 76226993735264,
+        Type = "Hat",
+        Description = "A fierce Akutagawa plush from Bungou Stray Dogs."
+    },
+    ["Nami Plush"] = { 
+        Rarity = "Anime", 
+        Value = 30000000000000000, -- 30Qa
+        AssetId = 111939218743250,
+        Type = "Hat",
+        Description = "A navigator Nami plush from One Piece."
+    },
+    ["Saber Plush"] = { 
+        Rarity = "Anime", 
+        Value = 40000000000000000, -- 40Qa
+        AssetId = 117822785453025,
+        Type = "Hat",
+        Description = "A noble Saber plush from Fate series."
+    },
+    ["Akeno Plush"] = { 
+        Rarity = "Anime", 
+        Value = 50000000000000000, -- 50Qa
+        AssetId = 106506199081272,
+        Type = "Hat",
+        Description = "A seductive Akeno plush from High School DxD."
+    },
+    ["Power Plush"] = { 
+        Rarity = "Anime", 
+        Value = 60000000000000000, -- 60Qa
+        AssetId = 108215437308239,
+        Type = "Hat",
+        Description = "A chaotic Power plush from Chainsaw Man."
+    },
+    ["Charlotte Plush"] = { 
+        Rarity = "Anime", 
+        Value = 80000000000000000, -- 80Qa
+        AssetId = 86290424847412,
+        Type = "Hat",
+        Description = "A royal Charlotte plush from Charlotte."
+    },
+    ["Mai Sakurajima Plush"] = { 
+        Rarity = "Anime", 
+        Value = 100000000000000000, -- 100Qa
+        AssetId = 116882525443631,
+        Type = "Hat",
+        Description = "A bunny girl Mai plush from Rascal Does Not Dream."
+    },
+    ["Ikaros Plush"] = { 
+        Rarity = "Anime", 
+        Value = 120000000000000000, -- 120Qa
+        AssetId = 117371961086739,
+        Type = "Hat",
+        Description = "An angel Ikaros plush from Heaven's Lost Property."
+    },
+    ["Rias Gremory Plush"] = { 
+        Rarity = "Anime", 
+        Value = 150000000000000000, -- 150Qa
+        AssetId = 140115303968413,
+        Type = "Hat",
+        Description = "A devil Rias plush from High School DxD."
+    },
+    ["Tsukishima Plush"] = { 
+        Rarity = "Anime", 
+        Value = 200000000000000000, -- 200Qa
+        AssetId = 113611288168080,
+        Type = "Hat",
+        Description = "A cool Tsukishima plush from Haikyuu."
+    },
+    ["Reinhard Plush"] = { 
+        Rarity = "Anime", 
+        Value = 250000000000000000, -- 250Qa
+        AssetId = 106991499877861,
+        Type = "Hat",
+        Description = "A knight Reinhard plush from Re:Zero."
+    },
+    ["Megumin Plush"] = { 
+        Rarity = "Anime", 
+        Value = 300000000000000000, -- 300Qa
+        AssetId = 134436186351410,
+        Type = "Hat",
+        Description = "An explosion Megumin plush from Konosuba."
+    },
+    ["Nezuko Plush"] = { 
+        Rarity = "Anime", 
+        Value = 400000000000000000, -- 400Qa
+        AssetId = 135862774225312,
+        Type = "Hat",
+        Description = "A demon Nezuko plush from Demon Slayer."
+    },
+    ["Makima Plush"] = { 
+        Rarity = "Anime", 
+        Value = 500000000000000000, -- 500Qa
+        AssetId = 138437178030970,
+        Type = "Hat",
+        Description = "A devil Makima plush from Chainsaw Man."
+    },
+    ["Alexis Ness Plush"] = { 
+        Rarity = "Anime", 
+        Value = 600000000000000000, -- 600Qa
+        AssetId = 121875727921857,
+        Type = "Hat",
+        Description = "A striker Alexis plush from Blue Lock."
+    },
+    ["Naruto Plush"] = { 
+        Rarity = "Anime", 
+        Value = 800000000000000000, -- 800Qa
+        AssetId = 87105547120327,
+        Type = "Hat",
+        Description = "A ninja Naruto plush from Naruto."
+    },
+    ["Itoshi Sae Shoulder Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 1000000000000000000, -- 1Sx
+        AssetId = 100064571606612,
+        Type = "Hat",
+        Description = "A striker Sae chibi from Blue Lock."
+    },
+    ["Luffy Plush"] = { 
+        Rarity = "Anime", 
+        Value = 1200000000000000000, -- 1.2Sx
+        AssetId = 132866616405682,
+        Type = "Hat",
+        Description = "A pirate Luffy plush from One Piece."
+    },
+    ["Otoya Plush"] = { 
+        Rarity = "Anime", 
+        Value = 1500000000000000000, -- 1.5Sx
+        AssetId = 116479106249234,
+        Type = "Hat",
+        Description = "A striker Otoya plush from Blue Lock."
+    },
+    ["Subaru Plush"] = { 
+        Rarity = "Anime", 
+        Value = 2000000000000000000, -- 2Sx
+        AssetId = 94039272668891,
+        Type = "Hat",
+        Description = "A knight Subaru plush from Re:Zero."
+    },
+    ["Kagamine Rin Plush"] = { 
+        Rarity = "Anime", 
+        Value = 2500000000000000000, -- 2.5Sx
+        AssetId = 80794130821345,
+        Type = "Hat",
+        Description = "A vocaloid Rin plush from Vocaloid."
+    },
+    ["Kagamine Len Plush"] = { 
+        Rarity = "Anime", 
+        Value = 3000000000000000000, -- 3Sx
+        AssetId = 118186259403601,
+        Type = "Hat",
+        Description = "A vocaloid Len plush from Vocaloid."
+    },
+    ["Rem Chibi"] = { 
+        Rarity = "Anime", 
+        Value = 4000000000000000000, -- 4Sx
+        AssetId = 85174694435262,
+        Type = "Hat",
+        Description = "A maid Rem chibi from Re:Zero."
+    },
+    ["Don Lorenzo Plush"] = { 
+        Rarity = "Anime", 
+        Value = 5000000000000000000, -- 5Sx
+        AssetId = 97382518239088,
+        Type = "Hat",
+        Description = "A striker Lorenzo plush from Blue Lock."
+    },
+    ["Echidna Plush"] = { 
+        Rarity = "Anime", 
+        Value = 6000000000000000000, -- 6Sx
+        AssetId = 99547520919606,
+        Type = "Hat",
+        Description = "A witch Echidna plush from Re:Zero."
+    },
+    ["Dante Plush"] = { 
+        Rarity = "Anime", 
+        Value = 8000000000000000000, -- 8Sx
+        AssetId = 135675612917976,
+        Type = "Hat",
+        Description = "A devil Dante plush from Devil May Cry."
+    },
+    ["Uraraka Plush"] = { 
+        Rarity = "Anime", 
+        Value = 10000000000000000000, -- 10Sx
+        AssetId = 128072588223691,
+        Type = "Hat",
+        Description = "A hero Uraraka plush from My Hero Academia."
+    },
+    ["Gojo Plush"] = { 
+        Rarity = "Anime", 
+        Value = 12000000000000000000000, -- 12Sx
+        AssetId = 89007870290707,
+        Type = "Hat",
+        Description = "A sorcerer Gojo plush from Jujutsu Kaisen."
+    },
+    ["Miku Plush"] = { 
+        Rarity = "Anime", 
+        Value = 15000000000000000000000, -- 15Sx
+        AssetId = 78288675005637,
+        Type = "Hat",
+        Description = "A vocaloid Miku plush from Vocaloid."
+    },
+    ["Kaiser Chibi"] = { 
+        Rarity = "Anime", 
+        Value = 20000000000000000000000, -- 20Sx
+        AssetId = 136219287434270,
+        Type = "Hat",
+        Description = "A striker Kaiser chibi from Blue Lock."
+    },
+    ["Giyu Plush"] = { 
+        Rarity = "Anime", 
+        Value = 25000000000000000000000, -- 25Sx
+        AssetId = 139516404833966,
+        Type = "Hat",
+        Description = "A hashira Giyu plush from Demon Slayer."
+    },
+    ["Teto Plush"] = { 
+        Rarity = "Anime", 
+        Value = 30000000000000000000000, -- 30Sx
+        AssetId = 86926556400311,
+        Type = "Hat",
+        Description = "A vocaloid Teto plush from Vocaloid."
+    },
+    ["Kaiser Plush"] = { 
+        Rarity = "Anime", 
+        Value = 40000000000000000000000, -- 40Sx
+        AssetId = 122129429181475,
+        Type = "Hat",
+        Description = "A striker Kaiser plush from Blue Lock."
+    },
+    ["Sukuna Plush"] = { 
+        Rarity = "Anime", 
+        Value = 50000000000000000000000, -- 50Sx
+        AssetId = 133755205863725,
+        Type = "Hat",
+        Description = "A curse Sukuna plush from Jujutsu Kaisen."
+    },
+    ["Chigiri Plush"] = { 
+        Rarity = "Anime", 
+        Value = 60000000000000000000000, -- 60Sx
+        AssetId = 129045042928256,
+        Type = "Hat",
+        Description = "A striker Chigiri plush from Blue Lock."
+    },
+    ["Kurona Plush"] = { 
+        Rarity = "Anime", 
+        Value = 80000000000000000000000, -- 80Sx
+        AssetId = 98141693243477,
+        Type = "Hat",
+        Description = "A striker Kurona plush from Blue Lock."
+    },
+    ["Karasu Plush"] = { 
+        Rarity = "Anime", 
+        Value = 100000000000000000000000, -- 100Sx
+        AssetId = 99248596109473,
+        Type = "Hat",
+        Description = "A striker Karasu plush from Blue Lock."
+    },
+    ["Beatrice Plush"] = { 
+        Rarity = "Anime", 
+        Value = 120000000000000000000000, -- 120Sx
+        AssetId = 139238325031143,
+        Type = "Hat",
+        Description = "A spirit Beatrice plush from Re:Zero."
+    },
+    ["Otto Suwen Plush"] = { 
+        Rarity = "Anime", 
+        Value = 150000000000000000000000, -- 150Sx
+        AssetId = 130421400224973,
+        Type = "Hat",
+        Description = "A knight Otto plush from Re:Zero."
+    },
+    ["Haruka Sakura Chibi"] = { 
+        Rarity = "Anime", 
+        Value = 200000000000000000000000, -- 200Sx
+        AssetId = 118071099328414,
+        Type = "Hat",
+        Description = "A striker Haruka chibi from Blue Lock."
+    },
+    ["Bachira Plush"] = { 
+        Rarity = "Anime", 
+        Value = 250000000000000000000000, -- 250Sx
+        AssetId = 139101954409068,
+        Type = "Hat",
+        Description = "A striker Bachira plush from Blue Lock."
+    },
+    ["Aryu Plush"] = { 
+        Rarity = "Anime", 
+        Value = 300000000000000000000000, -- 300Sx
+        AssetId = 96832710486020,
+        Type = "Hat",
+        Description = "A striker Aryu plush from Blue Lock."
+    },
+    ["Alya Plush"] = { 
+        Rarity = "Anime", 
+        Value = 400000000000000000000000, -- 400Sx
+        AssetId = 72528561297702,
+        Type = "Hat",
+        Description = "A striker Alya plush from Blue Lock."
+    },
+    ["Shinra Plush"] = { 
+        Rarity = "Anime", 
+        Value = 500000000000000000000000, -- 500Sx
+        AssetId = 129245864936890,
+        Type = "Hat",
+        Description = "A fire force Shinra plush from Fire Force."
+    },
+    ["Rem Plush"] = { 
+        Rarity = "Anime", 
+        Value = 600000000000000000000000, -- 600Sx
+        AssetId = 79044888298199,
+        Type = "Hat",
+        Description = "A maid Rem plush from Re:Zero."
+    },
+    ["Ram Plush"] = { 
+        Rarity = "Anime", 
+        Value = 800000000000000000000000, -- 800Sx
+        AssetId = 100253924404063,
+        Type = "Hat",
+        Description = "A maid Ram plush from Re:Zero."
+    },
+    ["Mikey Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 1000000000000000000000000, -- 1Sp
+        AssetId = 82490225667712,
+        Type = "Hat",
+        Description = "A gangster Mikey chibi from Tokyo Revengers."
+    },
+    ["Ego Plush"] = { 
+        Rarity = "Dominus", 
+        Value = 1200000000000000000000000, -- 1.2Sp
+        AssetId = 110790114285745,
+        Type = "Hat",
+        Description = "A striker Ego plush from Blue Lock."
+    },
+    ["Nezuko Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 1500000000000000000000000, -- 1.5Sp
+        AssetId = 117674505316276,
+        Type = "Hat",
+        Description = "A demon Nezuko chibi from Demon Slayer."
+    },
+    ["Yuta Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 2000000000000000000000000, -- 2Sp
+        AssetId = 137886852149361,
+        Type = "Hat",
+        Description = "A sorcerer Yuta chibi from Jujutsu Kaisen."
+    },
+    ["Emilia Plush"] = { 
+        Rarity = "Dominus", 
+        Value = 2500000000000000000000000, -- 2.5Sp
+        AssetId = 104808461282373,
+        Type = "Hat",
+        Description = "A half-elf Emilia plush from Re:Zero."
+    },
+    ["Toji Fushiguro Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 3000000000000000000000000, -- 3Sp
+        AssetId = 80433151922305,
+        Type = "Hat",
+        Description = "A sorcerer Toji chibi from Jujutsu Kaisen."
+    },
+    ["Garou Plush"] = { 
+        Rarity = "Dominus", 
+        Value = 4000000000000000000000000, -- 4Sp
+        AssetId = 93433945370816,
+        Type = "Hat",
+        Description = "A hero hunter Garou plush from One Punch Man."
+    },
+    ["Akashi Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 5000000000000000000000000, -- 5Sp
+        AssetId = 102007362205931,
+        Type = "Hat",
+        Description = "A captain Akashi chibi from Kuroko's Basketball."
+    },
+    ["Alexis Ness Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 6000000000000000000000000, -- 6Sp
+        AssetId = 133837204653747,
+        Type = "Hat",
+        Description = "A striker Alexis chibi from Blue Lock."
+    },
+    ["Shidou Ryusei Plush"] = { 
+        Rarity = "Dominus", 
+        Value = 8000000000000000000000000, -- 8Sp
+        AssetId = 71831354211141,
+        Type = "Hat",
+        Description = "A striker Shidou plush from Blue Lock."
+    },
+    ["Deku Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 10000000000000000000000000, -- 10Sp
+        AssetId = 73953876478108,
+        Type = "Hat",
+        Description = "A hero Deku chibi from My Hero Academia."
+    },
+    ["Nishinoya Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 12000000000000000000000000, -- 12Sp
+        AssetId = 70520201064929,
+        Type = "Hat",
+        Description = "A libero Nishinoya chibi from Haikyuu."
+    },
+    ["Megumi Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 15000000000000000000000000, -- 15Sp
+        AssetId = 78047132632240,
+        Type = "Hat",
+        Description = "A sorcerer Megumi chibi from Jujutsu Kaisen."
+    },
+    ["Mitsuri Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 20000000000000000000000000, -- 20Sp
+        AssetId = 86591833840472,
+        Type = "Hat",
+        Description = "A hashira Mitsuri chibi from Demon Slayer."
+    },
+    ["Tanjiro Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 25000000000000000000000000, -- 25Sp
+        AssetId = 89137342503648,
+        Type = "Hat",
+        Description = "A demon slayer Tanjiro chibi from Demon Slayer."
+    },
+    ["Sanemi Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 30000000000000000000000000, -- 30Sp
+        AssetId = 134640182204961,
+        Type = "Hat",
+        Description = "A hashira Sanemi chibi from Demon Slayer."
+    },
+    ["Sae Itoshi Plush"] = { 
+        Rarity = "Dominus", 
+        Value = 40000000000000000000000000, -- 40Sp
+        AssetId = 95433557675398,
+        Type = "Hat",
+        Description = "A striker Sae plush from Blue Lock."
+    },
+    ["Isagi Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 50000000000000000000000000, -- 50Sp
+        AssetId = 74114087443816,
+        Type = "Hat",
+        Description = "A striker Isagi chibi from Blue Lock."
+    },
+    ["Itadori Yuji Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 60000000000000000000000000, -- 60Sp
+        AssetId = 136322471735141,
+        Type = "Hat",
+        Description = "A sorcerer Yuji chibi from Jujutsu Kaisen."
+    },
+    ["Bakugo Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 80000000000000000000000000, -- 80Sp
+        AssetId = 108029167681721,
+        Type = "Hat",
+        Description = "A hero Bakugo chibi from My Hero Academia."
+    },
+    ["Bachira Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 100000000000000000000000000, -- 100Sp
+        AssetId = 137719282020891,
+        Type = "Hat",
+        Description = "A striker Bachira chibi from Blue Lock."
+    },
+    ["Gojo Plush"] = { 
+        Rarity = "Dominus", 
+        Value = 120000000000000000000000000, -- 120Sp
+        AssetId = 128493642736861,
+        Type = "Hat",
+        Description = "A sorcerer Gojo plush from Jujutsu Kaisen."
+    },
+    ["Zhongli Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 150000000000000000000000000, -- 150Sp
+        AssetId = 135265524224498,
+        Type = "Hat",
+        Description = "An archon Zhongli chibi from Genshin Impact."
+    },
+    ["Itoshi Rin Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 200000000000000000000000000, -- 200Sp
+        AssetId = 78091137335159,
+        Type = "Hat",
+        Description = "A striker Rin chibi from Blue Lock."
+    },
+    ["Sukuna Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 250000000000000000000000000, -- 250Sp
+        AssetId = 70451661745817,
+        Type = "Hat",
+        Description = "A curse Sukuna chibi from Jujutsu Kaisen."
+    },
+    ["Choso Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 300000000000000000000000000, -- 300Sp
+        AssetId = 136941804656549,
+        Type = "Hat",
+        Description = "A curse Choso chibi from Jujutsu Kaisen."
+    },
+    ["Reo Figure"] = { 
+        Rarity = "Dominus", 
+        Value = 400000000000000000000000000, -- 400Sp
+        AssetId = 121200396959101,
+        Type = "Hat",
+        Description = "A striker Reo figure from Blue Lock."
+    },
+    ["Shidou Ryusei Figure"] = { 
+        Rarity = "Dominus", 
+        Value = 500000000000000000000000000, -- 500Sp
+        AssetId = 111546688912355,
+        Type = "Hat",
+        Description = "A striker Shidou figure from Blue Lock."
+    },
+    ["Nagi Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 600000000000000000000000000, -- 600Sp
+        AssetId = 134994248940255,
+        Type = "Hat",
+        Description = "A striker Nagi chibi from Blue Lock."
+    },
+    ["Sae Itoshi Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 800000000000000000000000000, -- 800Sp
+        AssetId = 135563773581205,
+        Type = "Hat",
+        Description = "A striker Sae chibi from Blue Lock."
+    },
+    ["Sung Jinwoo Plush"] = { 
+        Rarity = "Dominus", 
+        Value = 1000000000000000000000000000, -- 1Oc
+        AssetId = 133407688592895,
+        Type = "Hat",
+        Description = "A shadow monarch Jinwoo plush from Solo Leveling."
+    },
+    ["Geto Suguru Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 1200000000000000000000000000, -- 1.2Oc
+        AssetId = 99694464261427,
+        Type = "Hat",
+        Description = "A sorcerer Geto chibi from Jujutsu Kaisen."
+    },
+    ["Rin Itoshi Plush"] = { 
+        Rarity = "Dominus", 
+        Value = 1500000000000000000000000000, -- 1.5Oc
+        AssetId = 74093008941153,
+        Type = "Hat",
+        Description = "A striker Rin plush from Blue Lock."
+    },
+    ["Shoei Barou Plush"] = { 
+        Rarity = "Dominus", 
+        Value = 2000000000000000000000000000, -- 2Oc
+        AssetId = 126767561558603,
+        Type = "Hat",
+        Description = "A striker Barou plush from Blue Lock."
+    },
+    ["Reo Plush"] = { 
+        Rarity = "Dominus", 
+        Value = 2500000000000000000000000000, -- 2.5Oc
+        AssetId = 126199792991856,
+        Type = "Hat",
+        Description = "A striker Reo plush from Blue Lock."
+    },
+    ["Isagi Plush"] = { 
+        Rarity = "Dominus", 
+        Value = 3000000000000000000000000000, -- 3Oc
+        AssetId = 122116904983686,
+        Type = "Hat",
+        Description = "A striker Isagi plush from Blue Lock."
+    },
+    ["Nagi Plush"] = { 
+        Rarity = "Dominus", 
+        Value = 4000000000000000000000000000, -- 4Oc
+        AssetId = 121346350308698,
+        Type = "Hat",
+        Description = "A striker Nagi plush from Blue Lock."
+    },
+    ["Rimuru Plush"] = { 
+        Rarity = "Dominus", 
+        Value = 5000000000000000000000000000, -- 5Oc
+        AssetId = 106378184060806,
+        Type = "Hat",
+        Description = "A slime Rimuru plush from That Time I Got Reincarnated as a Slime."
+    },
+    ["Okarun Plush"] = { 
+        Rarity = "Dominus", 
+        Value = 6000000000000000000000000000, -- 6Oc
+        AssetId = 101714484536746,
+        Type = "Hat",
+        Description = "A ghost Okarun plush from Dandadan."
+    },
+    ["Momo Ayase Plush"] = { 
+        Rarity = "Dominus", 
+        Value = 8000000000000000000000000000, -- 8Oc
+        AssetId = 84247659713026,
+        Type = "Hat",
+        Description = "A heroine Momo plush from Oregairu."
+    },
+    ["Hatsune Miku Keychain"] = { 
+        Rarity = "Dominus", 
+        Value = 10000000000000000000000000000, -- 10Oc
+        AssetId = 72876356353513,
+        Type = "Hat",
+        Description = "A vocaloid Miku keychain from Vocaloid."
+    },
+    ["Miku"] = { 
+        Rarity = "Dominus", 
+        Value = 12000000000000000000000000000, -- 12Oc
+        AssetId = 98505265332855,
+        Type = "Hat",
+        Description = "A vocaloid Miku from Vocaloid."
+    },
+    ["Satoru Gojo Chibi"] = { 
+        Rarity = "Dominus", 
+        Value = 15000000000000000000000000000, -- 15Oc
+        AssetId = 110356026493646,
+        Type = "Hat",
+        Description = "A sorcerer Gojo chibi from Jujutsu Kaisen."
+    },
 }
 
 Config.Mutations = {
@@ -705,6 +1642,17 @@ Config.Mutations = {
 }
 
 Config.Boxes = {
+    ["FreeCrate"] = {
+        Name = "🎁 Free Crate",
+        Price = 0,
+        Cooldown = 60,
+        Rewards = {
+            ["Basic Cap"] = 75,         -- 10 value
+            ["Plain T-Shirt"] = 20,     -- 15 value
+            ["Simple Pants"] = 4,       -- 20 value
+            ["Basic Glasses"] = 1,      -- 25 value
+        },
+    },
     ["StarterCrate"] = {
         Name = "📦 Starter Crate",
         Price = 20,
@@ -742,9 +1690,10 @@ Config.Boxes = {
         Price = 3000,
         Rewards = {
             ["Dragon Robe"] = 75,       -- 1800 value (loss)
-            ["Knight Armor"] = 20,      -- 2500 value (loss)
+            ["Knight Armor"] = 19,      -- 2500 value (loss)
             ["Angel Wings"] = 3,        -- 3500 value (win)
             ["Wizard Hat"] = 1.5,       -- 4200 value (win)
+            ["Phoenix Wings"] = 1,      -- 5000 value (win)
             ["Diamond Crown"] = 0.5,    -- 6000 value (jackpot)
         },
     },
@@ -753,10 +1702,11 @@ Config.Boxes = {
         Price = 15000,
         Rewards = {
             ["Void Cloak"] = 75,        -- 12000 value (loss)
-            ["Time Boots"] = 20,        -- 16000 value (win)
+            ["Time Boots"] = 19.5,        -- 16000 value (win)
             ["Crystal Sword"] = 3,      -- 20000 value (win)
             ["Celestial Armor"] = 1.5,  -- 25000 value (win)
             ["God's Halo"] = 0.5,       -- 30000 value (jackpot)
+            ["Reality Gloves"] = 0.5,   -- 45000 value (jackpot)
         },
     },
     ["DivineCrate"] = {
@@ -845,17 +1795,6 @@ Config.Boxes = {
             ["Two Monkey Standing In Back Meme Funny Animal"] = 1 -- 2T (Jackpot)
         },
     },
-    ["FreeCrate"] = {
-        Name = "🎁 Free Crate",
-        Price = 0,
-        Cooldown = 60,
-        Rewards = {
-            ["Basic Cap"] = 75,         -- 10 value
-            ["Plain T-Shirt"] = 20,     -- 15 value
-            ["Simple Pants"] = 4,       -- 20 value
-            ["Basic Glasses"] = 1,      -- 25 value
-        },
-    },
     ["HuzzCrate"] = {
         Name = "💖 Huzz Crate",
         Price = 2500000000000,
@@ -870,6 +1809,353 @@ Config.Boxes = {
             ["Astolfo Companion"] = 1,       -- 10T (jackpot)
         },
     },
+    ["EightBitCrate"] = {
+        Name = "🎮 8-Bit Crate",
+        Price = 100000000000000, -- 100 trillion
+        Rewards = {
+            ["Horn Pixel Red"] = 40,                    -- 50T value (loss)
+            ["8-Bit Snowboard Goggles"] = 25,           -- 60T value (loss)
+            ["8-Bit Helmet"] = 15,                      -- 80T value (loss)
+            ["Damaged Pixel Heart Meme HP"] = 8,        -- 100T value (break-even)
+            ["Pixel Pistol"] = 5,                       -- 120T value (win)
+            ["8-Bit Roblox Coin"] = 3,                  -- 150T value (win)
+            ["8-Bit Extra Life"] = 2,                   -- 200T value (win)
+            ["Black 8-Bit Wings"] = 1,                  -- 300T value (win)
+            ["8-Bit Immortal Sword Venoms Byte"] = 0.5, -- 500T value (win)
+            ["8-Bit Royal Crown"] = 0.3,                -- 800T value (win)
+            ["8-Bit Dominus Infernus"] = 0.2,           -- 2Q value (jackpot)
+        },
+    },
+    ["AnimePlushCrate"] = {
+        Name = "🎀 Anime Plush Crate",
+        Price = 1000000000000000, -- 1Q
+        Rewards = {
+            -- Losses (≈80%)
+            ["Kurumi Plush"] = 18,
+            ["Kaguya Plush"] = 15,
+            ["Esdeath Chibi"] = 12,
+            ["Tohsaka Plush"] = 10,
+            ["Toga Plush"] = 8,
+            ["Eren Plush"] = 6,
+            ["Rikka Plush"] = 4.5,
+            ["Otonose Kanade Plush"] = 3.5,
+            ["Ichigo Plush"] = 3.5,
+            ["Yumeko Plush"] = 2.5,
+            ["Nino Plush"] = 2.5,
+            ["Karane Plush"] = 2,
+            ["Futaba Plush"] = 1.5,
+            ["Marin Plush"] = 1.5,
+            ["Akame Plush"] = 1,
+        
+            -- Break-even (5%)
+            ["Draken Plush"] = 5,
+        
+            -- Wins (≈14.99999999999%)
+        
+            -- Low–Mid Wins (9.5%)
+            ["Tomori Plush"] = 0.8,
+            ["Evergarden Plush"] = 0.7,
+            ["Hange Plush"] = 0.6,
+            ["Nico Plush"] = 0.5,
+            ["Zero Two Plush"] = 0.4,
+            ["Miku Nakano Plush"] = 0.3,
+            ["Lucy Plush"] = 0.25,
+            ["Albedo Plush"] = 0.2,
+            ["Aqua Plush"] = 0.15,
+            ["Mikasa Plush"] = 0.12,
+            ["Kurisu Plush"] = 0.1,
+            ["Asuna Plush"] = 0.08,
+        
+            -- Big Wins (0.3%)
+            ["Akutagawa Plush"] = 0.02,
+            ["Nami Plush"] = 0.015,
+            ["Saber Plush"] = 0.012,
+            ["Akeno Plush"] = 0.01,
+            ["Power Plush"] = 0.008,
+            ["Charlotte Plush"] = 0.006,
+            ["Ikaros Plush"] = 0.005,
+            ["Rias Gremory Plush"] = 0.004,
+            ["Tsukishima Plush"] = 0.003,
+            ["Reinhard Plush"] = 0.0025,
+            ["Megumin Plush"] = 0.002,
+            ["Nezuko Plush"] = 0.0015,
+            ["Makima Plush"] = 0.001,
+        
+            -- Ultra Rare (0.02%)
+            ["Alexis Ness Plush"] = 0.0008,
+            ["Naruto Plush"] = 0.0006,
+            ["Itoshi Sae Shoulder Chibi"] = 0.0005,
+            ["Luffy Plush"] = 0.0004,
+            ["Otoya Plush"] = 0.0003,
+            ["Subaru Plush"] = 0.00025,
+            ["Kagamine Rin Plush"] = 0.0002,
+            ["Kagamine Len Plush"] = 0.00015,
+            ["Rem Chibi"] = 0.00012,
+            ["Don Lorenzo Plush"] = 0.0001,
+            ["Echidna Plush"] = 0.00008,
+            ["Dante Plush"] = 0.00006,
+            ["Uraraka Plush"] = 0.00005,
+            ["Gojo Plush"] = 0.00004,
+            ["Miku Plush"] = 0.00003,
+            ["Kaiser Chibi"] = 0.000025,
+            ["Giyu Plush"] = 0.00002,
+            ["Teto Plush"] = 0.000015,
+            ["Kaiser Plush"] = 0.000012,
+            ["Sukuna Plush"] = 0.00001,
+        
+            -- Mythic+ (0.005%)
+            ["Chigiri Plush"] = 0.000008,
+            ["Kurona Plush"] = 0.000006,
+            ["Karasu Plush"] = 0.000005,
+            ["Beatrice Plush"] = 0.000004,
+            ["Otto Suwen Plush"] = 0.000003,
+            ["Haruka Sakura Chibi"] = 0.000002,
+            ["Bachira Plush"] = 0.0000015,
+            ["Aryu Plush"] = 0.0000012,
+            ["Alya Plush"] = 0.000001,
+            ["Shinra Plush"] = 0.0000008,
+            ["Rem Plush"] = 0.0000006,
+            ["Ram Plush"] = 0.0000004,
+            ["Mikey Chibi"] = 0.0000003,
+            ["Ego Plush"] = 0.0000002,
+            ["Nezuko Chibi"] = 0.00000015,
+            ["Yuta Chibi"] = 0.0000001,
+        
+            -- Jackpot-Tier (0.0005%)
+            ["Emilia Plush"] = 0.00000008,
+            ["Toji Fushiguro Chibi"] = 0.00000006,
+            ["Garou Plush"] = 0.00000005,
+            ["Akashi Chibi"] = 0.00000004,
+            ["Alexis Ness Chibi"] = 0.00000003,
+            ["Shidou Ryusei Plush"] = 0.00000002,
+            ["Deku Chibi"] = 0.000000015,
+            ["Nishinoya Chibi"] = 0.000000012,
+            ["Megumi Chibi"] = 0.00000001,
+        
+            -- Ultimate Jackpot (0.00000000001%)
+            ["Mai Sakurajima Plush"] = 0.00000000001
+        },        
+    },
+}
+
+-- Rebirth System Configuration
+	Config.Rebirths = {
+        [1] = {
+            Name = "First Rebirth",
+            Requirements = {
+                Money = 50000,
+                Items = {
+                    {Name = "Cool Hoodie", Amount = 5},
+                    {Name = "Designer Jeans", Amount = 3}
+                }
+            },
+            Rewards = {
+                LuckBonus = 10, -- 10% luck increase
+                UnlockedCrates = {"LegendaryCrate"}
+            },
+            ResetMoney = 500,
+            ClearInventory = true
+        },
+    
+        [2] = {
+            Name = "Second Rebirth",
+            Requirements = {
+                Money = 100000,
+                Items = {
+                    {Name = "Crown", Amount = 1},
+                    {Name = "VR Goggles", Amount = 2}
+                }
+            },
+            Rewards = {
+                LuckBonus = 10, -- 10% luck increase (20% total)
+                UnlockedCrates = {"MythicalCrate"}
+            },
+            ResetMoney = 500,
+            ClearInventory = true
+        },
+    
+        [3] = {
+            Name = "Third Rebirth",
+            Requirements = {
+                Money = 500000,
+                Items = {
+                    {Name = "Diamond Crown", Amount = 1},
+                    {Name = "Phoenix Wings", Amount = 1}
+                }
+            },
+            Rewards = {
+                LuckBonus = 10, -- 10% luck increase (30% total)
+                UnlockedCrates = {"CelestialCrate"}
+            },
+            ResetMoney = 500,
+            ClearInventory = true
+        },
+    
+        [4] = {
+            Name = "Fourth Rebirth",
+            Requirements = {
+                Money = 2000000,
+                Items = {
+                    {Name = "God's Halo", Amount = 1},
+                    {Name = "Reality Gloves", Amount = 1}
+                }
+            },
+            Rewards = {
+                LuckBonus = 10, -- 10% luck increase (40% total)
+                UnlockedCrates = {"DivineCrate"}
+            },
+            ResetMoney = 500
+        },
+    
+        [5] = {
+            Name = "Fifth Rebirth",
+            Requirements = {
+                Money = 10000000,
+                Items = {
+                    {Name = "Singularity Staff", Amount = 1},
+                    {Name = "Cosmic Crown", Amount = 1}
+                }
+            },
+            Rewards = {
+                LuckBonus = 10, -- 10% luck increase (50% total)
+                UnlockedCrates = {"TranscendentCrate"}
+            },
+            ResetMoney = 500,
+            ClearInventory = false
+        },
+    
+        [6] = {
+            Name = "Sixth Rebirth",
+            Requirements = {
+                Money = 50000000,
+                Items = {
+                    {Name = "Aura of the Gods", Amount = 1},
+                    {Name = "Black Hole Blade", Amount = 1}
+                }
+            },
+            Rewards = {
+                LuckBonus = 10, -- 10% luck increase (60% total)
+                UnlockedCrates = {"EtherealCrate"}
+            },
+            ResetMoney = 500,
+            ClearInventory = false
+        },
+    
+        [7] = {
+            Name = "Seventh Rebirth",
+            Requirements = {
+                Money = 100000000,
+                Items = {
+                    {Name = "Chronomancer's Crown", Amount = 1},
+                    {Name = "Rift Walker's Scythe", Amount = 1}
+                }
+            },
+            Rewards = {
+                LuckBonus = 10, -- 10% luck increase (70% total)
+                UnlockedCrates = {"QuantumCrate"}
+            },
+            ResetMoney = 500,
+            ClearInventory = false
+        },
+    
+        [8] = {
+            Name = "Eighth Rebirth",
+            Requirements = {
+                Money = 500000000,
+                Items = {
+                    {Name = "Mantle of the Architect", Amount = 1},
+                    {Name = "Fragment of Creation", Amount = 1}
+                }
+            },
+            Rewards = {
+                LuckBonus = 10, -- 10% luck increase (80% total)
+                UnlockedCrates = {"LimitedCrate"}
+            },
+            ResetMoney = 500,
+            ClearInventory = false
+        },
+    
+        [9] = {
+            Name = "Ninth Rebirth",
+            Requirements = {
+                Money = 2000000000,
+                Items = {
+                    {Name = "Clockwork's Shades", Amount = 1},
+                    {Name = "Brighteyes' Bloxy Cola Hat", Amount = 1}
+                }
+            },
+            Rewards = {
+                LuckBonus = 10, -- 10% luck increase (90% total)
+                UnlockedCrates = {"DominusCrate"}
+            }
+        },
+    
+        [10] = {
+            Name = "Tenth Rebirth",
+            Requirements = {
+                Money = 10000000000,
+                Items = {
+                    {Name = "Dominus Empyreus", Amount = 1},
+                    {Name = "Dominus Messor", Amount = 1}
+                }
+            },
+            Rewards = {
+                LuckBonus = 10, -- 10% luck increase (100% total)
+                UnlockedCrates = {"BrainrotCrate"}
+            }
+        },
+    
+        [11] = {
+            Name = "Eleventh Rebirth",
+            Requirements = {
+                Money = 25000000000,
+                Items = {
+                    {Name = "Tung Tung Soldiers", Amount = 1},
+                    {Name = "Kanye", Amount = 1}
+                }
+            },
+            Rewards = {
+                LuckBonus = 10, -- 10% luck increase (110% total)
+                UnlockedCrates = {"HuzzCrate"}
+            }
+        },
+    
+        [12] = {
+            Name = "Twelfth Rebirth",
+            Requirements = {
+                Money = 50000000000,
+                Items = {
+                    {Name = "Girl Companion", Amount = 1},
+                    {Name = "Goth Girl Companion", Amount = 1}
+                }
+            },
+            Rewards = {
+                LuckBonus = 10, -- 10% luck increase (120% total)
+                UnlockedCrates = {"EightBitCrate"}
+            }
+        },
+    
+        [13] = {
+            Name = "Thirteenth Rebirth",
+            Requirements = {
+                Money = 100000000000,
+                Items = {
+                    {Name = "Black 8-Bit Wings", Amount = 1},
+                    {Name = "8-Bit Roblox Coin", Amount = 1}
+                }
+            },
+            Rewards = {
+                LuckBonus = 10, -- 10% luck increase (130% total)
+                UnlockedCrates = {"AnimePlushCrate"}
+            }
+        },
+    }
+
+-- Default rebirth settings
+Config.RebirthDefaults = {
+	StartingRebirth = 0,
+	MaxRebirths = 20,
+	BaseLuck = 1.0 -- Base luck multiplier
 }
 
 -- Currency settings
