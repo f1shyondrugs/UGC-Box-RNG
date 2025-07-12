@@ -461,14 +461,57 @@ local function saveData(player: Player)
 		print("[SAVE DEBUG] No settings attribute found for " .. player.Name)
 	end
 
+	-- Save auto-settings data (auto-open, auto-sell, auto-enchanter settings)
+	local autoSettings = DataService.GetAutoSettings(player.UserId)
+	if autoSettings then
+		dataToSave.autoSettings = autoSettings
+		print("[SAVE DEBUG] Auto-settings for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(autoSettings))
+	else
+		print("[SAVE DEBUG] No auto-settings found for " .. player.Name)
+	end
+
+	-- Save RAP value
+	local rapValue = player:GetAttribute("RAPValue") or 0
+	dataToSave.rapValue = rapValue
+	print("[SAVE DEBUG] RAP value for " .. player.Name .. ":", rapValue)
+
+	-- Save rebirths value
+	local rebirthsValue = player:GetAttribute("RebirthsValue") or 0
+	dataToSave.rebirthsValue = rebirthsValue
+	print("[SAVE DEBUG] Rebirths value for " .. player.Name .. ":", rebirthsValue)
+
+	-- Save collection data
+	local collectionData = DataService.GetPlayerCollection(player)
+	if collectionData then
+		dataToSave.collection = collectionData
+		print("[SAVE DEBUG] Collection data for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(collectionData))
+	else
+		print("[SAVE DEBUG] No collection data found for " .. player.Name)
+	end
+
+	-- Save leaderboard data
+	local rapValue = player:GetAttribute("RAPValue") or 0
+	local boxesValue = player:GetAttribute("BoxesOpenedValue") or 0
+	dataToSave.leaderboardData = {
+		rapValue = rapValue,
+		boxesValue = boxesValue
+	}
+	print("[SAVE DEBUG] Leaderboard data for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(dataToSave.leaderboardData))
+
 	-- Debug: Print complete save structure
 	print("[SAVE DEBUG] Complete save data for " .. player.Name .. ":")
 	print("  - Robux:", dataToSave.robux)
 	print("  - Boxes Opened:", dataToSave.boxesOpened)
+	print("  - RAP Value:", dataToSave.rapValue)
+	print("  - Rebirths Value:", dataToSave.rebirthsValue)
 	print("  - Inventory Items:", #(dataToSave.inventory or {}))
 	print("  - Equipped Items:", game:GetService("HttpService"):JSONEncode(dataToSave.equippedItems or {}))
 	print("  - Upgrades:", game:GetService("HttpService"):JSONEncode(dataToSave.upgrades or {}))
+	print("  - Rebirths:", game:GetService("HttpService"):JSONEncode(dataToSave.rebirths or {}))
 	print("  - Settings:", game:GetService("HttpService"):JSONEncode(dataToSave.settings or {}))
+	print("  - Auto-Settings:", game:GetService("HttpService"):JSONEncode(dataToSave.autoSettings or {}))
+	print("  - Collection:", game:GetService("HttpService"):JSONEncode(dataToSave.collection or {}))
+	print("  - Leaderboard Data:", game:GetService("HttpService"):JSONEncode(dataToSave.leaderboardData or {}))
 
 	-- Retry logic for DataStore operations
 	if not playerDataStore then
@@ -499,6 +542,45 @@ local function saveData(player: Player)
 	end
 
 	if success then
+		-- Also update leaderboard stores
+		local rapValue = player:GetAttribute("RAPValue") or 0
+		local boxesValue = player:GetAttribute("BoxesOpenedValue") or 0
+		
+		-- Update RAP leaderboard
+		if rapLeaderboardStore then
+			pcall(function()
+				rapLeaderboardStore:SetAsync(tostring(player.UserId), rapValue)
+			end)
+		end
+		
+		-- Update boxes leaderboard
+		if boxesLeaderboardStore then
+			pcall(function()
+				boxesLeaderboardStore:SetAsync(tostring(player.UserId), boxesValue)
+			end)
+		end
+		
+		-- Update collection datastore
+		if collectionDataStore then
+			local collectionData = DataService.GetPlayerCollection(player)
+			if collectionData then
+				local collectionKey = "collection_" .. player.UserId
+				pcall(function()
+					collectionDataStore:SetAsync(collectionKey, collectionData)
+				end)
+			end
+		end
+		
+		-- Update auto-settings datastore
+		if autoSettingsStore then
+			local autoSettings = DataService.GetAutoSettings(player.UserId)
+			if autoSettings then
+				pcall(function()
+					autoSettingsStore:SetAsync(tostring(player.UserId), autoSettings)
+				end)
+			end
+		end
+		
 		lastSaveTimes[userId] = currentTime -- Update last save time
 		print("Player data saved for " .. player.Name)
 	else
@@ -637,17 +719,10 @@ local function UpdatePlayerCollectionInternal(player)
 		
 		-- Save updated collection if there are changes
 		if hasUpdates then
-			if collectionDataStore then
-				local saveSuccess, err = pcall(function()
-					collectionDataStore:SetAsync(collectionKey, existingCollection)
-				end)
-				
-				if not saveSuccess then
-					warn("Failed to save collection data for " .. player.Name .. ": " .. tostring(err))
-				end
-			else
-				warn("Collection datastore is nil, cannot save collection for " .. player.Name)
-			end
+			-- Collection data is now saved through the main saveData function
+			-- Queue a save to ensure collection data is persisted
+			saveQueue[player.UserId] = player
+			print("Collection updated for " .. player.Name .. " - queued for save")
 		end
 		collectionUpdateCooldowns[userId] = currentTime -- Update last collection update time
 	end)
@@ -694,8 +769,8 @@ end
 task.spawn(function()
 	while true do
 		task.wait(2) -- Reduced from DEBOUNCE_INTERVAL to 2 seconds for more frequent updates
-		processUpdateQueue()
-		processBoxesUpdateQueue()
+		-- processUpdateQueue() -- REMOVED: RAP leaderboard updates now handled in saveData
+		-- processBoxesUpdateQueue() -- REMOVED: Boxes leaderboard updates now handled in saveData
 		processSaveQueue()
 		processCollectionQueue()
 	end
@@ -794,6 +869,56 @@ local function onPlayerAdded(player: Player)
 							print("[LOAD DEBUG] No rebirth data found for " .. player.Name)
 							-- Initialize rebirths to 0
 							DataService.UpdatePlayerRebirths(player, 0)
+						end
+
+						-- Load auto-settings data
+						if data.autoSettings then
+							DataService.SetAutoSettings(player.UserId, data.autoSettings)
+							print("[LOAD DEBUG] Loaded auto-settings for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(data.autoSettings))
+						else
+							print("[LOAD DEBUG] No auto-settings found for " .. player.Name)
+						end
+
+						-- Load RAP value
+						if data.rapValue then
+							player:SetAttribute("RAPValue", data.rapValue)
+							print("[LOAD DEBUG] Loaded RAP value for " .. player.Name .. ":", data.rapValue)
+						else
+							print("[LOAD DEBUG] No RAP value found for " .. player.Name .. " - will calculate")
+						end
+
+						-- Load rebirths value
+						if data.rebirthsValue then
+							player:SetAttribute("RebirthsValue", data.rebirthsValue)
+							print("[LOAD DEBUG] Loaded rebirths value for " .. player.Name .. ":", data.rebirthsValue)
+						else
+							print("[LOAD DEBUG] No rebirths value found for " .. player.Name .. " - will calculate")
+						end
+
+										-- Load collection data
+				if data.collection then
+					-- Collection data is stored separately, so we just log it
+					print("[LOAD DEBUG] Collection data found for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(data.collection))
+				else
+					print("[LOAD DEBUG] No collection data found for " .. player.Name)
+				end
+
+				-- Load leaderboard data
+				if data.leaderboardData then
+					-- Update leaderboard stores with saved data
+					if rapLeaderboardStore then
+						pcall(function()
+							rapLeaderboardStore:SetAsync(tostring(player.UserId), data.leaderboardData.rapValue or 0)
+						end)
+					end
+					if boxesLeaderboardStore then
+						pcall(function()
+							boxesLeaderboardStore:SetAsync(tostring(player.UserId), data.leaderboardData.boxesValue or 0)
+						end)
+					end
+					print("[LOAD DEBUG] Loaded leaderboard data for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(data.leaderboardData))
+				else
+					print("[LOAD DEBUG] No leaderboard data found for " .. player.Name)
 						end
 						
 						-- Load equipped items
@@ -896,6 +1021,56 @@ local function onPlayerAdded(player: Player)
 					-- Initialize rebirths to 0
 					DataService.UpdatePlayerRebirths(player, 0)
 				end
+
+				-- Load auto-settings data
+				if data.autoSettings then
+					DataService.SetAutoSettings(player.UserId, data.autoSettings)
+					print("[LOAD DEBUG] Loaded auto-settings for " .. player.Name .. " (no inventory):", game:GetService("HttpService"):JSONEncode(data.autoSettings))
+				else
+					print("[LOAD DEBUG] No auto-settings found for " .. player.Name .. " (no inventory)")
+				end
+
+				-- Load RAP value
+				if data.rapValue then
+					player:SetAttribute("RAPValue", data.rapValue)
+					print("[LOAD DEBUG] Loaded RAP value for " .. player.Name .. " (no inventory):", data.rapValue)
+				else
+					print("[LOAD DEBUG] No RAP value found for " .. player.Name .. " (no inventory) - will calculate")
+				end
+
+				-- Load rebirths value
+				if data.rebirthsValue then
+					player:SetAttribute("RebirthsValue", data.rebirthsValue)
+					print("[LOAD DEBUG] Loaded rebirths value for " .. player.Name .. " (no inventory):", data.rebirthsValue)
+				else
+					print("[LOAD DEBUG] No rebirths value found for " .. player.Name .. " (no inventory) - will calculate")
+				end
+
+				-- Load collection data
+				if data.collection then
+					-- Collection data is stored separately, so we just log it
+					print("[LOAD DEBUG] Collection data found for " .. player.Name .. " (no inventory):", game:GetService("HttpService"):JSONEncode(data.collection))
+				else
+					print("[LOAD DEBUG] No collection data found for " .. player.Name .. " (no inventory)")
+				end
+
+				-- Load leaderboard data
+				if data.leaderboardData then
+					-- Update leaderboard stores with saved data
+					if rapLeaderboardStore then
+						pcall(function()
+							rapLeaderboardStore:SetAsync(tostring(player.UserId), data.leaderboardData.rapValue or 0)
+						end)
+					end
+					if boxesLeaderboardStore then
+						pcall(function()
+							boxesLeaderboardStore:SetAsync(tostring(player.UserId), data.leaderboardData.boxesValue or 0)
+						end)
+					end
+					print("[LOAD DEBUG] Loaded leaderboard data for " .. player.Name .. " (no inventory):", game:GetService("HttpService"):JSONEncode(data.leaderboardData))
+				else
+					print("[LOAD DEBUG] No leaderboard data found for " .. player.Name .. " (no inventory)")
+				end
 				
 				-- Calculate and set RAP
 				updatePlayerRAP(player)
@@ -916,6 +1091,7 @@ local function onPlayerAdded(player: Player)
 			updatePlayerRobux(player, GameConfig.Currency.StartingAmount)
 			updatePlayerBoxesOpened(player, 0)
 			player:SetAttribute("RAPValue", 0)
+			player:SetAttribute("RebirthsValue", 0)
 			
 			-- Initialize upgrades for new player
 			print("[LOAD DEBUG] New player - initializing default upgrades for " .. player.Name)
@@ -924,6 +1100,13 @@ local function onPlayerAdded(player: Player)
 			for upgradeId, _ in pairs(UpgradeConfig.Upgrades) do
 				UpgradeService.SetPlayerUpgradeLevel(player, upgradeId, 0)
 			end
+			
+			-- Initialize rebirths for new player
+			local RebirthService = require(script.Parent.RebirthService)
+			DataService.UpdatePlayerRebirths(player, 0)
+			
+			-- Initialize auto-settings for new player (empty/default settings)
+			DataService.SetAutoSettings(player.UserId, {})
 			
 			-- Mark loading as complete to enable saves
 			player:SetAttribute("IsLoadingInventory", false)
@@ -1453,9 +1636,9 @@ function DataService.GetAutoSettings(userId)
 end
 
 function DataService.SetAutoSettings(userId, settings)
-	pcall(function()
-		autoSettingsStore:SetAsync(tostring(userId), settings)
-	end)
+	-- Auto-settings are now saved through the main saveData function
+	-- This function is kept for backward compatibility but doesn't save directly
+	-- The actual saving happens in saveData when autoSettings are included
 end
 
 return DataService 

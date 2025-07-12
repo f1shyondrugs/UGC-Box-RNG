@@ -36,13 +36,6 @@ function NavigationController.Start(parentGui, soundControllerRef)
 		end
 	end)
 	
-	NavigationUI.ConnectButton(navigationUI, "Collection", function()
-		if soundController then soundController:playUIClick() end
-		if controllers.Collection then
-			controllers.Collection.toggle()
-		end
-	end)
-	
 	NavigationUI.ConnectButton(navigationUI, "Upgrade", function()
 		if soundController then soundController:playUIClick() end
 		if controllers.Upgrade then

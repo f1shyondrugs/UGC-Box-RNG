@@ -8,6 +8,28 @@ local NumberFormatter = require(Shared.Modules.NumberFormatter)
 
 local CrateSelectionUI = {}
 
+-- Helper function to determine required rebirth level for a crate
+local function getRequiredRebirthLevel(crateName)
+	-- Default crates that are always unlocked
+	if crateName == "FreeCrate" or crateName == "StarterCrate" or crateName == "PremiumCrate" then
+		return 0
+	end
+	
+	-- Check each rebirth level to see which one unlocks this crate
+	for rebirthLevel = 1, 13 do
+		local rebirthConfig = GameConfig.Rebirths[rebirthLevel]
+		if rebirthConfig and rebirthConfig.Rewards and rebirthConfig.Rewards.UnlockedCrates then
+			for _, unlockedCrate in ipairs(rebirthConfig.Rewards.UnlockedCrates) do
+				if unlockedCrate == crateName then
+					return rebirthLevel
+				end
+			end
+		end
+	end
+	
+	return nil -- Crate not found in any rebirth rewards
+end
+
 -- Calculate UI scale based on screen size
 local function calculateUIScale()
 	local viewport = workspace.CurrentCamera.ViewportSize
@@ -415,6 +437,25 @@ function CrateSelectionUI.CreateCrateCard(crateName, crateConfig, isSelected, is
 	selectButton.AutoButtonColor = false -- Fix the purple overlay issue
 	selectButton.ZIndex = 55
 	selectButton.Parent = card
+
+	-- Add rebirth requirement text for locked crates
+	if not isUnlocked then
+		local requiredRebirth = getRequiredRebirthLevel(crateName)
+		if requiredRebirth and requiredRebirth > 0 then
+			local rebirthReqLabel = Instance.new("TextLabel")
+			rebirthReqLabel.Name = "RebirthReqLabel"
+			rebirthReqLabel.Size = UDim2.new(0, 140, 0, 20)
+			rebirthReqLabel.Position = UDim2.new(1, -150, 0.5, 15) -- Below the button
+			rebirthReqLabel.Text = "Need Rebirth " .. requiredRebirth .. " to unlock"
+			rebirthReqLabel.Font = Enum.Font.Gotham
+			rebirthReqLabel.TextSize = 12
+			rebirthReqLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
+			rebirthReqLabel.TextXAlignment = Enum.TextXAlignment.Center
+			rebirthReqLabel.BackgroundTransparency = 1
+			rebirthReqLabel.ZIndex = 55
+			rebirthReqLabel.Parent = card
+		end
+	end
 
 	local selectCorner = Instance.new("UICorner")
 	selectCorner.CornerRadius = UDim.new(0, 12)

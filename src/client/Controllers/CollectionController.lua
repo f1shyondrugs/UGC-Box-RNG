@@ -516,10 +516,340 @@ end
 function CollectionController.Start(parentGui, soundController)
 	local ui = CollectionUI.Create(parentGui)
 	
-	-- Register with NavigationController instead of connecting to toggle button
-	NavigationController.RegisterController("Collection", function()
-		toggleCollection(ui, not ui.MainFrame.Visible, soundController)
-	end)
+	-- Setup collection pad trigger instead of navigation button
+	local function setupCollectionPadTrigger()
+		local collectionFolder = workspace:FindFirstChild("Collection")
+		if not collectionFolder then
+			collectionFolder = Instance.new("Folder")
+			collectionFolder.Name = "Collection"
+			collectionFolder.Parent = workspace
+		end
+		
+		local collectionPad = collectionFolder:FindFirstChild("Pad")
+		if not collectionPad then
+			-- Create the collection pad if it doesn't exist
+			collectionPad = Instance.new("Part")
+			collectionPad.Name = "Pad"
+			collectionPad.Size = Vector3.new(6, 1, 6)
+			collectionPad.Position = Vector3.new(-25, 0.5, 0) -- Position it somewhere in the world
+			collectionPad.Anchored = true
+			collectionPad.Material = Enum.Material.Neon
+			collectionPad.Color = Color3.fromRGB(100, 200, 255) -- Blue color for collection
+			collectionPad.Shape = Enum.PartType.Block
+			collectionPad.Parent = collectionFolder
+			
+			-- Add a glowing effect
+			local pointLight = Instance.new("PointLight")
+			pointLight.Color = Color3.fromRGB(100, 200, 255)
+			pointLight.Brightness = 2
+			pointLight.Range = 15
+			pointLight.Parent = collectionPad
+		end
+		
+		-- Remove any existing ProximityPrompt
+		local existingPrompt = collectionPad:FindFirstChildOfClass("ProximityPrompt")
+		if existingPrompt then
+			existingPrompt:Destroy()
+		end
+		
+		-- Setup touch trigger instead of ProximityPrompt
+		local function onPadTouched(hit)
+			-- Check if the touching part belongs to the local player's character
+			local character = LocalPlayer.Character
+			if not character then return end
+			
+			-- Check if the touching part is part of the player's character
+			local isPlayerPart = false
+			for _, part in pairs(character:GetDescendants()) do
+				if part:IsA("BasePart") and part == hit then
+					isPlayerPart = true
+					break
+				end
+			end
+			
+			if isPlayerPart then
+				-- Add a small delay to prevent multiple triggers
+				if not collectionPad:GetAttribute("RecentlyTriggered") then
+					collectionPad:SetAttribute("RecentlyTriggered", true)
+					
+					soundController:playUIClick()
+					toggleCollection(ui, not ui.MainFrame.Visible, soundController)
+					
+					-- Reset the trigger flag after a short delay
+					task.delay(1, function()
+						collectionPad:SetAttribute("RecentlyTriggered", false)
+					end)
+				end
+			end
+		end
+		
+		-- Connect the touch event
+		collectionPad.Touched:Connect(onPadTouched)
+		
+		print("[CollectionController] Collection pad touch trigger setup at position:", collectionPad.Position)
+	end
+	
+	-- Setup collection screen with 3D item display
+	local function setupCollectionScreen()
+		local collectionFolder = workspace:FindFirstChild("Collection") or workspace:WaitForChild("Collection")
+		
+		local collectionScreen = collectionFolder:FindFirstChild("Screen")
+		if not collectionScreen then
+			-- Create the collection screen if it doesn't exist
+			collectionScreen = Instance.new("Part")
+			collectionScreen.Name = "Screen"
+			collectionScreen.Size = Vector3.new(1, 8, 12)
+			collectionScreen.Position = Vector3.new(-25, 6, 8) -- Position it near the pad
+			collectionScreen.Anchored = true
+			collectionScreen.Material = Enum.Material.Neon
+			collectionScreen.Color = Color3.fromRGB(20, 20, 30)
+			collectionScreen.Shape = Enum.PartType.Block
+			collectionScreen.Parent = collectionFolder
+		end
+		
+		-- Create SurfaceGui on the screen
+		local surfaceGui = collectionScreen:FindFirstChild("SurfaceGui")
+		if not surfaceGui then
+			surfaceGui = Instance.new("SurfaceGui")
+			surfaceGui.Name = "SurfaceGui"
+			surfaceGui.Face = Enum.NormalId.Front
+			surfaceGui.CanvasSize = Vector2.new(800, 600)
+			surfaceGui.LightInfluence = 0
+			surfaceGui.Parent = collectionScreen
+		end
+		
+		-- Create main ItemFrame container
+		local itemFrame = surfaceGui:FindFirstChild("ItemFrame")
+		if not itemFrame then
+			itemFrame = Instance.new("Frame")
+			itemFrame.Name = "ItemFrame"
+			itemFrame.Size = UDim2.new(1, 0, 1, 0)
+			itemFrame.Position = UDim2.new(0, 0, 0, 0)
+			itemFrame.BackgroundColor3 = Color3.fromRGB(15, 18, 28)
+			itemFrame.BorderSizePixel = 0
+			itemFrame.Parent = surfaceGui
+			
+			-- Add title
+			local titleLabel = Instance.new("TextLabel")
+			titleLabel.Name = "TitleLabel"
+			titleLabel.Size = UDim2.new(1, 0, 0, 60)
+			titleLabel.Position = UDim2.new(0, 0, 0, 0)
+			titleLabel.Text = "📚 ITEM COLLECTION"
+			titleLabel.Font = Enum.Font.GothamBold
+			titleLabel.TextSize = 32
+			titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+			titleLabel.BackgroundColor3 = Color3.fromRGB(35, 40, 55)
+			titleLabel.BorderSizePixel = 0
+			titleLabel.Parent = itemFrame
+			
+			-- Add scrolling frame for items
+			local scrollFrame = Instance.new("ScrollingFrame")
+			scrollFrame.Name = "ItemScrollFrame"
+			scrollFrame.Size = UDim2.new(1, 0, 1, -60)
+			scrollFrame.Position = UDim2.new(0, 0, 0, 60)
+			scrollFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+			scrollFrame.BackgroundTransparency = 0.3
+			scrollFrame.BorderSizePixel = 0
+			scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+			scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+			scrollFrame.ScrollBarThickness = 8
+			scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 120)
+			scrollFrame.Parent = itemFrame
+			
+			-- Add grid layout for items
+			local gridLayout = Instance.new("UIGridLayout")
+			gridLayout.CellSize = UDim2.new(0, 120, 0, 120)
+			gridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
+			gridLayout.SortOrder = Enum.SortOrder.Name
+			gridLayout.Parent = scrollFrame
+			
+			-- Add padding
+			local padding = Instance.new("UIPadding")
+			padding.PaddingLeft = UDim.new(0, 10)
+			padding.PaddingRight = UDim.new(0, 10)
+			padding.PaddingTop = UDim.new(0, 10)
+			padding.PaddingBottom = UDim.new(0, 10)
+			padding.Parent = scrollFrame
+		end
+		
+		return itemFrame
+	end
+	
+	-- Function to create blacked-out 3D item displays for the screen
+	local function createBlackedOut3DItemDisplay(itemName, itemConfig, parent)
+		local itemDisplay = Instance.new("Frame")
+		itemDisplay.Name = itemName .. "Display"
+		itemDisplay.Size = UDim2.new(0, 120, 0, 120)
+		itemDisplay.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+		itemDisplay.BorderSizePixel = 0
+		itemDisplay.Parent = parent
+		
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 8)
+		corner.Parent = itemDisplay
+		
+		-- Create ViewportFrame for 3D model
+		local viewport = Instance.new("ViewportFrame")
+		viewport.Name = "ItemViewport"
+		viewport.Size = UDim2.new(1, -10, 1, -30)
+		viewport.Position = UDim2.new(0, 5, 0, 5)
+		viewport.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
+		viewport.BorderSizePixel = 0
+		viewport.Parent = itemDisplay
+		
+		local viewportCorner = Instance.new("UICorner")
+		viewportCorner.CornerRadius = UDim.new(0, 6)
+		viewportCorner.Parent = viewport
+		
+		-- Add item name label
+		local nameLabel = Instance.new("TextLabel")
+		nameLabel.Name = "ItemNameLabel"
+		nameLabel.Size = UDim2.new(1, 0, 0, 20)
+		nameLabel.Position = UDim2.new(0, 0, 1, -20)
+		nameLabel.Text = itemName
+		nameLabel.Font = Enum.Font.SourceSans
+		nameLabel.TextSize = 12
+		nameLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.TextScaled = true
+		nameLabel.Parent = itemDisplay
+		
+		-- Setup blacked-out 3D preview
+		setup3DBlackedOutPreview(viewport, itemConfig)
+		
+		return itemDisplay
+	end
+	
+	-- Function to setup blacked-out 3D preview (silhouette style)
+	local function setup3DBlackedOutPreview(viewport, itemConfig)
+		if not viewport or not itemConfig or not itemConfig.AssetId then return end
+
+		viewport:ClearAllChildren()
+
+		local camera = Instance.new("Camera")
+		camera.Parent = viewport
+		viewport.CurrentCamera = camera
+
+		local light = Instance.new("PointLight")
+		light.Brightness = 1
+		light.Color = Color3.new(0.3, 0.3, 0.3) -- Dim lighting for silhouette effect
+		light.Range = 40
+		light.Parent = camera
+
+		task.spawn(function()
+			local assetPreviewContainer = ReplicatedStorage:WaitForChild("AssetPreviews")
+			local asset = assetPreviewContainer:FindFirstChild(tostring(itemConfig.AssetId))
+
+			if not asset then
+				local success, err = pcall(function()
+					return Remotes.LoadAssetForPreview:InvokeServer(itemConfig.AssetId)
+				end)
+
+				if not success then
+					warn("Error invoking LoadAssetForPreview on server:", err)
+					return
+				end
+				
+				asset = assetPreviewContainer:WaitForChild(tostring(itemConfig.AssetId), 10)
+			end
+
+			local modelToDisplay
+			local isLegacyClothing = false
+
+			if asset then
+				local assetClone = asset:Clone()
+				if assetClone:IsA("Model") or assetClone:IsA("Accessory") then
+					modelToDisplay = assetClone
+				elseif assetClone:IsA("Shirt") or assetClone:IsA("Pants") or assetClone:IsA("TShirt") then
+					isLegacyClothing = true
+					-- Create a simple mannequin for clothing
+					local mannequin = Instance.new("Model")
+					local torso = Instance.new("Part")
+					torso.Name = "Torso"
+					torso.Size = Vector3.new(2, 1, 1)
+					torso.Material = Enum.Material.SmoothPlastic
+					torso.Color = Color3.fromRGB(20, 20, 20) -- Dark silhouette
+					torso.Anchored = true
+					torso.Parent = mannequin
+					mannequin.PrimaryPart = torso
+					assetClone.Parent = mannequin
+					modelToDisplay = mannequin
+				end
+			end
+
+			if modelToDisplay then
+				-- Make all parts dark/black for silhouette effect
+				for _, part in pairs(modelToDisplay:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.Color = Color3.fromRGB(20, 20, 20) -- Dark silhouette color
+						part.Material = Enum.Material.SmoothPlastic
+						-- Remove any textures/decals for clean silhouette
+						for _, child in pairs(part:GetChildren()) do
+							if child:IsA("Decal") or child:IsA("Texture") then
+								child:Destroy()
+							end
+						end
+					end
+				end
+				
+				modelToDisplay.Parent = viewport
+				
+				local modelCFrame, modelSize = modelToDisplay:GetBoundingBox()
+				local modelCenter = modelCFrame.Position
+				
+				local maxDimension = math.max(modelSize.X, modelSize.Y, modelSize.Z)
+				local distance = maxDimension * 1.5 + (isLegacyClothing and 4 or 2)
+				
+				local angle = 0
+				local connection
+				connection = RunService.RenderStepped:Connect(function(dt)
+					if not modelToDisplay.Parent then
+						connection:Disconnect()
+						return
+					end
+					
+					angle = angle + dt * 30 -- Slower rotation for screen display
+					local rotation = CFrame.Angles(math.rad(10), math.rad(angle), 0)
+					local cameraPosition = modelCenter + rotation:VectorToWorldSpace(Vector3.new(0, 0, distance))
+					camera.CFrame = CFrame.lookAt(cameraPosition, modelCenter)
+				end)
+			else
+				warn("Asset could not be displayed:", itemConfig.AssetId)
+				-- Create a placeholder silhouette
+				local part = Instance.new("Part")
+				part.Name = "PlaceholderPreview"
+				part.Size = Vector3.new(2, 2, 2)
+				part.Material = Enum.Material.SmoothPlastic
+				part.Anchored = true
+				part.Color = Color3.fromRGB(20, 20, 20)
+				part.Parent = viewport
+				camera.CFrame = CFrame.lookAt(Vector3.new(4, 2, 4), part.Position)
+			end
+		end)
+	end
+	
+	-- Function to update the collection screen with current items
+	local function updateCollectionScreen()
+		local itemFrame = setupCollectionScreen()
+		local scrollFrame = itemFrame:FindFirstChild("ItemScrollFrame")
+		if not scrollFrame then return end
+		
+		-- Clear existing items
+		for _, child in ipairs(scrollFrame:GetChildren()) do
+			if child:IsA("Frame") and child.Name:find("Display") then
+				child:Destroy()
+			end
+		end
+		
+		-- Add items from all crates
+		for itemName, itemConfig in pairs(GameConfig.Items) do
+			createBlackedOut3DItemDisplay(itemName, itemConfig, scrollFrame)
+		end
+	end
+	
+	-- Setup the pad trigger and collection screen
+	setupCollectionPadTrigger()
+	updateCollectionScreen()
 	
 	ui.CloseButton.MouseButton1Click:Connect(function()
 		if isAnimating then return end

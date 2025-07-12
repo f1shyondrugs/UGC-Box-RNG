@@ -414,8 +414,48 @@ function UpgradeUI.UpdateUpgradeFrame(components, upgradeId, upgradeData)
 		components.UpgradeButton.BackgroundColor3 = Color3.fromRGB(70, 75, 85)
 		components.UpgradeButton.Active = false
 		
-		-- Add Infinite Storage button for InventorySlots at max level
-		if upgradeId == "InventorySlots" and not components.InfiniteStorageButton then
+		-- Update button gradient for max level
+		local buttonGradient = components.UpgradeButton:FindFirstChild("UIGradient")
+		if buttonGradient then
+			buttonGradient.Color = ColorSequence.new{
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(90, 95, 105)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 75, 85))
+			}
+		else
+			buttonGradient = Instance.new("UIGradient")
+			buttonGradient.Color = ColorSequence.new{
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(90, 95, 105)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 75, 85))
+			}
+			buttonGradient.Rotation = 90
+			buttonGradient.Parent = components.UpgradeButton
+		end
+	else
+		components.UpgradeButton.Text = "Upgrade\n" .. NumberFormatter.FormatCurrency(upgradeData.cost or 0)
+		components.UpgradeButton.BackgroundColor3 = Color3.fromRGB(60, 120, 60)
+		components.UpgradeButton.Active = true
+		
+		-- Update button gradient for active state
+		local buttonGradient = components.UpgradeButton:FindFirstChild("UIGradient")
+		if buttonGradient then
+			buttonGradient.Color = ColorSequence.new{
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 140, 80)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 120, 60))
+			}
+		else
+			buttonGradient = Instance.new("UIGradient")
+			buttonGradient.Color = ColorSequence.new{
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 140, 80)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 120, 60))
+			}
+			buttonGradient.Rotation = 90
+			buttonGradient.Parent = components.UpgradeButton
+		end
+	end
+	
+	-- Always show Infinite Storage button for InventorySlots upgrade
+	if upgradeId == "InventorySlots" then
+		if not components.InfiniteStorageButton then
 			local infiniteButton = Instance.new("TextButton")
 			infiniteButton.Name = "InfiniteStorageButton"
 			infiniteButton.Size = UDim2.new(0, 40, 0, 40)
@@ -458,50 +498,9 @@ function UpgradeUI.UpdateUpgradeFrame(components, upgradeId, upgradeData)
 				infiniteStroke.Color = Color3.fromRGB(150, 255, 150)
 				infiniteStroke.Transparency = 0.3
 			end)
-		elseif upgradeId == "InventorySlots" and components.InfiniteStorageButton then
-			-- Make sure the button is visible if it exists
+		else
+			-- Make sure the button is visible
 			components.InfiniteStorageButton.Visible = true
-		end
-		-- Update button gradient for max level
-		local buttonGradient = components.UpgradeButton:FindFirstChild("UIGradient")
-		if buttonGradient then
-			buttonGradient.Color = ColorSequence.new{
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(90, 95, 105)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 75, 85))
-			}
-		else
-			buttonGradient = Instance.new("UIGradient")
-			buttonGradient.Color = ColorSequence.new{
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(90, 95, 105)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 75, 85))
-			}
-			buttonGradient.Rotation = 90
-			buttonGradient.Parent = components.UpgradeButton
-		end
-	else
-		components.UpgradeButton.Text = "Upgrade\n" .. NumberFormatter.FormatCurrency(upgradeData.cost or 0)
-		components.UpgradeButton.BackgroundColor3 = Color3.fromRGB(60, 120, 60)
-		components.UpgradeButton.Active = true
-		
-		-- Hide Infinite Storage button if not at max level
-		if upgradeId == "InventorySlots" and components.InfiniteStorageButton then
-			components.InfiniteStorageButton.Visible = false
-		end
-		-- Update button gradient for active state
-		local buttonGradient = components.UpgradeButton:FindFirstChild("UIGradient")
-		if buttonGradient then
-			buttonGradient.Color = ColorSequence.new{
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 140, 80)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 120, 60))
-			}
-		else
-			buttonGradient = Instance.new("UIGradient")
-			buttonGradient.Color = ColorSequence.new{
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 140, 80)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 120, 60))
-			}
-			buttonGradient.Rotation = 90
-			buttonGradient.Parent = components.UpgradeButton
 		end
 	end
 end

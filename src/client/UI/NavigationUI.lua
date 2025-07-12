@@ -32,8 +32,8 @@ function NavigationUI.Create(parentGui)
 	-- Main Container Frame (draggable)
 	local containerFrame = Instance.new("Frame")
 	containerFrame.Name = "NavigationContainer"
-	containerFrame.Size = UDim2.new(0, 130, 0, 310) -- 2 buttons wide x 5 buttons tall (added rebirth)
-	containerFrame.Position = UDim2.new(0, 15, 0.5, -125) -- Centered vertically on left side, adjusted for new height
+	containerFrame.Size = UDim2.new(0, 130, 0, 260) -- Reduced height for 2x3 grid (6 buttons instead of 7)
+	containerFrame.Position = UDim2.new(0, 15, 0.5, -100) -- Adjusted center position for new height
 	containerFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
 	containerFrame.BackgroundTransparency = 0.02
 	containerFrame.BorderSizePixel = 0
@@ -132,21 +132,18 @@ function NavigationUI.Create(parentGui)
 		return button
 	end
 
-	-- Create navigation buttons (2x4 grid)
-	-- Row 1: Inventory, Collection 
+	-- Create navigation buttons (2x3 grid)
+	-- Row 1: Inventory, Upgrade 
 	components.Buttons.Inventory = createNavButton("Inventory", "📦", nil, 1)
-	components.Buttons.Collection = createNavButton("Collection", "📚", nil, 2)
+	components.Buttons.Upgrade = createNavButton("Upgrade", "⚡", nil, 2)
 	
-	-- Row 2: Upgrade, Settings  
-	components.Buttons.Upgrade = createNavButton("Upgrade", "⚡", nil, 3)
-	components.Buttons.Settings = createNavButton("Settings", "⚙️", nil, 4)
+	-- Row 2: Settings, Auto-Open 
+	components.Buttons.Settings = createNavButton("Settings", "⚙️", nil, 3)
+	components.Buttons.AutoOpen = createNavButton("AutoOpen", "🤖", nil, 4)
 
-	-- Row 3: Auto-Open, Shop
-	components.Buttons.AutoOpen = createNavButton("AutoOpen", "🤖", nil, 5)
-	components.Buttons.Shop = createNavButton("Shop", "🛒", nil, 6)
-	
-	-- Row 4: Rebirth
-	components.Buttons.Rebirth = createNavButton("Rebirth", "🌟", nil, 7)
+	-- Row 3: Shop, Rebirth
+	components.Buttons.Shop = createNavButton("Shop", "🛒", nil, 5)
+	components.Buttons.Rebirth = createNavButton("Rebirth", "🌟", nil, 6)
 
 	-- Update scale when screen size changes
 	local function updateScale()
