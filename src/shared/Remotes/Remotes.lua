@@ -84,4 +84,8 @@ return {
 	
 	-- New RemoteFunction
 	GetAutoSettings = createRemote("RemoteFunction", "GetAutoSettings"),
+	
+	-- Portal Remotes
+	RequestPortalTeleport = createRemote("RemoteEvent", "RequestPortalTeleport"),
+	PortalTeleported = createRemote("RemoteEvent", "PortalTeleported"),
 } 

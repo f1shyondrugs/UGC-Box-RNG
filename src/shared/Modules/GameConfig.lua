@@ -2179,4 +2179,38 @@ Config.InfiniteStorageGamepassId = 1291387177 -- 49R$
 Config.ExtraLuckyGamepassId = 1293308405 -- Extra Lucky (+25%) 129R$
 Config.UltraLuckyGamepassId = 1294534907 -- ULTRA Lucky (+40%) 199R$
 
+-- Area System Configuration
+Config.Areas = {
+    [1] = { 
+        Name = "Area 1", 
+        RebirthsRequired = 2, 
+        Position = Vector3.new(0, 5, 0),
+        Description = "The starting area for new players"
+    },
+    [2] = { 
+        Name = "Area 2", 
+        RebirthsRequired = 4, 
+        Position = Vector3.new(100, 5, 0),
+        Description = "Requires 4 rebirths to access"
+    },
+    [3] = { 
+        Name = "Area 3", 
+        RebirthsRequired = 6, 
+        Position = Vector3.new(200, 5, 0),
+        Description = "Requires 6 rebirths to access"
+    },
+    [4] = { 
+        Name = "Area 4", 
+        RebirthsRequired = 8, 
+        Position = Vector3.new(300, 5, 0),
+        Description = "Requires 8 rebirths to access"
+    },
+    [5] = { 
+        Name = "Area 5", 
+        RebirthsRequired = 10, 
+        Position = Vector3.new(400, 5, 0),
+        Description = "Requires 10 rebirths to access"
+    },
+}
+
 return Config
