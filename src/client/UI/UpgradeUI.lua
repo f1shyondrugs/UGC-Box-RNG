@@ -10,6 +10,7 @@ local LocalPlayer = Players.LocalPlayer
 local Shared = ReplicatedStorage.Shared
 local UpgradeConfig = require(Shared.Modules.UpgradeConfig)
 local NumberFormatter = require(Shared.Modules.NumberFormatter)
+local ButtonStyles = require(script.Parent.ButtonStyles)
 
 local UpgradeUI = {}
 
@@ -355,19 +356,15 @@ function UpgradeUI.CreateUpgradeFrame(parent, upgradeId, upgradeData)
 	upgradeButton.Position = UDim2.new(1, -135, 0, 40)
 	upgradeButton.Font = Enum.Font.GothamBold
 	upgradeButton.TextSize = 14
-	upgradeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 	upgradeButton.ZIndex = 54
 	upgradeButton.Parent = upgradeFrame
 
-	local buttonCorner = Instance.new("UICorner")
-	buttonCorner.CornerRadius = UDim.new(0, 12)
-	buttonCorner.Parent = upgradeButton
-
-	local buttonStroke = Instance.new("UIStroke")
-	buttonStroke.Color = Color3.fromRGB(100, 120, 160)
-	buttonStroke.Thickness = 1
-	buttonStroke.Transparency = 0.5
-	buttonStroke.Parent = upgradeButton
+	-- Apply playful button style
+	ButtonStyles.ApplyStyle(upgradeButton, "Success", {
+		cornerRadius = 12,
+		strokeThickness = 1,
+		strokeTransparency = 0.5
+	})
 
 	-- Store references for updates
 	local components = {
@@ -411,46 +408,12 @@ function UpgradeUI.UpdateUpgradeFrame(components, upgradeId, upgradeData)
 	-- Update button
 	if upgradeData.isMaxLevel then
 		components.UpgradeButton.Text = "MAX LEVEL"
-		components.UpgradeButton.BackgroundColor3 = Color3.fromRGB(70, 75, 85)
+		ButtonStyles.UpdateStyle(components.UpgradeButton, "Disabled")
 		components.UpgradeButton.Active = false
-		
-		-- Update button gradient for max level
-		local buttonGradient = components.UpgradeButton:FindFirstChild("UIGradient")
-		if buttonGradient then
-			buttonGradient.Color = ColorSequence.new{
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(90, 95, 105)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 75, 85))
-			}
-		else
-			buttonGradient = Instance.new("UIGradient")
-			buttonGradient.Color = ColorSequence.new{
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(90, 95, 105)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(70, 75, 85))
-			}
-			buttonGradient.Rotation = 90
-			buttonGradient.Parent = components.UpgradeButton
-		end
 	else
 		components.UpgradeButton.Text = "Upgrade\n" .. NumberFormatter.FormatCurrency(upgradeData.cost or 0)
-		components.UpgradeButton.BackgroundColor3 = Color3.fromRGB(60, 120, 60)
+		ButtonStyles.UpdateStyle(components.UpgradeButton, "Success")
 		components.UpgradeButton.Active = true
-		
-		-- Update button gradient for active state
-		local buttonGradient = components.UpgradeButton:FindFirstChild("UIGradient")
-		if buttonGradient then
-			buttonGradient.Color = ColorSequence.new{
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 140, 80)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 120, 60))
-			}
-		else
-			buttonGradient = Instance.new("UIGradient")
-			buttonGradient.Color = ColorSequence.new{
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 140, 80)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 120, 60))
-			}
-			buttonGradient.Rotation = 90
-			buttonGradient.Parent = components.UpgradeButton
-		end
 	end
 	
 	-- Always show Infinite Storage button for InventorySlots upgrade

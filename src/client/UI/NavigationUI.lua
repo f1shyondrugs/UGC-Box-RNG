@@ -5,6 +5,8 @@ local LocalPlayer = Players.LocalPlayer
 
 local NavigationUI = {}
 
+local ButtonStyles = require(script.Parent.ButtonStyles)
+
 -- Calculate UI scale based on screen size
 local function calculateUIScale()
 	local viewport = workspace.CurrentCamera.ViewportSize
@@ -32,52 +34,52 @@ function NavigationUI.Create(parentGui)
 	-- Main Container Frame (draggable)
 	local containerFrame = Instance.new("Frame")
 	containerFrame.Name = "NavigationContainer"
-	containerFrame.Size = UDim2.new(0, 130, 0, 190) -- Adjusted height for 2x3 grid (fits content exactly)
-	containerFrame.Position = UDim2.new(0, 15, 0.5, -85) -- Adjusted center position for new height
-	containerFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
-	containerFrame.BackgroundTransparency = 0.02
+	containerFrame.Size = UDim2.new(0, 220, 0, 300) -- Bigger container
+	containerFrame.Position = UDim2.new(0, 15, 0.5, -150)
+	containerFrame.BackgroundColor3 = Color3.fromRGB(40, 50, 80)
+	containerFrame.BackgroundTransparency = 0.22 -- More transparent
 	containerFrame.BorderSizePixel = 0
 	containerFrame.ZIndex = 100
 	containerFrame.Parent = screenGui
 	components.ContainerFrame = containerFrame
 	
 	local containerCorner = Instance.new("UICorner")
-	containerCorner.CornerRadius = UDim.new(0, 20)
+	containerCorner.CornerRadius = UDim.new(0, 25) -- Slightly larger corner radius
 	containerCorner.Parent = containerFrame
 
 	local containerGradient = Instance.new("UIGradient")
 	containerGradient.Color = ColorSequence.new{
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 24, 35)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(15, 18, 28)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 12, 18))
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(35, 40, 55)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(30, 35, 45)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 25, 35))
 	}
 	containerGradient.Rotation = 135
 	containerGradient.Parent = containerFrame
 
 	local containerStroke = Instance.new("UIStroke")
-	containerStroke.Color = Color3.fromRGB(50, 55, 70)
-	containerStroke.Thickness = 1
-	containerStroke.Transparency = 0.7
+	containerStroke.Color = Color3.fromRGB(70, 80, 100) -- Brighter stroke
+	containerStroke.Thickness = 2 -- Thicker stroke
+	containerStroke.Transparency = 0.3 -- Less transparent
 	containerStroke.Parent = containerFrame
 	
-	-- Grid Layout (2 columns, 3 rows)
+	-- Grid Layout (2 columns, 3 rows) - Bigger buttons
 	local gridLayout = Instance.new("UIGridLayout")
-	gridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
-	gridLayout.CellSize = UDim2.new(0, 50, 0, 50)
+	gridLayout.CellPadding = UDim2.new(0, 14, 0, 14)
+	gridLayout.CellSize = UDim2.new(0, 85, 0, 85)
 	gridLayout.FillDirection = Enum.FillDirection.Horizontal
 	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	gridLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+	gridLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	gridLayout.StartCorner = Enum.StartCorner.TopLeft
-	gridLayout.FillDirectionMaxCells = 2  -- This forces 2 columns
+	gridLayout.FillDirectionMaxCells = 2
 	gridLayout.Parent = containerFrame
 	
 	-- Add padding to the container
 	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, 10)
-	padding.PaddingBottom = UDim.new(0, 0) -- Reduced bottom padding to remove extra margin
-	padding.PaddingLeft = UDim.new(0, 10)
-	padding.PaddingRight = UDim.new(0, 10)
+	padding.PaddingTop = UDim.new(0, 18)
+	padding.PaddingBottom = UDim.new(0, 18)
+	padding.PaddingLeft = UDim.new(0, 15)
+	padding.PaddingRight = UDim.new(0, 15)
 	padding.Parent = containerFrame
 
 	-- Store button references
@@ -87,63 +89,73 @@ function NavigationUI.Create(parentGui)
 	local function createNavButton(name, icon, color, layoutOrder)
 		local button = Instance.new("TextButton")
 		button.Name = name .. "Button"
-		button.Size = UDim2.new(0, 50, 0, 50) -- This will be overridden by grid
-		button.BackgroundColor3 = Color3.fromRGB(42, 47, 65) -- Solid attractive color
+		button.Text = "_____"
+		button.Size = UDim2.new(0, 85, 0, 85)
 		button.BorderSizePixel = 0
-		button.Text = icon or "?"
-		button.Font = Enum.Font.GothamBold
-		button.TextScaled = true
-		button.TextColor3 = Color3.fromRGB(255, 255, 255)
-		button.AutoButtonColor = false -- Prevent default button color changes
+		button.BackgroundTransparency = 0
+		button.AutoButtonColor = false
 		button.ZIndex = 101
 		button.LayoutOrder = layoutOrder
-		button.Active = true -- Explicitly make the button active
+		button.Active = true
 		button.Parent = containerFrame
-		print("Created navigation button: " .. name)
-		
+
 		local aspect = Instance.new("UIAspectRatioConstraint")
 		aspect.AspectRatio = 1
 		aspect.Parent = button
-		
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 12)
-		corner.Parent = button
 
-		-- Enhanced stroke for visual appeal instead of gradient
-		local buttonStroke = Instance.new("UIStroke")
-		buttonStroke.Color = Color3.fromRGB(120, 80, 255)
-		buttonStroke.Thickness = 2
-		buttonStroke.Transparency = 0.3
-		buttonStroke.Parent = button
+		ButtonStyles.ApplyStyle(button, "Navigation", {
+			cornerRadius = 18,
+			strokeThickness = 3,
+			strokeTransparency = 0.18
+		})
 
-		-- Hover effects
-		button.MouseEnter:Connect(function()
-			button.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
-			buttonStroke.Color = Color3.fromRGB(200, 160, 255)
-			buttonStroke.Transparency = 0.1
-		end)
-		
-		button.MouseLeave:Connect(function()
-			button.BackgroundColor3 = Color3.fromRGB(42, 47, 65)
-			buttonStroke.Color = Color3.fromRGB(120, 80, 255)
-			buttonStroke.Transparency = 0.3
-		end)
-		
+		-- Icon (emoji) label
+		local iconLabel = Instance.new("TextLabel")
+		iconLabel.Name = "IconLabel"
+		iconLabel.Size = UDim2.new(1, 0, 0.55, 0)
+		iconLabel.Position = UDim2.new(0, 0, 0, 0)
+		iconLabel.BackgroundTransparency = 1
+		iconLabel.Text = icon or "?"
+		iconLabel.Font = Enum.Font.GothamBold
+		iconLabel.TextSize = 40
+		iconLabel.TextColor3 = Color3.fromRGB(255,255,255)
+		iconLabel.TextStrokeTransparency = 0.8
+		iconLabel.TextXAlignment = Enum.TextXAlignment.Center
+		iconLabel.TextYAlignment = Enum.TextYAlignment.Center
+		iconLabel.ZIndex = 102
+		iconLabel.Parent = button
+
+		-- Text label below icon
+		local textLabel = Instance.new("TextLabel")
+		textLabel.Name = "NavTextLabel"
+		textLabel.Size = UDim2.new(1, 0, 0.45, 0)
+		textLabel.Position = UDim2.new(0, 0, 0.55, 0)
+		textLabel.BackgroundTransparency = 1
+		textLabel.Text = (icon == "🤖" and "Auto" or name)
+		textLabel.Font = Enum.Font.GothamSemibold
+		textLabel.TextSize = 18
+		textLabel.TextColor3 = Color3.fromRGB(255,255,255)
+		textLabel.TextStrokeTransparency = 0.8
+		textLabel.TextXAlignment = Enum.TextXAlignment.Center
+		textLabel.TextYAlignment = Enum.TextYAlignment.Center
+		textLabel.ZIndex = 102
+		textLabel.Parent = button
+
 		return button
 	end
 
-	-- Create navigation buttons (2x3 grid)
-	-- Row 1: Inventory, Upgrade 
+	-- Create navigation buttons (2x3 grid) - Reordered for better UX
+	-- Row 1: Main gameplay features (Inventory, Shop)
 	components.Buttons.Inventory = createNavButton("Inventory", "📦", nil, 1)
-	components.Buttons.Upgrade = createNavButton("Upgrade", "⚡", nil, 2)
+	components.Buttons.Shop = createNavButton("Shop", "🛒", nil, 2)
 	
-	-- Row 2: Settings, Auto-Open 
-	components.Buttons.Settings = createNavButton("Settings", "⚙️", nil, 3)
-	components.Buttons.AutoOpen = createNavButton("AutoOpen", "🤖", nil, 4)
+	-- Row 2: Progression features (Upgrade, Rebirth)
+	components.Buttons.Upgrade = createNavButton("Upgrade", "⚡", nil, 3)
+	components.Buttons.Rebirth = createNavButton("Rebirth", "🌟", nil, 4)
 
-	-- Row 3: Shop, Rebirth
-	components.Buttons.Shop = createNavButton("Shop", "🛒", nil, 5)
-	components.Buttons.Rebirth = createNavButton("Rebirth", "🌟", nil, 6)
+	-- Row 3: Automation & Settings (Auto-Open, Settings)
+	components.Buttons.AutoOpen = createNavButton("AutoOpen", "🤖", nil, 5)
+	components.Buttons.Settings = createNavButton("Settings", "⚙️", nil, 6)
 
 	-- Update scale when screen size changes
 	local function updateScale()

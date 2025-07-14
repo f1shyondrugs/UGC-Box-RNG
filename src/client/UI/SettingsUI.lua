@@ -433,28 +433,34 @@ function SettingsUI.CreateSettingFrame(parent, settingId, value)
 		components.SliderKnob = sliderKnob
 		components.ValueLabel = valueLabel
 	else
-		-- Toggle Button for boolean settings
-		local toggleButton = Instance.new("TextButton")
-		toggleButton.Name = "ToggleButton"
-		toggleButton.Size = UDim2.new(0, 120, 0, 40)
-		toggleButton.Position = UDim2.new(1, -135, 0, 40)
-		toggleButton.Font = Enum.Font.GothamBold
-		toggleButton.TextSize = 14
-		toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-		toggleButton.ZIndex = 54
-		toggleButton.Parent = settingFrame
+		-- Toggle Switch for boolean settings (slider style)
+		local toggle = Instance.new("TextButton")
+		toggle.Name = "Toggle"
+		toggle.Size = UDim2.new(0, 50, 0, 25)
+		toggle.Position = UDim2.new(1, -65, 0, 40)
+		toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+		toggle.Text = ""
+		toggle.ZIndex = 54
+		toggle.Parent = settingFrame
 
-		local buttonCorner = Instance.new("UICorner")
-		buttonCorner.CornerRadius = UDim.new(0, 12)
-		buttonCorner.Parent = toggleButton
+		local toggleCorner = Instance.new("UICorner")
+		toggleCorner.CornerRadius = UDim.new(0, 12)
+		toggleCorner.Parent = toggle
 
-		local buttonStroke = Instance.new("UIStroke")
-		buttonStroke.Color = Color3.fromRGB(100, 120, 160)
-		buttonStroke.Thickness = 1
-		buttonStroke.Transparency = 0.5
-		buttonStroke.Parent = toggleButton
+		local indicator = Instance.new("Frame")
+		indicator.Name = "Indicator"
+		indicator.Size = UDim2.new(0, 21, 0, 21)
+		indicator.Position = UDim2.new(0, 2, 0, 2)
+		indicator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		indicator.ZIndex = 55
+		indicator.Parent = toggle
 
-		components.ToggleButton = toggleButton
+		local indicatorCorner = Instance.new("UICorner")
+		indicatorCorner.CornerRadius = UDim.new(0, 10)
+		indicatorCorner.Parent = indicator
+
+		components.Toggle = toggle
+		components.Indicator = indicator
 	end
 
 	-- Update display based on setting state
@@ -487,45 +493,18 @@ function SettingsUI.UpdateSettingFrame(components, settingId, value)
 		components.StatusLabel.Text = string.format("Value: %.1f (%.0f%%)", value, normalizedValue * 100)
 		components.StatusLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
 	else
-		-- Update toggle display
+		-- Update slider toggle display
 		local isEnabled = value
 		local statusText = "Status: " .. (isEnabled and "ENABLED" or "DISABLED")
 		components.StatusLabel.Text = statusText
 		components.StatusLabel.TextColor3 = isEnabled and Color3.fromRGB(150, 255, 150) or Color3.fromRGB(255, 150, 150)
 
-		-- Update button
-		components.ToggleButton.Text = isEnabled and "DISABLE" or "ENABLE"
-		components.ToggleButton.BackgroundColor3 = isEnabled and Color3.fromRGB(140, 60, 60) or Color3.fromRGB(60, 140, 60)
-		
-		-- Update button gradient
-		local buttonGradient = components.ToggleButton:FindFirstChild("UIGradient")
-		if buttonGradient then
-			if isEnabled then
-				buttonGradient.Color = ColorSequence.new{
-					ColorSequenceKeypoint.new(0, Color3.fromRGB(160, 80, 80)),
-					ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 60, 60))
-				}
-			else
-				buttonGradient.Color = ColorSequence.new{
-					ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 160, 80)),
-					ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 140, 60))
-				}
-			end
-		else
-			buttonGradient = Instance.new("UIGradient")
-			if isEnabled then
-				buttonGradient.Color = ColorSequence.new{
-					ColorSequenceKeypoint.new(0, Color3.fromRGB(160, 80, 80)),
-					ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 60, 60))
-				}
-			else
-				buttonGradient.Color = ColorSequence.new{
-					ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 160, 80)),
-					ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 140, 60))
-				}
-			end
-			buttonGradient.Rotation = 90
-			buttonGradient.Parent = components.ToggleButton
+		if components.Toggle and components.Indicator then
+			local TweenService = game:GetService("TweenService")
+			local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			components.Toggle.BackgroundColor3 = isEnabled and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(60, 60, 60)
+			local targetPos = isEnabled and UDim2.new(1, -23, 0, 2) or UDim2.new(0, 2, 0, 2)
+			TweenService:Create(components.Indicator, tweenInfo, {Position = targetPos}):Play()
 		end
 	end
 end

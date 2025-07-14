@@ -28,6 +28,7 @@ local EnchanterController = require(script.Parent.Controllers.EnchanterControlle
 local AutoOpenController = require(script.Parent.Controllers.AutoOpenController)
 local ShopController = require(script.Parent.Controllers.ShopController)
 local RebirthController = require(script.Parent.Controllers.RebirthController)
+local ToastNotificationController = require(script.Parent.Controllers.ToastNotificationController)
 local BuyButtonUI = require(script.Parent.UI.BuyButtonUI)
 local StatsUI = require(script.Parent.UI.StatsUI)
 local BoostersController = require(script.Parent.Controllers.BoostersController)
@@ -91,6 +92,7 @@ soundController:playMusic()
 
 CameraShaker.Start()
 Notifier.Start(PlayerGui)
+ToastNotificationController.Start(PlayerGui)
 NavigationController.Start(PlayerGui, soundController)
 InventoryController.Start(PlayerGui, openingBoxes, soundController)
 CollectionController.Start(PlayerGui, soundController)
@@ -119,6 +121,7 @@ RebirthController:SetSoundController(soundController)
 soundController:setSettingsController(SettingsController)
 BoxAnimator.SetSettingsController(SettingsController)
 Notifier.SetSettingsController(SettingsController)
+ToastNotificationController.SetSettingsController(SettingsController)
 
 -- Register rebirth controller with navigation
 NavigationController.RegisterController("Rebirth", function()
@@ -464,7 +467,8 @@ end)
 
 -- Connect floating notification system
 Remotes.ShowFloatingNotification.OnClientEvent:Connect(function(message, messageType)
-	BoxAnimator.AnimateFloatingNotification(message, messageType)
+	print("[Main.client] Received ShowFloatingNotification:", message, messageType)
+	ToastNotificationController.ShowToast(message, messageType)
 end)
 
 -- Celebration effect remote

@@ -17,6 +17,7 @@ local GameConfig = require(Shared.Modules.GameConfig)
 local CollectionUI = require(script.Parent.Parent.UI.CollectionUI)
 local ItemValueCalculator = require(Shared.Modules.ItemValueCalculator)
 local NumberFormatter = require(Shared.Modules.NumberFormatter)
+local ToastNotificationController = require(script.Parent.ToastNotificationController)
 
 local CollectionController = {}
 
@@ -642,7 +643,7 @@ function CollectionController.Start(parentGui, soundController)
 		if not collectionPrompt then
 			collectionPrompt = Instance.new("ProximityPrompt")
 			collectionPrompt.Name = "ProximityPrompt"
-			collectionPrompt.ActionText = "Use Collection"
+			collectionPrompt.ActionText = "Open Collection"
 			collectionPrompt.ObjectText = "Item Collection"
 			collectionPrompt.KeyboardKeyCode = Enum.KeyCode.E
 			collectionPrompt.RequiresLineOfSight = false
@@ -668,7 +669,7 @@ function CollectionController.Start(parentGui, soundController)
 							toggleCollection(ui, not isCurrentlyOpen, soundController)
 						else
 							if BoxAnimator then
-								BoxAnimator.AnimateFloatingNotification("Collection unlocks at Rebirth 2!", "Error")
+								ToastNotificationController.ShowToast("Collection unlocks at Rebirth 2!", "Error")
 							end
 						end
 					end
@@ -712,7 +713,7 @@ function CollectionController.Start(parentGui, soundController)
 				
 				-- Update the pad and prompt
 				if isUnlocked then
-					prompt.ActionText = "Use Collection"
+					prompt.ActionText = "Open Collection"
 					prompt.ObjectText = "Item Collection"
 					collectionPad.Color = Color3.fromRGB(100, 200, 255) -- Normal blue
 					pointLight.Color = Color3.fromRGB(100, 200, 255)

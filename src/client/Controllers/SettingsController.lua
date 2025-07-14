@@ -365,8 +365,8 @@ local function updateSettingsDisplay()
 				setupSliderInteraction(settingFrame, settingId)
 			else
 				-- Connect toggle button for boolean settings
-				if settingFrame.ToggleButton then
-					settingFrame.ToggleButton.MouseButton1Click:Connect(function()
+				if settingFrame.Toggle then
+					settingFrame.Toggle.MouseButton1Click:Connect(function()
 						toggleSetting(settingId)
 					end)
 				end

@@ -132,8 +132,9 @@ local function promptGamepassPurchase()
 	if not GameConfig or not GameConfig.AutoEnchanterGamepassId then
 		warn("AutoEnchanterGamepassId not found in GameConfig")
 		-- Notify player about the issue
-		if BoxAnimator and BoxAnimator.AnimateFloatingNotification then
-			BoxAnimator.AnimateFloatingNotification("Auto-Enchanter gamepass temporarily unavailable. Please try again later.", "Error")
+		local ToastNotificationController = require(script.Parent.ToastNotificationController)
+		if ToastNotificationController then
+			ToastNotificationController.ShowToast("Auto-Enchanter gamepass temporarily unavailable. Please try again later.", "Error")
 		end
 		return
 	end
@@ -142,8 +143,9 @@ local function promptGamepassPurchase()
 	local gamepassId = GameConfig.AutoEnchanterGamepassId
 	if type(gamepassId) ~= "number" or gamepassId <= 0 then
 		warn("Invalid AutoEnchanterGamepassId:", gamepassId)
-		if BoxAnimator and BoxAnimator.AnimateFloatingNotification then
-			BoxAnimator.AnimateFloatingNotification("Auto-Enchanter gamepass temporarily unavailable. Please try again later.", "Error")
+		local ToastNotificationController = require(script.Parent.ToastNotificationController)
+		if ToastNotificationController then
+			ToastNotificationController.ShowToast("Auto-Enchanter gamepass temporarily unavailable. Please try again later.", "Error")
 		end
 		return
 	end
@@ -155,8 +157,9 @@ local function promptGamepassPurchase()
 	
 	if not success then
 		warn("Failed to prompt gamepass purchase:", err)
-		if BoxAnimator and BoxAnimator.AnimateFloatingNotification then
-			BoxAnimator.AnimateFloatingNotification("Failed to open gamepass purchase. Please try again.", "Error")
+		local ToastNotificationController = require(script.Parent.ToastNotificationController)
+		if ToastNotificationController then
+			ToastNotificationController.ShowToast("Failed to open gamepass purchase. Please try again.", "Error")
 		end
 	end
 end
@@ -1195,10 +1198,11 @@ function EnchanterController:Show(itemsList)
 		end
 		
 		if not isUnlocked then
-			-- Show locked notification
-			if BoxAnimator then
-				BoxAnimator.AnimateFloatingNotification("Enchanter unlocks at Rebirth 4!", "Error")
-			end
+					-- Show locked notification
+		local ToastNotificationController = require(script.Parent.ToastNotificationController)
+		if ToastNotificationController then
+			ToastNotificationController.ShowToast("Enchanter unlocks at Rebirth 4!", "Error")
+		end
 			return
 		end
 	end
@@ -1349,8 +1353,11 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamep
 		hasAutoEnchanterGamepass = true
 		updateAutoEnchanterUI()
 		-- Show celebration effects and notification
+		local ToastNotificationController = require(script.Parent.ToastNotificationController)
+		if ToastNotificationController then
+			ToastNotificationController.ShowToast("Gamepass purchased! Auto-Enchanter is now enabled.", "Success")
+		end
 		if BoxAnimator then
-			BoxAnimator.AnimateFloatingNotification("Gamepass purchased! Auto-Enchanter is now enabled.", "Success")
 			BoxAnimator.PlayCelebrationEffect()
 		end
 	end

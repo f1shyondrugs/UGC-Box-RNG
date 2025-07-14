@@ -8,6 +8,7 @@ local BuyButtonUI = {}
 
 local GameConfig = require(game.ReplicatedStorage.Shared.Modules.GameConfig)
 local NumberFormatter = require(game.ReplicatedStorage.Shared.Modules.NumberFormatter)
+local ButtonStyles = require(script.Parent.ButtonStyles)
 
 -- Function to calculate appropriate UI scale based on screen size
 local function calculateUIScale()
@@ -81,30 +82,18 @@ function BuyButtonUI.Create(parent)
 	local buyButton = Instance.new("TextButton")
 	buyButton.Name = "BuyBoxButton"
 	buyButton.Size = UDim2.new(0.48, 0, 0.9, 0) -- 48% of container width
-	buyButton.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
 	buyButton.Font = Enum.Font.GothamBold
 	buyButton.Text = "" -- Text will be handled by children
 	buyButton.ZIndex = 1 -- Lower ZIndex
 	buyButton.Parent = mainFrame
 	components.BuyButton = buyButton
 	
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 12)
-	corner.Parent = buyButton
-
-	local buttonGradient = Instance.new("UIGradient")
-	buttonGradient.Color = ColorSequence.new{
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 100, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 80, 255))
-	}
-	buttonGradient.Rotation = 90
-	buttonGradient.Parent = buyButton
-
-	local buttonStroke = Instance.new("UIStroke")
-	buttonStroke.Color = Color3.fromRGB(200, 160, 255)
-	buttonStroke.Thickness = 1
-	buttonStroke.Transparency = 0.3
-	buttonStroke.Parent = buyButton
+	-- Apply playful button style
+	ButtonStyles.ApplyStyle(buyButton, "Primary", {
+		cornerRadius = 12,
+		strokeThickness = 2,
+		strokeTransparency = 0.3
+	})
 	
 	-- "Buy/Get Crate" Text (will change based on selection)
 	local titleLabel = Instance.new("TextLabel")
@@ -168,11 +157,9 @@ function BuyButtonUI.Create(parent)
 	local crateDropdown = Instance.new("TextButton")
 	crateDropdown.Name = "CrateDropdown"
 	crateDropdown.Size = UDim2.new(0.48, 0, 0.9, 0) -- 48% of container width
-	crateDropdown.BackgroundColor3 = Color3.fromRGB(42, 47, 65) -- Solid attractive color
 	crateDropdown.Font = Enum.Font.GothamBold
 	crateDropdown.Text = "📦 Select Crate"
 	crateDropdown.TextScaled = true
-	crateDropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
 	crateDropdown.AutoButtonColor = false -- Prevent default button overlay
 	crateDropdown.ZIndex = 1 -- Lower ZIndex
 	crateDropdown.Parent = mainFrame
@@ -183,29 +170,12 @@ function BuyButtonUI.Create(parent)
 	dropdownPadding.PaddingRight = UDim.new(0.05, 0)
 	dropdownPadding.Parent = crateDropdown
 
-	local dropdownCorner = Instance.new("UICorner")
-	dropdownCorner.CornerRadius = UDim.new(0, 12)
-	dropdownCorner.Parent = crateDropdown
-
-	-- Enhanced stroke for visual appeal instead of gradient
-	local dropdownStroke = Instance.new("UIStroke")
-	dropdownStroke.Color = Color3.fromRGB(120, 80, 255)
-	dropdownStroke.Thickness = 2
-	dropdownStroke.Transparency = 0.3
-	dropdownStroke.Parent = crateDropdown
-
-	-- Hover effects
-	crateDropdown.MouseEnter:Connect(function()
-		crateDropdown.BackgroundColor3 = Color3.fromRGB(120, 80, 255)
-		dropdownStroke.Color = Color3.fromRGB(200, 160, 255)
-		dropdownStroke.Transparency = 0.1
-	end)
-	
-	crateDropdown.MouseLeave:Connect(function()
-		crateDropdown.BackgroundColor3 = Color3.fromRGB(42, 47, 65)
-		dropdownStroke.Color = Color3.fromRGB(120, 80, 255)
-		dropdownStroke.Transparency = 0.3
-	end)
+	-- Apply playful button style
+	ButtonStyles.ApplyStyle(crateDropdown, "Info", {
+		cornerRadius = 12,
+		strokeThickness = 2,
+		strokeTransparency = 0.3
+	})
 
 	-- Store selected crate type
 	components.SelectedCrateType = "StarterCrate" -- Default
@@ -237,13 +207,13 @@ function BuyButtonUI.SetSelectedCrate(components, crateType)
 	-- Update button appearance based on crate type
 	if crateType == "FreeCrate" then
 		-- Free crate styling
-		components.BuyButton.BackgroundColor3 = Color3.fromRGB(76, 175, 80)
+		ButtonStyles.UpdateStyle(components.BuyButton, "Success")
 		components.TitleLabel.Text = "Get Free Crate"
 		components.CostLabel.Text = "FREE - No Cost!"
 		components.CostLabel.TextColor3 = Color3.fromRGB(200, 255, 200)
 	else
 		-- Paid crate styling
-		components.BuyButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+		ButtonStyles.UpdateStyle(components.BuyButton, "Primary")
 		components.TitleLabel.Text = "Buy UGC Crate"
 		components.CostLabel.Text = "Cost: " .. NumberFormatter.FormatCurrency(crateConfig.Price) .. " R$"
 		components.CostLabel.TextColor3 = Color3.fromRGB(200, 205, 255)
@@ -269,12 +239,12 @@ function BuyButtonUI.SetEnabled(components, isEnabled)
 	if isEnabled then
 		-- Restore appropriate color based on selected crate
 		if components.SelectedCrateType == "FreeCrate" then
-			button.BackgroundColor3 = Color3.fromRGB(76, 175, 80)
+			ButtonStyles.UpdateStyle(button, "Success")
 		else
-			button.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+			ButtonStyles.UpdateStyle(button, "Primary")
 		end
 	else
-		button.BackgroundColor3 = Color3.fromRGB(87, 91, 99)
+		ButtonStyles.UpdateStyle(button, "Disabled")
 	end
 end
 
