@@ -232,6 +232,7 @@ local function updateUI()
 	if ui.AutoSellSection then
 		AutoOpenUI.UpdateToggleState(ui.AutoSellToggle, ui.AutoSellSection.Indicator, settings.autoSellEnabled)
 	end
+	-- Always show and enable all Auto-Sell controls, regardless of gamepass
 	if ui.SizeSection and ui.SizeInput then
 		ui.SizeInput.TextEditable = true
 		ui.SizeInput.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -239,6 +240,12 @@ local function updateUI()
 	if ui.ValueSection and ui.ValueInput then
 		ui.ValueInput.TextEditable = true
 		ui.ValueInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+	end
+	if ui.SizeSection and ui.SizeSection.DecreaseButton then
+		ui.SizeSection.DecreaseButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+	end
+	if ui.SizeSection and ui.SizeSection.IncreaseButton then
+		ui.SizeSection.IncreaseButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
 	end
 	if ui.ValueSection and ui.ValueSection.DecreaseButton then
 		ui.ValueSection.DecreaseButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
@@ -248,11 +255,24 @@ local function updateUI()
 	end
 	if ui.AutoSellSection and ui.AutoSellSection.Section then
 		ui.AutoSellSection.Section.BackgroundTransparency = 0
-		-- Remove any code that adds a lock icon to Auto-Sell controls (e.g., LockIcon TextLabel creation for AutoSellSection or ValueSection)
+		if ui.AutoSellSection.Title then
+			ui.AutoSellSection.Title.Text = "Enable Auto-Sell"
+			ui.AutoSellSection.Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+		end
+	end
+	if ui.SizeSection and ui.SizeSection.Section then
+		ui.SizeSection.Section.BackgroundTransparency = 0
+		if ui.SizeSection.Title then
+			ui.SizeSection.Title.Text = "Auto-Sell Below Size"
+			ui.SizeSection.Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+		end
 	end
 	if ui.ValueSection and ui.ValueSection.Section then
 		ui.ValueSection.Section.BackgroundTransparency = 0
-		-- Remove any code that adds a lock icon to Auto-Sell controls (e.g., LockIcon TextLabel creation for AutoSellSection or ValueSection)
+		if ui.ValueSection.Title then
+			ui.ValueSection.Title.Text = "Auto-Sell Below Value"
+			ui.ValueSection.Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+		end
 	end
 	
 	-- Update input values and infinite toggles
