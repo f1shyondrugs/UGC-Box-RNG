@@ -32,8 +32,8 @@ function NavigationUI.Create(parentGui)
 	-- Main Container Frame (draggable)
 	local containerFrame = Instance.new("Frame")
 	containerFrame.Name = "NavigationContainer"
-	containerFrame.Size = UDim2.new(0, 130, 0, 260) -- Reduced height for 2x3 grid (6 buttons instead of 7)
-	containerFrame.Position = UDim2.new(0, 15, 0.5, -100) -- Adjusted center position for new height
+	containerFrame.Size = UDim2.new(0, 130, 0, 190) -- Adjusted height for 2x3 grid (fits content exactly)
+	containerFrame.Position = UDim2.new(0, 15, 0.5, -85) -- Adjusted center position for new height
 	containerFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
 	containerFrame.BackgroundTransparency = 0.02
 	containerFrame.BorderSizePixel = 0
@@ -75,7 +75,7 @@ function NavigationUI.Create(parentGui)
 	-- Add padding to the container
 	local padding = Instance.new("UIPadding")
 	padding.PaddingTop = UDim.new(0, 10)
-	padding.PaddingBottom = UDim.new(0, 10)
+	padding.PaddingBottom = UDim.new(0, 0) -- Reduced bottom padding to remove extra margin
 	padding.PaddingLeft = UDim.new(0, 10)
 	padding.PaddingRight = UDim.new(0, 10)
 	padding.Parent = containerFrame

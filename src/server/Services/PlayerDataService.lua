@@ -17,6 +17,7 @@ local boxesLeaderboardStore = DataStoreService:GetOrderedDataStore("BoxesLeaderb
 local autoSettingsStore = DataStoreService:GetDataStore("AutoSettings")
 
 local DataService = {}
+local autoSettingsCache = autoSettingsCache or {}
 
 -- PERFORMANCE OPTIMIZATION: Throttling and caching systems
 local rapUpdateQueue = {}
@@ -470,6 +471,22 @@ local function saveData(player: Player)
 		print("[SAVE DEBUG] No auto-settings found for " .. player.Name)
 	end
 
+	-- Save selected crate data
+	local selectedCrateJson = player:GetAttribute("SelectedCrate")
+	if selectedCrateJson then
+		local success, selectedCrate = pcall(function()
+			return game:GetService("HttpService"):JSONDecode(selectedCrateJson)
+		end)
+		if success and selectedCrate then
+			dataToSave.selectedCrate = selectedCrate
+			print("[SAVE DEBUG] Selected crate for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(selectedCrate))
+		else
+			print("[SAVE DEBUG] Failed to decode selected crate for " .. player.Name .. ":", selectedCrateJson)
+		end
+	else
+		print("[SAVE DEBUG] No selected crate attribute found for " .. player.Name)
+	end
+
 	-- Save RAP value
 	local rapValue = player:GetAttribute("RAPValue") or 0
 	dataToSave.rapValue = rapValue
@@ -871,13 +888,22 @@ local function onPlayerAdded(player: Player)
 							DataService.UpdatePlayerRebirths(player, 0)
 						end
 
-						-- Load auto-settings data
-						if data.autoSettings then
-							DataService.SetAutoSettings(player.UserId, data.autoSettings)
-							print("[LOAD DEBUG] Loaded auto-settings for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(data.autoSettings))
-						else
-							print("[LOAD DEBUG] No auto-settings found for " .. player.Name)
-						end
+										-- Load auto-settings data
+				if data.autoSettings then
+					DataService.SetAutoSettings(player.UserId, data.autoSettings)
+					print("[LOAD DEBUG] Loaded auto-settings for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(data.autoSettings))
+				else
+					print("[LOAD DEBUG] No auto-settings found for " .. player.Name)
+				end
+
+				-- Load selected crate data
+				if data.selectedCrate then
+					local selectedCrateJson = game:GetService("HttpService"):JSONEncode(data.selectedCrate)
+					player:SetAttribute("SelectedCrate", selectedCrateJson)
+					print("[LOAD DEBUG] Loaded selected crate for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(data.selectedCrate))
+				else
+					print("[LOAD DEBUG] No selected crate data found for " .. player.Name)
+				end
 
 						-- Load RAP value
 						if data.rapValue then
@@ -1028,6 +1054,15 @@ local function onPlayerAdded(player: Player)
 					print("[LOAD DEBUG] Loaded auto-settings for " .. player.Name .. " (no inventory):", game:GetService("HttpService"):JSONEncode(data.autoSettings))
 				else
 					print("[LOAD DEBUG] No auto-settings found for " .. player.Name .. " (no inventory)")
+				end
+
+				-- Load selected crate data
+				if data.selectedCrate then
+					local selectedCrateJson = game:GetService("HttpService"):JSONEncode(data.selectedCrate)
+					player:SetAttribute("SelectedCrate", selectedCrateJson)
+					print("[LOAD DEBUG] Loaded selected crate for " .. player.Name .. " (no inventory):", game:GetService("HttpService"):JSONEncode(data.selectedCrate))
+				else
+					print("[LOAD DEBUG] No selected crate data found for " .. player.Name .. " (no inventory)")
 				end
 
 				-- Load RAP value
@@ -1292,6 +1327,24 @@ function DataService.Start()
 	
 	Remotes.GetPlayerSettings.OnServerInvoke = function(player)
 		return DataService.GetPlayerSettings(player)
+	end
+
+	-- Connect selected crate remotes
+	Remotes.SaveSelectedCrate.OnServerEvent:Connect(function(player, selectedCrate)
+		DataService.SetSelectedCrate(player, selectedCrate)
+	end)
+	
+	Remotes.GetSelectedCrate.OnServerInvoke = function(player)
+		local selectedCrateJson = player:GetAttribute("SelectedCrate")
+		if selectedCrateJson then
+			local success, selectedCrate = pcall(function()
+				return game:GetService("HttpService"):JSONDecode(selectedCrateJson)
+			end)
+			if success and selectedCrate then
+				return selectedCrate
+			end
+		end
+		return "FreeCrate" -- Default fallback
 	end
 
 	-- Save data on server shutdown with enhanced safety
@@ -1636,9 +1689,104 @@ function DataService.GetAutoSettings(userId)
 end
 
 function DataService.SetAutoSettings(userId, settings)
-	-- Auto-settings are now saved through the main saveData function
-	-- This function is kept for backward compatibility but doesn't save directly
-	-- The actual saving happens in saveData when autoSettings are included
+	autoSettingsCache[userId] = settings
+	local player = Players:GetPlayerByUserId(userId)
+	if player then
+		saveQueue[userId] = player
+		print("[AUTO-SETTINGS] Updated cache and queued save for " .. player.Name .. " after auto-settings update.")
+	end
+end
+
+function DataService.SetSelectedCrate(player, selectedCrate)
+	-- Save selected crate to player attribute for persistence
+	if player and player.UserId then
+		local HttpService = game:GetService("HttpService")
+		local selectedCrateJson = HttpService:JSONEncode(selectedCrate)
+		player:SetAttribute("SelectedCrate", selectedCrateJson)
+		
+		-- Queue save to ensure data is persisted
+		saveQueue[player.UserId] = player
+		print("[SELECTED CRATE DEBUG] Saved selected crate for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(selectedCrate))
+	end
+end
+
+-- Reset player data function for admin use
+function DataService.ResetPlayerData(player)
+	print("Resetting player data for: " .. player.Name)
+	
+	-- Clear inventory
+	local inventory = player:FindFirstChild("Inventory")
+	if inventory then
+		for _, item in ipairs(inventory:GetChildren()) do
+			item:Destroy()
+		end
+		print("Cleared inventory for " .. player.Name)
+	end
+	
+	-- Reset money to starting amount
+	local startingMoney = GameConfig.Currency.StartingAmount or 500
+	updatePlayerRobux(player, startingMoney)
+	
+	-- Reset boxes opened
+	updatePlayerBoxesOpened(player, 0)
+	
+	-- Reset rebirths
+	updatePlayerRebirths(player, 0)
+	
+	-- Clear player attributes
+	player:SetAttribute("RAPValue", 0)
+	player:SetAttribute("GameSettings", "{}")
+	
+	-- Clear leaderstats
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if leaderstats then
+		local rapStat = leaderstats:FindFirstChild("RAP")
+		if rapStat then
+			rapStat.Value = "0"
+		end
+		
+		local rapDisplay = leaderstats:FindFirstChild("RAP Display")
+		if rapDisplay then
+			rapDisplay.Value = "0"
+		end
+	end
+	
+	-- Reset rebirth data in RebirthService
+	local RebirthService = require(script.Parent.RebirthService)
+	if RebirthService then
+		-- Reset rebirth level to 0
+		RebirthService.SetPlayerRebirthLevel(player, 0)
+		
+		-- Reset unlocked crates to default
+		local defaultCrates = {"FreeCrate", "StarterCrate", "PremiumCrate"}
+		RebirthService.SetPlayerUnlockedCrates(player, defaultCrates)
+		
+		-- Reset unlocked features to empty
+		RebirthService.SetPlayerUnlockedFeatures(player, {})
+		
+		print("Reset rebirth data for " .. player.Name)
+		
+		-- Force save rebirth data immediately
+		local rebirthData = RebirthService.GetPlayerRebirthsForSave(player)
+		print("Saving reset rebirth data:", game:GetService("HttpService"):JSONEncode(rebirthData))
+	end
+	
+	-- Clear all cooldowns and queues for this player
+	local userId = player.UserId
+	lastSaveTimes[userId] = nil
+	rapUpdateCooldowns[userId] = nil
+	collectionUpdateCooldowns[userId] = nil
+	rapCache[userId] = nil
+	saveQueue[userId] = nil
+	collectionUpdateQueue[userId] = nil
+	rapUpdateQueue[userId] = nil
+	boxesUpdateQueue[userId] = nil
+	
+	-- Force save the reset data
+	DataService.ManualForceSave(player)
+	
+	print("Successfully reset data for " .. player.Name)
+	return true
 end
 
 return DataService 

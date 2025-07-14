@@ -61,6 +61,9 @@ function CrateSelectionController:Start()
 	-- Set up connections
 	self:SetupConnections()
 	
+	-- Load selected crate from server
+	self:LoadSelectedCrateFromServer()
+	
 	-- Initialize crates
 	self:InitializeCrates()
 	
@@ -79,6 +82,27 @@ function CrateSelectionController:SetupConnections()
 			components.UpdateScale()
 		end
 	end)
+end
+
+function CrateSelectionController:LoadSelectedCrateFromServer()
+	-- Load selected crate from server
+	local success, serverSelectedCrate = pcall(function()
+		return Remotes.GetSelectedCrate:InvokeServer()
+	end)
+	
+	if success and serverSelectedCrate then
+		-- Validate that the crate exists in GameConfig
+		if GameConfig.Boxes[serverSelectedCrate] then
+			selectedCrate = serverSelectedCrate
+			print("[CrateSelectionController] Loaded selected crate from server:", serverSelectedCrate)
+		else
+			print("[CrateSelectionController] Server returned invalid crate:", serverSelectedCrate .. ", using default")
+			selectedCrate = "FreeCrate"
+		end
+	else
+		print("[CrateSelectionController] Failed to load selected crate from server, using default")
+		selectedCrate = "FreeCrate"
+	end
 end
 
 function CrateSelectionController:InitializeCrates()
@@ -297,6 +321,12 @@ function CrateSelectionController:SelectCrate(crateName)
 		CrateSelectionUI.UpdateCardSelection(crateCards[selectedCrate], true)
 	end
 	
+	-- Save selected crate to server for persistence
+	if Remotes.SaveSelectedCrate then
+		Remotes.SaveSelectedCrate:FireServer(crateName)
+		print("[CrateSelectionController] Saved selected crate to server:", crateName)
+	end
+	
 	-- Notify other systems of the selection change
 	print("[CrateSelectionController] Selected crate:", crateName)
 	
@@ -323,6 +353,12 @@ function CrateSelectionController:SetSelectedCrateQuiet(crateName)
 					CrateSelectionUI.UpdateCardSelection(card, isSelected)
 				end
 			end
+		end
+		
+		-- Save selected crate to server for persistence (even when set quietly)
+		if Remotes.SaveSelectedCrate then
+			Remotes.SaveSelectedCrate:FireServer(crateName)
+			print("[CrateSelectionController] Saved selected crate to server (quiet):", crateName)
 		end
 	else
 		warn("[CrateSelectionController] Cannot set unknown crate:", crateName)

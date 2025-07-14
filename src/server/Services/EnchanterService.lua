@@ -291,10 +291,24 @@ end
 
 -- Handle ProximityPrompt trigger
 local function onEnchanterPromptTriggered(player, promptPart)
+	print("[EnchanterService] onEnchanterPromptTriggered called for", player.Name)
+	
+	-- Check if enchanter is unlocked
+	local RebirthService = require(script.Parent.RebirthService)
+	local isUnlocked = RebirthService.IsFeatureUnlocked(player, "Enchanter")
+	print("[EnchanterService] Enchanter unlocked for", player.Name, ":", isUnlocked)
+	
+	if not isUnlocked then
+		Remotes.ShowFloatingNotification:FireClient(player, "Enchanter unlocks at Rebirth 4!", "Error")
+		print("[EnchanterService] Enchanter is locked for", player.Name)
+		return
+	end
+	
 	-- Check if player has an inventory
 	local inventory = player:FindFirstChild("Inventory")
 	if not inventory then
 		Remotes.ShowFloatingNotification:FireClient(player, "Inventory not found.", "Error")
+		print("[EnchanterService] No inventory found for", player.Name)
 		return
 	end
 	
@@ -315,13 +329,17 @@ local function onEnchanterPromptTriggered(player, promptPart)
 		end
 	end
 	
+	print("[EnchanterService] Found", #availableItems, "items in inventory for", player.Name)
+	
 	if #availableItems == 0 then
 		Remotes.ShowFloatingNotification:FireClient(player, "You need at least one item to use the Enchanter!", "Error")
+		print("[EnchanterService] No items found for", player.Name)
 		return
 	end
 	
 	-- Open the enchanter GUI with all available items
 	Remotes.OpenEnchanter:FireClient(player, availableItems)
+	print("[EnchanterService] Opening enchanter for", player.Name, "with", #availableItems, "items")
 end
 
 -- Get enchanter data for a specific item
@@ -441,19 +459,114 @@ local function getMutatorProbabilities(player)
 	return probabilities
 end
 
+-- Save original build to ReplicatedStorage
+local function saveOriginalBuild()
+	local enchantingArea = workspace:FindFirstChild("EnchantingArea")
+	if not enchantingArea then
+		print("[EnchanterService] EnchantingArea not found, cannot save original build")
+		return
+	end
+	
+	-- Create ReplicatedStorage folder for original builds if it doesn't exist
+	local originalBuilds = ReplicatedStorage:FindFirstChild("OriginalBuilds")
+	if not originalBuilds then
+		originalBuilds = Instance.new("Folder")
+		originalBuilds.Name = "OriginalBuilds"
+		originalBuilds.Parent = ReplicatedStorage
+		print("[EnchanterService] Created OriginalBuilds folder")
+	end
+	
+	-- Remove existing saved build if it exists
+	local existingBuild = originalBuilds:FindFirstChild("EnchantingArea")
+	if existingBuild then
+		existingBuild:Destroy()
+		print("[EnchanterService] Removed existing saved EnchantingArea build")
+	end
+	
+	-- Clone and save the original build
+	local originalBuild = enchantingArea:Clone()
+	originalBuild.Name = "EnchantingArea"
+	originalBuild.Parent = originalBuilds
+	
+	print("[EnchanterService] Saved original EnchantingArea build to ReplicatedStorage")
+end
+
+-- Save Collection build to ReplicatedStorage
+local function saveCollectionBuild()
+	local collectionArea = workspace:FindFirstChild("Collection")
+	if not collectionArea then
+		print("[EnchanterService] Collection area not found, cannot save original build")
+		return
+	end
+	
+	-- Create ReplicatedStorage folder for original builds if it doesn't exist
+	local originalBuilds = ReplicatedStorage:FindFirstChild("OriginalBuilds")
+	if not originalBuilds then
+		originalBuilds = Instance.new("Folder")
+		originalBuilds.Name = "OriginalBuilds"
+		originalBuilds.Parent = ReplicatedStorage
+		print("[EnchanterService] Created OriginalBuilds folder")
+	end
+	
+	-- Remove existing saved build if it exists
+	local existingBuild = originalBuilds:FindFirstChild("Collection")
+	if existingBuild then
+		existingBuild:Destroy()
+		print("[EnchanterService] Removed existing saved Collection build")
+	end
+	
+	-- Clone and save the original build
+	local originalBuild = collectionArea:Clone()
+	originalBuild.Name = "Collection"
+	originalBuild.Parent = originalBuilds
+	
+	print("[EnchanterService] Saved original Collection build to ReplicatedStorage")
+end
+
+-- Function to update enchanter visual appearance based on player unlock status
+local function updateEnchanterVisual(player)
+	local RebirthService = require(script.Parent.RebirthService)
+	local isUnlocked = RebirthService.IsFeatureUnlocked(player, "Enchanter")
+	
+	if isUnlocked then
+		prompt.ActionText = "Use Enchanter"
+		prompt.ObjectText = "Item Enchanter"
+		enchanterMain.Color = Color3.fromRGB(150, 100, 255) -- Normal purple
+		if pointLight then
+			pointLight.Color = Color3.fromRGB(150, 100, 255)
+		end
+	else
+		prompt.ActionText = "Unlocks On Rebirth 4"
+		prompt.ObjectText = "Item Enchanter (Locked)"
+		enchanterMain.Color = Color3.fromRGB(50, 50, 50) -- Dark gray
+		if pointLight then
+			pointLight.Color = Color3.fromRGB(50, 50, 50)
+		end
+	end
+	
+	-- Paint EnchantingArea parts (client-side will handle this, but we can send a signal)
+	Remotes.UpdateEnchanterVisual:FireClient(player, isUnlocked)
+end
+
 -- Setup the ProximityPrompt in the workspace
 local function setupEnchanterPrompt()
+	print("[EnchanterService] Setting up enchanter prompt...")
+	
 	-- Create ProximityPrompts folder if it doesn't exist
 	local promptsFolder = workspace:FindFirstChild("ProximityPrompts")
 	if not promptsFolder then
 		promptsFolder = Instance.new("Folder")
 		promptsFolder.Name = "ProximityPrompts"
 		promptsFolder.Parent = workspace
+		print("[EnchanterService] Created ProximityPrompts folder")
+	else
+		print("[EnchanterService] ProximityPrompts folder already exists")
 	end
 	
 	-- Check if EnchanterMain already exists
 	local enchanterMain = promptsFolder:FindFirstChild("EnchanterMain")
 	if not enchanterMain then
+		print("[EnchanterService] Creating EnchanterMain part...")
 		-- Create the EnchanterMain part
 		enchanterMain = Instance.new("Part")
 		enchanterMain.Name = "EnchanterMain"
@@ -471,33 +584,226 @@ local function setupEnchanterPrompt()
 		pointLight.Brightness = 2
 		pointLight.Range = 15
 		pointLight.Parent = enchanterMain
+		
+		print("[EnchanterService] Created EnchanterMain part at position:", enchanterMain.Position)
+	else
+		print("[EnchanterService] EnchanterMain part already exists at position:", enchanterMain.Position)
+		-- Ensure pointLight exists
+		local pointLight = enchanterMain:FindFirstChild("PointLight")
+		if not pointLight then
+			pointLight = Instance.new("PointLight")
+			pointLight.Color = Color3.fromRGB(150, 100, 255)
+			pointLight.Brightness = 2
+			pointLight.Range = 15
+			pointLight.Parent = enchanterMain
+			print("[EnchanterService] Added missing PointLight to EnchanterMain")
+		end
 	end
 	
 	-- Create or update the ProximityPrompt
 	local existingPrompt = enchanterMain:FindFirstChildOfClass("ProximityPrompt")
 	if existingPrompt then
+		print("[EnchanterService] Removing existing ProximityPrompt...")
 		existingPrompt:Destroy()
+		print("[EnchanterService] Removed existing ProximityPrompt")
 	end
 	
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Use Enchanter"
-	prompt.ObjectText = "Item Enchanter"
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.RequiresLineOfSight = false
-	prompt.MaxActivationDistance = 8
-	prompt.Parent = enchanterMain
-	
-	-- Connect the prompt trigger
-	prompt.Triggered:Connect(function(player)
-		onEnchanterPromptTriggered(player, enchanterMain)
+	print("[EnchanterService] Creating new ProximityPrompt...")
+	-- Create new ProximityPrompt with error handling
+	local success, prompt = pcall(function()
+		local newPrompt = Instance.new("ProximityPrompt")
+		newPrompt.ActionText = "Use Enchanter"
+		newPrompt.ObjectText = "Item Enchanter"
+		newPrompt.KeyboardKeyCode = Enum.KeyCode.E
+		newPrompt.RequiresLineOfSight = false
+		newPrompt.MaxActivationDistance = 8
+		newPrompt.HoldDuration = 0
+		newPrompt.Parent = enchanterMain
+		return newPrompt
 	end)
 	
-	print("[EnchanterService] Enchanter ProximityPrompt setup at position:", enchanterMain.Position)
+	if not success then
+		warn("[EnchanterService] Failed to create ProximityPrompt:", prompt)
+		return
+	end
+	
+	print("[EnchanterService] Created new ProximityPrompt successfully")
+	print("[EnchanterService] Prompt properties - ActionText:", prompt.ActionText, "ObjectText:", prompt.ObjectText)
+	
+	-- Ensure pointLight exists
+	local pointLight = enchanterMain:FindFirstChild("PointLight")
+	if not pointLight then
+		print("[EnchanterService] Creating PointLight...")
+		pointLight = Instance.new("PointLight")
+		pointLight.Color = Color3.fromRGB(150, 100, 255)
+		pointLight.Brightness = 2
+		pointLight.Range = 15
+		pointLight.Parent = enchanterMain
+		print("[EnchanterService] Created PointLight")
+	end
+	
+	print("[EnchanterService] Connecting ProximityPrompt trigger...")
+	-- Connect the prompt trigger with error handling
+	local success, err = pcall(function()
+		prompt.Triggered:Connect(function(player)
+			print("[EnchanterService] Enchanter prompt triggered by", player.Name)
+			onEnchanterPromptTriggered(player, enchanterMain)
+		end)
+	end)
+	
+	if not success then
+		warn("[EnchanterService] Failed to connect ProximityPrompt trigger:", err)
+	else
+		print("[EnchanterService] Successfully connected ProximityPrompt trigger")
+	end
+	
+	-- Function to update enchanter visual appearance based on player unlock status
+	local function updateEnchanterVisual(player)
+		local RebirthService = require(script.Parent.RebirthService)
+		local isUnlocked = RebirthService.IsFeatureUnlocked(player, "Enchanter")
+		
+		if isUnlocked then
+			prompt.ActionText = "Use Enchanter"
+			prompt.ObjectText = "Item Enchanter"
+			enchanterMain.Color = Color3.fromRGB(150, 100, 255) -- Normal purple
+			if pointLight then
+				pointLight.Color = Color3.fromRGB(150, 100, 255)
+			end
+		else
+			prompt.ActionText = "Unlocks On Rebirth 4"
+			prompt.ObjectText = "Item Enchanter (Locked)"
+			enchanterMain.Color = Color3.fromRGB(50, 50, 50) -- Dark gray
+			if pointLight then
+				pointLight.Color = Color3.fromRGB(50, 50, 50)
+			end
+		end
+		
+		-- Paint EnchantingArea parts (client-side will handle this, but we can send a signal)
+		Remotes.UpdateEnchanterVisual:FireClient(player, isUnlocked)
+	end
+	
+	-- Update visual for all players initially
+	print("[EnchanterService] Updating visual for all players...")
+	for _, player in pairs(Players:GetPlayers()) do
+		updateEnchanterVisual(player)
+	end
+	
+	-- Update visual when new players join
+	Players.PlayerAdded:Connect(function(player)
+		task.wait(1) -- Wait for player data to load
+		updateEnchanterVisual(player)
+	end)
+	
+	-- Verify the prompt was created successfully
+	task.wait(0.1) -- Small delay to ensure everything is set up
+	local verifyPrompt = enchanterMain:FindFirstChildOfClass("ProximityPrompt")
+	if verifyPrompt then
+		print("[EnchanterService] ✓ ProximityPrompt verified and ready at position:", enchanterMain.Position)
+		print("[EnchanterService] Final verification - Prompt exists:", verifyPrompt ~= nil)
+		print("[EnchanterService] Prompt ActionText:", verifyPrompt.ActionText)
+		print("[EnchanterService] Prompt ObjectText:", verifyPrompt.ObjectText)
+		print("[EnchanterService] Prompt Parent:", verifyPrompt.Parent.Name)
+	else
+		warn("[EnchanterService] ✗ ProximityPrompt verification failed!")
+		warn("[EnchanterService] EnchanterMain children:", enchanterMain:GetChildren())
+	end
+end
+
+-- Monitor and recreate ProximityPrompt if needed
+local function monitorProximityPrompt()
+	task.spawn(function()
+		while task.wait(5) do -- Check every 5 seconds
+			local promptsFolder = workspace:FindFirstChild("ProximityPrompts")
+			if promptsFolder then
+				local enchanterMain = promptsFolder:FindFirstChild("EnchanterMain")
+				if enchanterMain then
+					local prompt = enchanterMain:FindFirstChildOfClass("ProximityPrompt")
+					if not prompt then
+						print("[EnchanterService] ProximityPrompt missing, recreating...")
+						setupEnchanterPrompt()
+					end
+				else
+					print("[EnchanterService] EnchanterMain missing, recreating...")
+					setupEnchanterPrompt()
+				end
+			else
+				print("[EnchanterService] ProximityPrompts folder missing, recreating...")
+				setupEnchanterPrompt()
+			end
+		end
+	end)
+end
+
+-- Expose setupEnchanterPrompt for external use
+EnchanterService.SetupPrompt = setupEnchanterPrompt
+
+-- Test function to verify ProximityPrompt exists
+local function testProximityPrompt()
+	print("[EnchanterService] Testing ProximityPrompt existence...")
+	
+	local promptsFolder = workspace:FindFirstChild("ProximityPrompts")
+	if not promptsFolder then
+		warn("[EnchanterService] ✗ ProximityPrompts folder not found!")
+		return false
+	end
+	
+	local enchanterMain = promptsFolder:FindFirstChild("EnchanterMain")
+	if not enchanterMain then
+		warn("[EnchanterService] ✗ EnchanterMain part not found!")
+		return false
+	end
+	
+	local prompt = enchanterMain:FindFirstChildOfClass("ProximityPrompt")
+	if not prompt then
+		warn("[EnchanterService] ✗ ProximityPrompt not found!")
+		return false
+	end
+	
+	print("[EnchanterService] ✓ ProximityPrompt test passed!")
+	print("[EnchanterService] Prompt details:")
+	print("  - ActionText:", prompt.ActionText)
+	print("  - ObjectText:", prompt.ObjectText)
+	print("  - MaxActivationDistance:", prompt.MaxActivationDistance)
+	print("  - Parent:", prompt.Parent.Name)
+	print("  - Position:", enchanterMain.Position)
+	
+	return true
 end
 
 function EnchanterService.Start()
+	print("[EnchanterService] Starting EnchanterService...")
+	
+	-- Save original builds first
+	saveOriginalBuild()
+	saveCollectionBuild()
+	
 	-- Setup the ProximityPrompt
 	setupEnchanterPrompt()
+	
+	-- Start monitoring the ProximityPrompt
+	monitorProximityPrompt()
+	
+	-- Test the ProximityPrompt after a short delay
+	task.wait(1)
+	testProximityPrompt()
+	
+	-- Verify the prompt was created
+	local promptsFolder = workspace:FindFirstChild("ProximityPrompts")
+	if promptsFolder then
+		local enchanterMain = promptsFolder:FindFirstChild("EnchanterMain")
+		if enchanterMain then
+			local prompt = enchanterMain:FindFirstChildOfClass("ProximityPrompt")
+			if prompt then
+				print("[EnchanterService] ✓ ProximityPrompt successfully created")
+			else
+				print("[EnchanterService] ✗ ProximityPrompt not found!")
+			end
+		else
+			print("[EnchanterService] ✗ EnchanterMain part not found!")
+		end
+	else
+		print("[EnchanterService] ✗ ProximityPrompts folder not found!")
+	end
 	
 	-- Connect remote events
 	Remotes.GetEnchanterData.OnServerInvoke = getEnchanterData
@@ -510,6 +816,10 @@ function EnchanterService.Start()
 		EnchanterService:startAutoEnchanting(player, itemInstance, targetMutators, stopOnHigher, matchAnyMode)
 	end)
 	Remotes.StopAutoEnchanting.OnServerEvent:Connect(stopAutoEnchanting)
+	Remotes.RecreateEnchanterPrompt.OnServerEvent:Connect(function(player)
+		print("[EnchanterService] Recreating ProximityPrompt at request of", player.Name)
+		setupEnchanterPrompt()
+	end)
 	
 	print("[EnchanterService] Started successfully!")
 end

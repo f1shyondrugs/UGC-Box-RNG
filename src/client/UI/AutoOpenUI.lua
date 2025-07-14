@@ -261,89 +261,15 @@ function AutoOpenUI.Create(parentGui)
 	components.AutoSellToggle = autoSellSection.Toggle
 	components.AutoSellSection = autoSellSection
 
-	-- Size Threshold Section
+	-- Size Threshold Section (always visible)
 	local sizeSection = AutoOpenUI.CreateNumberSection(rightPanel, "Auto-Sell Below Size", "Auto-sell items smaller than this size", 0, 10, 3, UDim2.new(0, 10, 0, 140))
 	components.SizeInput = sizeSection.Input
 	components.SizeSection = sizeSection
 
-	-- Value Threshold Section  
+	-- Value Threshold Section (always visible)
 	local valueSection = AutoOpenUI.CreateNumberSection(rightPanel, "Auto-Sell Below Value", "Auto-sell items worth less than this amount", 0, 1e50, 100, UDim2.new(0, 10, 0, 230))
 	components.ValueInput = valueSection.Input
 	components.ValueSection = valueSection
-
-	-- Auto-Sell Features Preview Section
-	local featuresSection = Instance.new("Frame")
-	featuresSection.Name = "AutoSellFeaturesSection"
-	featuresSection.Size = UDim2.new(1, -20, 0, 120)
-	featuresSection.Position = UDim2.new(0, 10, 0, 320)
-	featuresSection.BackgroundColor3 = Color3.fromRGB(25, 30, 40)
-	featuresSection.BorderSizePixel = 0
-	featuresSection.ZIndex = 202
-	featuresSection.Parent = rightPanel
-	components.FeaturesSection = featuresSection
-
-	local featuresCorner = Instance.new("UICorner")
-	featuresCorner.CornerRadius = UDim.new(0, 8)
-	featuresCorner.Parent = featuresSection
-
-	local featuresTitle = Instance.new("TextLabel")
-	featuresTitle.Name = "FeaturesTitle"
-	featuresTitle.Size = UDim2.new(1, -20, 0, 25)
-	featuresTitle.Position = UDim2.new(0, 15, 0, 5)
-	featuresTitle.Text = "🔒 Auto-Sell Features"
-	featuresTitle.Font = Enum.Font.GothamBold
-	featuresTitle.TextSize = 16
-	featuresTitle.TextColor3 = Color3.fromRGB(255, 150, 50)
-	featuresTitle.BackgroundTransparency = 1
-	featuresTitle.TextXAlignment = Enum.TextXAlignment.Left
-	featuresTitle.ZIndex = 203
-	featuresTitle.Parent = featuresSection
-
-	local featuresList = Instance.new("TextLabel")
-	featuresList.Name = "FeaturesList"
-	featuresList.Size = UDim2.new(1, -20, 0, 80)
-	featuresList.Position = UDim2.new(0, 15, 0, 30)
-	featuresList.Text = "• Auto-sell items below size threshold\n• Auto-sell items below value threshold\n• Automatic inventory management\n• Save time on manual selling"
-	featuresList.Font = Enum.Font.Gotham
-	featuresList.TextSize = 12
-	featuresList.TextColor3 = Color3.fromRGB(180, 180, 180)
-	featuresList.BackgroundTransparency = 1
-	featuresList.TextXAlignment = Enum.TextXAlignment.Left
-	featuresList.TextYAlignment = Enum.TextYAlignment.Top
-	featuresList.ZIndex = 203
-	featuresList.Parent = featuresSection
-
-	-- Purchase Button
-	local purchaseButton = Instance.new("TextButton")
-	purchaseButton.Name = "PurchaseButton"
-	purchaseButton.Size = UDim2.new(1, -20, 0, 35)
-	purchaseButton.Position = UDim2.new(0, 10, 0, 450)
-	purchaseButton.BackgroundColor3 = Color3.fromRGB(255, 150, 50)
-	purchaseButton.Text = "🔓 Purchase Auto-Sell (99 R$)"
-	purchaseButton.Font = Enum.Font.GothamBold
-	purchaseButton.TextSize = 16
-	purchaseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	purchaseButton.ZIndex = 204
-	purchaseButton.Parent = rightPanel
-	components.PurchaseButton = purchaseButton
-
-	local purchaseCorner = Instance.new("UICorner")
-	purchaseCorner.CornerRadius = UDim.new(0, 8)
-	purchaseCorner.Parent = purchaseButton
-
-	local purchaseGradient = Instance.new("UIGradient")
-	purchaseGradient.Color = ColorSequence.new{
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 170, 70)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 130, 30))
-	}
-	purchaseGradient.Rotation = 90
-	purchaseGradient.Parent = purchaseButton
-
-	local purchaseStroke = Instance.new("UIStroke")
-	purchaseStroke.Color = Color3.fromRGB(255, 180, 80)
-	purchaseStroke.Thickness = 1
-	purchaseStroke.Transparency = 0.5
-	purchaseStroke.Parent = purchaseButton
 
 	-- Update canvas size for scrolling frames
 	task.wait() -- Wait for layout to complete

@@ -13,6 +13,7 @@ local RebirthUI = require(script.Parent.Parent.UI.RebirthUI)
 local NumberFormatter = require(Shared.Modules.NumberFormatter)
 local CrateSelectionController = require(script.Parent.CrateSelectionController)
 local NavigationController = require(script.Parent.NavigationController)
+local UnlockAnimationController = require(script.Parent.UnlockAnimationController)
 
 local RebirthController = {}
 RebirthController.ClassName = "RebirthController"
@@ -201,6 +202,9 @@ end
 function RebirthController:PerformRebirth(rebirthLevel)
 	if not components then return end
 	
+	-- Store old rebirth data for comparison
+	local oldRebirthData = rebirthData
+	
 	local success, result = pcall(function()
 		return Remotes.PerformRebirth:InvokeServer(rebirthLevel)
 	end)
@@ -211,6 +215,10 @@ function RebirthController:PerformRebirth(rebirthLevel)
 		
 		-- Play rebirth animation
 		self:PlayRebirthAnimation(rebirthLevel, result.rebirthData)
+		
+		-- Check for newly unlocked features and play unlock animations
+		task.wait(2) -- Wait for rebirth animation to start
+		UnlockAnimationController.CheckForNewUnlocks(oldRebirthData, result.rebirthData)
 		
 	else
 		-- Show error message
@@ -311,6 +319,12 @@ function RebirthController:PlayRebirthAnimation(rebirthLevel, rebirthData)
 			end
 		end
 		
+		if rebirthConfig and rebirthConfig.Rewards.UnlockedFeatures then
+			for _, featureName in ipairs(rebirthConfig.Rewards.UnlockedFeatures) do
+				table.insert(rewardsLines, "🔓 Unlocked: " .. featureName)
+			end
+		end
+		
 		rewardsText.Text = table.concat(rewardsLines, "\n")
 		rewardsText.Font = Enum.Font.GothamBold
 		rewardsText.TextSize = 48
@@ -325,7 +339,7 @@ function RebirthController:PlayRebirthAnimation(rebirthLevel, rebirthData)
 		local clickText = Instance.new("TextLabel")
 		clickText.Name = "ClickText"
 		clickText.Size = UDim2.new(1, 0, 0, 40)
-		clickText.Position = UDim2.new(0.5, -400, 0.7, -20)
+		clickText.Position = UDim2.new(0.5, -400, 0.8, -20) -- moved further down
 		clickText.Text = "Click anywhere to continue..."
 		clickText.Font = Enum.Font.Gotham
 		clickText.TextSize = 28
@@ -506,6 +520,7 @@ function RebirthController:SetupConnections()
 	
 	-- Listen for rebirth updates from server
 	Remotes.RebirthUpdated.OnClientEvent:Connect(function(newRebirthData)
+		local oldRebirthData = rebirthData
 		rebirthData = newRebirthData
 		if isVisible then
 			updateRebirthDisplay()
@@ -516,6 +531,12 @@ function RebirthController:SetupConnections()
 		end
 		-- Update rebirth notification
 		updateRebirthNotification()
+		
+		-- Check for newly unlocked features (but only if this is a real update, not initial load)
+		if oldRebirthData and oldRebirthData.currentRebirth and newRebirthData.currentRebirth > oldRebirthData.currentRebirth then
+			task.wait(1) -- Small delay to ensure UI updates are complete
+			UnlockAnimationController.CheckForNewUnlocks(oldRebirthData, newRebirthData)
+		end
 	end)
 	
 	-- Listen for money changes to update affordability

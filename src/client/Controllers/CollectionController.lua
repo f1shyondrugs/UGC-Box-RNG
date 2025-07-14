@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
 local NavigationController = require(script.Parent.NavigationController)
+local BoxAnimator = require(script.Parent.BoxAnimator)
 
 local Shared = ReplicatedStorage.Shared
 local Remotes = require(Shared.Remotes.Remotes)
@@ -516,6 +517,75 @@ end
 function CollectionController.Start(parentGui, soundController)
 	local ui = CollectionUI.Create(parentGui)
 	
+
+
+	-- Check if collection is unlocked and update UI accordingly
+	local function updateCollectionUI()
+		local success, unlockedFeatures = pcall(function()
+			return Remotes.GetUnlockedFeatures:InvokeServer()
+		end)
+		
+		if success and unlockedFeatures then
+			local isUnlocked = false
+			for _, feature in ipairs(unlockedFeatures) do
+				if feature == "Collection" then
+					isUnlocked = true
+					break
+				end
+			end
+			
+			print("[CollectionController] Collection unlocked:", isUnlocked)
+			
+			-- If locked, black out the UI
+			if not isUnlocked then
+				-- Black out all UI elements
+				local function blackOutElement(element)
+					if element:IsA("GuiObject") then
+						element.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+						if element:IsA("TextLabel") or element:IsA("TextButton") then
+							element.TextColor3 = Color3.fromRGB(100, 100, 100)
+						end
+					end
+					
+					-- Recursively black out children
+					for _, child in pairs(element:GetChildren()) do
+						blackOutElement(child)
+					end
+				end
+				
+				-- Try multiple times to ensure UI is created
+				local attempts = 0
+				while attempts < 10 do
+					if ui and ui.MainFrame then
+						blackOutElement(ui.MainFrame)
+						print("[CollectionController] UI blacked out on attempt", attempts + 1)
+						break
+					else
+						attempts = attempts + 1
+						task.wait(0.1)
+					end
+				end
+				
+				if attempts >= 10 then
+					print("[CollectionController] Failed to black out UI after 10 attempts")
+				end
+			else
+				-- Restore normal colors (this will be handled by the UI creation)
+				-- The UI is already created with normal colors, so we don't need to do anything
+				print("[CollectionController] UI restored to normal")
+			end
+		else
+			print("[CollectionController] Failed to get unlocked features:", success)
+		end
+	end
+		
+	-- Update UI initially (with delay to ensure UI is created)
+	task.wait(1)
+	updateCollectionUI()
+	
+	
+
+	
 	-- Setup collection pad trigger instead of navigation button
 	local function setupCollectionPadTrigger()
 		local collectionFolder = workspace:FindFirstChild("Collection")
@@ -525,6 +595,7 @@ function CollectionController.Start(parentGui, soundController)
 			collectionFolder.Parent = workspace
 		end
 		
+		-- Find or create the collection pad
 		local collectionPad = collectionFolder:FindFirstChild("Pad")
 		if not collectionPad then
 			-- Create the collection pad if it doesn't exist
@@ -537,7 +608,6 @@ function CollectionController.Start(parentGui, soundController)
 			collectionPad.Color = Color3.fromRGB(100, 200, 255) -- Blue color for collection
 			collectionPad.Shape = Enum.PartType.Block
 			collectionPad.Parent = collectionFolder
-			
 			-- Add a glowing effect
 			local pointLight = Instance.new("PointLight")
 			pointLight.Color = Color3.fromRGB(100, 200, 255)
@@ -545,49 +615,357 @@ function CollectionController.Start(parentGui, soundController)
 			pointLight.Range = 15
 			pointLight.Parent = collectionPad
 		end
-		
-		-- Remove any existing ProximityPrompt
-		local existingPrompt = collectionPad:FindFirstChildOfClass("ProximityPrompt")
-		if existingPrompt then
-			existingPrompt:Destroy()
+
+		-- Setup ProximityPrompt in dedicated folder
+		local proximityPromptsFolder = workspace:FindFirstChild("ProximityPrompts")
+		if not proximityPromptsFolder then
+			proximityPromptsFolder = Instance.new("Folder")
+			proximityPromptsFolder.Name = "ProximityPrompts"
+			proximityPromptsFolder.Parent = workspace
 		end
 		
-		-- Setup touch trigger instead of ProximityPrompt
-		local function onPadTouched(hit)
-			-- Check if the touching part belongs to the local player's character
-			local character = LocalPlayer.Character
-			if not character then return end
+		local collectionPromptPart = proximityPromptsFolder:FindFirstChild("CollectionMain")
+		if not collectionPromptPart then
+			-- Create the part first
+			collectionPromptPart = Instance.new("Part")
+			collectionPromptPart.Name = "CollectionMain"
+			collectionPromptPart.Size = Vector3.new(1, 1, 1)
+			collectionPromptPart.Position = Vector3.new(-25, 1, 0) -- Position near collection area
+			collectionPromptPart.Anchored = true
+			collectionPromptPart.Transparency = 1 -- Invisible part
+			collectionPromptPart.CanCollide = false
+			collectionPromptPart.Parent = proximityPromptsFolder
+		end
+		
+		-- Create or find the ProximityPrompt inside the part
+		local collectionPrompt = collectionPromptPart:FindFirstChild("ProximityPrompt")
+		if not collectionPrompt then
+			collectionPrompt = Instance.new("ProximityPrompt")
+			collectionPrompt.Name = "ProximityPrompt"
+			collectionPrompt.ActionText = "Use Collection"
+			collectionPrompt.ObjectText = "Item Collection"
+			collectionPrompt.KeyboardKeyCode = Enum.KeyCode.E
+			collectionPrompt.RequiresLineOfSight = false
+			collectionPrompt.MaxActivationDistance = 8
+			collectionPrompt.Parent = collectionPromptPart
 			
-			-- Check if the touching part is part of the player's character
-			local isPlayerPart = false
-			for _, part in pairs(character:GetDescendants()) do
-				if part:IsA("BasePart") and part == hit then
-					isPlayerPart = true
-					break
-				end
-			end
-			
-			if isPlayerPart then
-				-- Add a small delay to prevent multiple triggers
-				if not collectionPad:GetAttribute("RecentlyTriggered") then
-					collectionPad:SetAttribute("RecentlyTriggered", true)
-					
-					soundController:playUIClick()
-					toggleCollection(ui, not ui.MainFrame.Visible, soundController)
-					
-					-- Reset the trigger flag after a short delay
-					task.delay(1, function()
-						collectionPad:SetAttribute("RecentlyTriggered", false)
+			-- Connect the trigger
+			collectionPrompt.Triggered:Connect(function(player)
+				if player == LocalPlayer then
+					local success, unlockedFeatures = pcall(function()
+						return Remotes.GetUnlockedFeatures:InvokeServer()
 					end)
+					if success and unlockedFeatures then
+						local isUnlocked = false
+						for _, feature in ipairs(unlockedFeatures) do
+							if feature == "Collection" then
+								isUnlocked = true
+								break
+							end
+						end
+						if isUnlocked then
+							local isCurrentlyOpen = ui.MainFrame.Visible
+							toggleCollection(ui, not isCurrentlyOpen, soundController)
+						else
+							if BoxAnimator then
+								BoxAnimator.AnimateFloatingNotification("Collection unlocks at Rebirth 2!", "Error")
+							end
+						end
+					end
+				end
+			end)
+			
+			print("[CollectionController] Created CollectionMain ProximityPrompt in Workspace.ProximityPrompts")
+		end
+		
+		-- Reference the prompt for visual updates
+		local prompt = collectionPrompt
+
+		-- Ensure pointLight exists
+		local pointLight = collectionPad:FindFirstChild("PointLight")
+		if not pointLight then
+			pointLight = Instance.new("PointLight")
+			pointLight.Color = Color3.fromRGB(100, 200, 255)
+			pointLight.Brightness = 2
+			pointLight.Range = 15
+			pointLight.Parent = collectionPad
+		end
+
+		-- ProximityPrompt connection is already set up when creating the prompt
+
+		print("[CollectionController] Collection pad ProximityPrompt setup at position:", collectionPad.Position)
+		
+		-- Check if collection is unlocked and update visual appearance
+		local function updateCollectionVisual()
+			local success, unlockedFeatures = pcall(function()
+				return Remotes.GetUnlockedFeatures:InvokeServer()
+			end)
+			
+			if success and unlockedFeatures then
+				local isUnlocked = false
+				for _, feature in ipairs(unlockedFeatures) do
+					if feature == "Collection" then
+						isUnlocked = true
+						break
+					end
+				end
+				
+				-- Update the pad and prompt
+				if isUnlocked then
+					prompt.ActionText = "Use Collection"
+					prompt.ObjectText = "Item Collection"
+					collectionPad.Color = Color3.fromRGB(100, 200, 255) -- Normal blue
+					pointLight.Color = Color3.fromRGB(100, 200, 255)
+				else
+					prompt.ActionText = "Unlocks On Rebirth 2"
+					prompt.ObjectText = "Item Collection (Locked)"
+					collectionPad.Color = Color3.fromRGB(50, 50, 50) -- Dark gray
+					pointLight.Color = Color3.fromRGB(50, 50, 50)
+				end
+			
+			-- Paint Collection Machine parts
+			local collectionArea = workspace:FindFirstChild("Collection")
+			if collectionArea then
+				if isUnlocked then
+					-- Restore from original build
+					local success, err = pcall(function()
+						local originalBuilds = ReplicatedStorage:FindFirstChild("OriginalBuilds")
+						if originalBuilds then
+							local originalCollection = originalBuilds:FindFirstChild("Collection")
+							if originalCollection then
+								-- Clear current collection area
+								collectionArea:ClearAllChildren()
+								
+								-- Clone and restore original parts
+								for _, originalPart in pairs(originalCollection:GetChildren()) do
+									local restoredPart = originalPart:Clone()
+									restoredPart.Parent = collectionArea
+								end
+								
+
+								
+								print("[CollectionController] Restored Collection area from original build")
+							else
+								-- Fallback: restore normal colors
+								local function restorePart(part)
+									if part:IsA("BasePart") then
+										part.Color = Color3.fromRGB(100, 200, 255) -- Blue for collection
+										part.Material = Enum.Material.Neon -- Use neon material
+										if part:FindFirstChild("PointLight") then
+											part.PointLight.Color = Color3.fromRGB(100, 200, 255)
+										end
+									end
+									
+									-- Recursively restore children
+									for _, child in pairs(part:GetChildren()) do
+										restorePart(child)
+									end
+								end
+								
+								-- Restore all parts in Collection area
+								for _, part in pairs(collectionArea:GetChildren()) do
+									restorePart(part)
+								end
+								
+
+							end
+						end
+					end)
+					
+					if not success then
+						warn("[CollectionController] Failed to restore Collection area:", err)
+						-- Fallback to simple color restoration
+						local function restorePart(part)
+							if part:IsA("BasePart") then
+								part.Color = Color3.fromRGB(100, 200, 255) -- Blue for collection
+								part.Material = Enum.Material.Neon
+								if part:FindFirstChild("PointLight") then
+									part.PointLight.Color = Color3.fromRGB(100, 200, 255)
+								end
+							end
+							
+							-- Recursively restore children
+							for _, child in pairs(part:GetChildren()) do
+								restorePart(child)
+							end
+						end
+						
+						-- Restore all parts in Collection area
+						for _, part in pairs(collectionArea:GetChildren()) do
+							restorePart(part)
+						end
+						
+
+					end
+				else
+					-- Paint neon when locked
+					local function paintPart(part)
+						if part:IsA("BasePart") then
+							part.Color = Color3.fromRGB(20, 20, 20) -- Very dark gray
+							part.Material = Enum.Material.Neon -- Use neon material
+							if part:FindFirstChild("PointLight") then
+								part.PointLight.Color = Color3.fromRGB(20, 20, 20)
+							end
+						end
+						
+						-- Recursively paint children
+						for _, child in pairs(part:GetChildren()) do
+							paintPart(child)
+						end
+					end
+					
+					-- Paint all parts in Collection area
+					for _, part in pairs(collectionArea:GetChildren()) do
+						paintPart(part)
+					end
+				end
+				
+				print("[CollectionController] Painted Collection area - Unlocked:", isUnlocked)
+			end
+		end
+	end
+		
+	-- Update visual initially
+	updateCollectionVisual()
+	
+	-- Update visual when rebirth data changes
+	Remotes.RebirthUpdated.OnClientEvent:Connect(function()
+		task.wait(0.5) -- Small delay to ensure data is updated
+		updateCollectionVisual()
+		updateCollectionUI()
+	end)
+	end
+	
+	-- Continuously monitor UI and black out if needed
+	task.spawn(function()
+		while task.wait(2) do
+			local success, unlockedFeatures = pcall(function()
+				return Remotes.GetUnlockedFeatures:InvokeServer()
+			end)
+			
+			if success and unlockedFeatures then
+				local isUnlocked = false
+				for _, feature in ipairs(unlockedFeatures) do
+					if feature == "Collection" then
+						isUnlocked = true
+						break
+					end
+				end
+				
+				-- Paint Collection Machine parts
+				local collectionArea = workspace:FindFirstChild("Collection")
+				if collectionArea then
+					if isUnlocked then
+						-- Restore from original build
+						local success, err = pcall(function()
+							local originalBuilds = ReplicatedStorage:FindFirstChild("OriginalBuilds")
+							if originalBuilds then
+								local originalCollection = originalBuilds:FindFirstChild("Collection")
+								if originalCollection then
+									-- Clear current collection area
+									collectionArea:ClearAllChildren()
+									
+									-- Clone and restore original parts
+									for _, originalPart in pairs(originalCollection:GetChildren()) do
+										local restoredPart = originalPart:Clone()
+										restoredPart.Parent = collectionArea
+									end
+									
+									print("[CollectionController] Restored Collection area from original build")
+								else
+									-- Fallback: restore normal colors
+									local function restorePart(part)
+										if part:IsA("BasePart") then
+											part.Color = Color3.fromRGB(100, 200, 255) -- Blue for collection
+											part.Material = Enum.Material.Neon -- Use neon material
+											if part:FindFirstChild("PointLight") then
+												part.PointLight.Color = Color3.fromRGB(100, 200, 255)
+											end
+										end
+										
+										-- Recursively restore children
+										for _, child in pairs(part:GetChildren()) do
+											restorePart(child)
+										end
+									end
+									
+									-- Restore all parts in Collection area
+									for _, part in pairs(collectionArea:GetChildren()) do
+										restorePart(part)
+									end
+								end
+							end
+						end)
+						
+						if not success then
+							warn("[CollectionController] Failed to restore Collection area:", err)
+							-- Fallback to simple color restoration
+							local function restorePart(part)
+								if part:IsA("BasePart") then
+									part.Color = Color3.fromRGB(100, 200, 255) -- Blue for collection
+									part.Material = Enum.Material.Neon
+									if part:FindFirstChild("PointLight") then
+										part.PointLight.Color = Color3.fromRGB(100, 200, 255)
+									end
+								end
+								
+								-- Recursively restore children
+								for _, child in pairs(part:GetChildren()) do
+									restorePart(child)
+								end
+							end
+							
+							-- Restore all parts in Collection area
+							for _, part in pairs(collectionArea:GetChildren()) do
+								restorePart(part)
+							end
+						end
+					else
+						-- Paint neon when locked
+						local function paintPart(part)
+							if part:IsA("BasePart") then
+								part.Color = Color3.fromRGB(20, 20, 20) -- Very dark gray
+								part.Material = Enum.Material.Neon -- Use neon material
+								if part:FindFirstChild("PointLight") then
+									part.PointLight.Color = Color3.fromRGB(20, 20, 20)
+								end
+							end
+							
+							-- Recursively paint children
+							for _, child in pairs(part:GetChildren()) do
+								paintPart(child)
+							end
+						end
+						
+						-- Paint all parts in Collection area
+						for _, part in pairs(collectionArea:GetChildren()) do
+							paintPart(part)
+						end
+					end
+				end
+				
+				-- Also black out UI if it exists
+				if not isUnlocked and ui and ui.MainFrame then
+					-- Black out all UI elements
+					local function blackOutElement(element)
+						if element:IsA("GuiObject") then
+							element.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+							if element:IsA("TextLabel") or element:IsA("TextButton") then
+								element.TextColor3 = Color3.fromRGB(100, 100, 100)
+							end
+						end
+						
+						-- Recursively black out children
+						for _, child in pairs(element:GetChildren()) do
+							blackOutElement(child)
+						end
+					end
+					
+					blackOutElement(ui.MainFrame)
 				end
 			end
 		end
-		
-		-- Connect the touch event
-		collectionPad.Touched:Connect(onPadTouched)
-		
-		print("[CollectionController] Collection pad touch trigger setup at position:", collectionPad.Position)
-	end
+	end)
 	
 	-- Setup collection screen with 3D item display
 	local function setupCollectionScreen()
@@ -860,9 +1238,7 @@ function CollectionController.Start(parentGui, soundController)
 	-- Keyboard shortcuts
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed then return end
-		if input.KeyCode == Enum.KeyCode.C then
-			toggleCollection(ui, not ui.MainFrame.Visible, soundController)
-		elseif input.KeyCode == Enum.KeyCode.Escape and ui.MainFrame.Visible then
+		if input.KeyCode == Enum.KeyCode.Escape and ui.MainFrame.Visible then
 			toggleCollection(ui, false, soundController)
 		end
 	end)
@@ -886,5 +1262,4 @@ function CollectionController.Start(parentGui, soundController)
 		end
 	end)
 end
-
-return CollectionController 
+return CollectionController

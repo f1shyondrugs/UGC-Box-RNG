@@ -534,24 +534,79 @@ function RebirthUI.CreateRebirthEntry(rebirthLevel, rebirthConfig, canAfford, ha
 	reqLabel.LayoutOrder = 3
 	reqLabel.Parent = entry
 
-	-- Rewards
-	local rewardsLabel = Instance.new("TextLabel")
-	rewardsLabel.Name = "RewardsLabel"
-	rewardsLabel.Size = UDim2.new(1, 0, 0, 50)
-	local rewardsText = "✨ +" .. (rebirthConfig.Rewards and rebirthConfig.Rewards.LuckBonus or 0) .. "% Luck"
-	if rebirthConfig.Rewards and rebirthConfig.Rewards.UnlockedCrates and #rebirthConfig.Rewards.UnlockedCrates > 0 then
-		rewardsText = rewardsText .. "\n🎁 Unlocks: " .. table.concat(rebirthConfig.Rewards.UnlockedCrates, ", ")
-	end
-	rewardsLabel.Text = rewardsText
-	rewardsLabel.Font = Enum.Font.Gotham
-	rewardsLabel.TextSize = 16
-	rewardsLabel.TextColor3 = Color3.fromRGB(100, 255, 255)
-	rewardsLabel.TextXAlignment = Enum.TextXAlignment.Left
-	rewardsLabel.TextWrapped = true
-	rewardsLabel.BackgroundTransparency = 1
-	rewardsLabel.ZIndex = 54
-	rewardsLabel.LayoutOrder = 4
-	rewardsLabel.Parent = entry
+	-- Rewards (NEW: visually grouped container)
+local rewardsContainer = Instance.new("Frame")
+rewardsContainer.Name = "RewardsContainer"
+rewardsContainer.Size = UDim2.new(1, 0, 0, 0)
+rewardsContainer.AutomaticSize = Enum.AutomaticSize.Y
+rewardsContainer.BackgroundColor3 = Color3.fromRGB(24, 28, 40)
+rewardsContainer.BackgroundTransparency = 0.15
+rewardsContainer.ZIndex = 55
+rewardsContainer.LayoutOrder = 4
+rewardsContainer.Parent = entry
+
+local rewardsCorner = Instance.new("UICorner")
+rewardsCorner.CornerRadius = UDim.new(0, 10)
+rewardsCorner.Parent = rewardsContainer
+
+local rewardsPadding = Instance.new("UIPadding")
+rewardsPadding.PaddingTop = UDim.new(0, 8)
+rewardsPadding.PaddingBottom = UDim.new(0, 8)
+rewardsPadding.PaddingLeft = UDim.new(0, 12)
+rewardsPadding.PaddingRight = UDim.new(0, 12)
+rewardsPadding.Parent = rewardsContainer
+
+local rewardsList = Instance.new("UIListLayout")
+rewardsList.FillDirection = Enum.FillDirection.Vertical
+rewardsList.SortOrder = Enum.SortOrder.LayoutOrder
+rewardsList.Padding = UDim.new(0, 4)
+rewardsList.Parent = rewardsContainer
+
+-- Luck Bonus
+local luckLabel = Instance.new("TextLabel")
+luckLabel.Name = "LuckLabel"
+luckLabel.Size = UDim2.new(1, 0, 0, 20)
+luckLabel.BackgroundTransparency = 1
+luckLabel.Text = "✨ <font color=\"#FFD700\">+" .. (rebirthConfig.Rewards and rebirthConfig.Rewards.LuckBonus or 0) .. "% Luck</font>"
+luckLabel.Font = Enum.Font.GothamBold
+luckLabel.TextSize = 16
+luckLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+luckLabel.TextXAlignment = Enum.TextXAlignment.Left
+luckLabel.RichText = true
+luckLabel.ZIndex = 56
+luckLabel.Parent = rewardsContainer
+
+-- Crate Unlocks
+if rebirthConfig.Rewards and rebirthConfig.Rewards.UnlockedCrates and #rebirthConfig.Rewards.UnlockedCrates > 0 then
+	local cratesLabel = Instance.new("TextLabel")
+	cratesLabel.Name = "CratesLabel"
+	cratesLabel.Size = UDim2.new(1, 0, 0, 20)
+	cratesLabel.BackgroundTransparency = 1
+	cratesLabel.Text = "🎁 <font color=\"#4FC3F7\">Unlocks: " .. table.concat(rebirthConfig.Rewards.UnlockedCrates, ", ") .. "</font>"
+	cratesLabel.Font = Enum.Font.GothamBold
+	cratesLabel.TextSize = 16
+	cratesLabel.TextColor3 = Color3.fromRGB(79, 195, 247)
+	cratesLabel.TextXAlignment = Enum.TextXAlignment.Left
+	cratesLabel.RichText = true
+	cratesLabel.ZIndex = 56
+	cratesLabel.Parent = rewardsContainer
+end
+
+-- Feature Unlocks
+if rebirthConfig.Rewards and rebirthConfig.Rewards.UnlockedFeatures and #rebirthConfig.Rewards.UnlockedFeatures > 0 then
+	local featuresLabel = Instance.new("TextLabel")
+	featuresLabel.Name = "FeaturesLabel"
+	featuresLabel.Size = UDim2.new(1, 0, 0, 20)
+	featuresLabel.BackgroundTransparency = 1
+	featuresLabel.Text = "🔓 <font color=\"#B388FF\">Features: " .. table.concat(rebirthConfig.Rewards.UnlockedFeatures, ", ") .. "</font>"
+	featuresLabel.Font = Enum.Font.GothamBold
+	featuresLabel.TextSize = 16
+	featuresLabel.TextColor3 = Color3.fromRGB(179, 136, 255)
+	featuresLabel.TextXAlignment = Enum.TextXAlignment.Left
+	featuresLabel.RichText = true
+	featuresLabel.ZIndex = 56
+	featuresLabel.Parent = rewardsContainer
+end
 
 	-- Rebirth button
 	local rebirthButton = Instance.new("TextButton")

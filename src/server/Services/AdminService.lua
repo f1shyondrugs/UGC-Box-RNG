@@ -309,6 +309,7 @@ local function onPlayerChatted(player, message)
 			"/set <player> <stat> <value> - Set player stats (R$, Boxes Opened)\n" ..
 			"/give <player> <item> [size] [mutations...] - Give items to players\n" ..
 			"/save [player|all] - Force save player data\n" ..
+			"/reset <player> confirm - Reset player data completely\n" ..
 			"/celebrate [player|all] - Trigger celebration fireworks\n" ..
 			"/kick <player> <reason> - Kick a player from all servers\n" ..
 			"/kick all <reason> - Kick all players from all servers\n" ..
@@ -445,6 +446,46 @@ local function onPlayerChatted(player, message)
 			Remotes.ShowFloatingNotification:FireClient(player, banText, "Info")
 		end
 
+	elseif command == "/reset" then
+		-- Handle /reset command
+		-- Syntax: /reset <player> [confirm]
+		if #messageWords < 2 then
+			Remotes.ShowFloatingNotification:FireClient(player, "Invalid syntax. Use: /reset <player> [confirm]", "Error")
+			return
+		end
+
+		local targetPlayerName = messageWords[2]
+		local confirm = messageWords[3] and messageWords[3]:lower() == "confirm"
+		
+		-- Find target player
+		local targetPlayer = nil
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p.Name:lower():sub(1, #targetPlayerName) == targetPlayerName:lower() then
+				targetPlayer = p
+				break
+			end
+		end
+		
+		if not targetPlayer then
+			Remotes.ShowFloatingNotification:FireClient(player, "Player '" .. targetPlayerName .. "' not found.", "Error")
+			return
+		end
+
+		if not confirm then
+			Remotes.ShowFloatingNotification:FireClient(player, "WARNING: This will completely reset " .. targetPlayer.Name .. "'s data! Use '/reset " .. targetPlayer.Name .. " confirm' to proceed.", "Error")
+			return
+		end
+
+		-- Reset player data
+		local success = PlayerDataService.ResetPlayerData(targetPlayer)
+		
+		if success then
+			Remotes.ShowFloatingNotification:FireClient(player, "Successfully reset " .. targetPlayer.Name .. "'s data.", "Info")
+			Remotes.ShowFloatingNotification:FireClient(targetPlayer, "Your data has been reset by an admin.", "Info")
+		else
+			Remotes.ShowFloatingNotification:FireClient(player, "Failed to reset " .. targetPlayer.Name .. "'s data.", "Error")
+		end
+
 	elseif command == "/testcrossserver" then
 		-- Test cross-server messaging
 		local message = {
@@ -461,6 +502,46 @@ local function onPlayerChatted(player, message)
 			Remotes.ShowFloatingNotification:FireClient(player, "Cross-server test message sent successfully", "Info")
 		else
 			Remotes.ShowFloatingNotification:FireClient(player, "Failed to send cross-server test: " .. tostring(error), "Error")
+		end
+
+	elseif command == "/testenchanter" then
+		-- Test Enchanter ProximityPrompt creation
+		print("[AdminService] Testing Enchanter ProximityPrompt creation...")
+		Remotes.ShowFloatingNotification:FireClient(player, "Testing Enchanter ProximityPrompt creation...", "Info")
+		
+		-- Call the setup function directly
+		local success, err = pcall(function()
+			local EnchanterService = require(ServerScriptService.Server.Services.EnchanterService)
+			print("[AdminService] Enchanter ProximityPrompt test initiated")
+			
+			-- Try to find and test the existing prompt
+			local promptsFolder = workspace:FindFirstChild("ProximityPrompts")
+			if promptsFolder then
+				local enchanterMain = promptsFolder:FindFirstChild("EnchanterMain")
+				if enchanterMain then
+					local prompt = enchanterMain:FindFirstChildOfClass("ProximityPrompt")
+					if prompt then
+						print("[AdminService] ✓ ProximityPrompt found!")
+						Remotes.ShowFloatingNotification:FireClient(player, "✓ ProximityPrompt found at position: " .. tostring(enchanterMain.Position), "Success")
+					else
+						print("[AdminService] ✗ ProximityPrompt not found!")
+						Remotes.ShowFloatingNotification:FireClient(player, "✗ ProximityPrompt not found! Recreating...", "Error")
+						-- Try to recreate it using the exposed function
+						EnchanterService.SetupPrompt()
+					end
+				else
+					print("[AdminService] ✗ EnchanterMain part not found!")
+					Remotes.ShowFloatingNotification:FireClient(player, "✗ EnchanterMain part not found!", "Error")
+				end
+			else
+				print("[AdminService] ✗ ProximityPrompts folder not found!")
+				Remotes.ShowFloatingNotification:FireClient(player, "✗ ProximityPrompts folder not found!", "Error")
+			end
+		end)
+		
+		if not success then
+			warn("[AdminService] Failed to test Enchanter ProximityPrompt:", err)
+			Remotes.ShowFloatingNotification:FireClient(player, "Failed to test Enchanter ProximityPrompt: " .. tostring(err), "Error")
 		end
 	end
 end

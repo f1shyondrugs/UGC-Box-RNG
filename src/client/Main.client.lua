@@ -31,7 +31,6 @@ local RebirthController = require(script.Parent.Controllers.RebirthController)
 local BuyButtonUI = require(script.Parent.UI.BuyButtonUI)
 local StatsUI = require(script.Parent.UI.StatsUI)
 local BoostersController = require(script.Parent.Controllers.BoostersController)
-local PortalController = require(script.Parent.Controllers.PortalController)
 
 -- Constants (will be updated by upgrades)
 local MAX_BOXES = 1 -- Default, will be updated by upgrade system
@@ -102,7 +101,9 @@ ShopController.Start(PlayerGui, soundController)
 RebirthController:Start()
 CrateSelectionController:Start()
 EnchanterController:Start()
-PortalController.Start()
+
+-- Initialize UnlockAnimationController
+local UnlockAnimationController = require(script.Parent.Controllers.UnlockAnimationController)
 
 -- Initialize saved selected crate after CrateSelectionController is started
 AutoOpenController.InitializeSelectedCrate()

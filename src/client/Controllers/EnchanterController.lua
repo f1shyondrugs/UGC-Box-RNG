@@ -617,6 +617,212 @@ function EnchanterController:Start()
 	-- Create UI components
 	components = EnchanterUI.Create(LocalPlayer.PlayerGui)
 	
+	-- Function to check if enchanter is unlocked and update UI accordingly
+	local function updateEnchanterUI()
+		local success, unlockedFeatures = pcall(function()
+			return Remotes.GetUnlockedFeatures:InvokeServer()
+		end)
+		
+		if success and unlockedFeatures then
+			local isUnlocked = false
+			for _, feature in ipairs(unlockedFeatures) do
+				if feature == "Enchanter" then
+					isUnlocked = true
+					break
+				end
+			end
+			
+			print("[EnchanterController] Enchanter unlocked:", isUnlocked)
+			
+			-- If locked, black out the UI
+			if not isUnlocked then
+				-- Black out all UI elements
+				local function blackOutElement(element)
+					if element:IsA("GuiObject") then
+						element.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+						if element:IsA("TextLabel") or element:IsA("TextButton") then
+							element.TextColor3 = Color3.fromRGB(100, 100, 100)
+						end
+					end
+					-- Recursively black out children
+					for _, child in pairs(element:GetChildren()) do
+						blackOutElement(child)
+					end
+				end
+				-- Try multiple times to ensure UI is created
+				local attempts = 0
+				while attempts < 10 do
+					if components and components.MainFrame then
+						blackOutElement(components.MainFrame)
+						print("[EnchanterController] UI blacked out on attempt", attempts + 1)
+						break
+					else
+						attempts = attempts + 1
+						task.wait(0.1)
+					end
+				end
+				if attempts >= 10 then
+					print("[EnchanterController] Failed to black out UI after 10 attempts")
+				end
+				-- Paint EnchantingArea parts neon black (recursive)
+				local enchantingArea = workspace:FindFirstChild("EnchantingArea")
+				if enchantingArea then
+					local function paintBlackRecursive(obj)
+						if obj:IsA("BasePart") then
+							obj.Color = Color3.fromRGB(0, 0, 0)
+							obj.Material = Enum.Material.Neon
+							if obj:FindFirstChild("PointLight") then
+								obj.PointLight.Color = Color3.fromRGB(0, 0, 0)
+							end
+						end
+						for _, child in ipairs(obj:GetChildren()) do
+							paintBlackRecursive(child)
+						end
+					end
+					paintBlackRecursive(enchantingArea)
+				end
+			else
+				-- Restore original EnchantingArea build if available
+				local enchantingArea = workspace:FindFirstChild("EnchantingArea")
+				if enchantingArea then
+					local originalBuilds = ReplicatedStorage:FindFirstChild("OriginalBuilds")
+					if originalBuilds then
+						local originalEnchantingArea = originalBuilds:FindFirstChild("EnchantingArea")
+						if originalEnchantingArea then
+							enchantingArea:ClearAllChildren()
+							for _, originalPart in pairs(originalEnchantingArea:GetChildren()) do
+								local restoredPart = originalPart:Clone()
+								restoredPart.Parent = enchantingArea
+							end
+							print("[EnchanterController] Restored EnchantingArea from original build (UI update)")
+						else
+							-- Fallback: restore normal colors
+							local function restorePart(part)
+								if part:IsA("BasePart") then
+									part.Color = Color3.fromRGB(150, 100, 255)
+									part.Material = Enum.Material.Neon
+									if part:FindFirstChild("PointLight") then
+										part.PointLight.Color = Color3.fromRGB(150, 100, 255)
+									end
+								end
+								for _, child in pairs(part:GetChildren()) do
+									restorePart(child)
+								end
+							end
+							for _, part in pairs(enchantingArea:GetChildren()) do
+								restorePart(part)
+							end
+						end
+					end
+				end
+				print("[EnchanterController] UI restored to normal")
+			end
+		else
+			print("[EnchanterController] Failed to get unlocked features:", success)
+		end
+	end
+	
+	-- Update UI initially (with delay to ensure UI is created)
+	task.wait(1)
+	updateEnchanterUI()
+	
+	-- Update UI when rebirth data changes
+	Remotes.RebirthUpdated.OnClientEvent:Connect(function()
+		task.wait(0.5) -- Small delay to ensure data is updated
+		updateEnchanterUI()
+	end)
+	
+	-- Continuously monitor UI and black out if needed
+	task.spawn(function()
+		while task.wait(2) do
+			local success, unlockedFeatures = pcall(function()
+				return Remotes.GetUnlockedFeatures:InvokeServer()
+			end)
+			
+			if success and unlockedFeatures then
+				local isUnlocked = false
+				for _, feature in ipairs(unlockedFeatures) do
+					if feature == "Enchanter" then
+						isUnlocked = true
+						break
+					end
+				end
+				
+				-- Paint EnchantingArea parts
+				local enchantingArea = workspace:FindFirstChild("EnchantingArea")
+				if enchantingArea then
+					if isUnlocked then
+						-- Restore from original build
+						local originalBuilds = ReplicatedStorage:FindFirstChild("OriginalBuilds")
+						if originalBuilds then
+							local originalEnchantingArea = originalBuilds:FindFirstChild("EnchantingArea")
+							if originalEnchantingArea then
+								enchantingArea:ClearAllChildren()
+								for _, originalPart in pairs(originalEnchantingArea:GetChildren()) do
+									local restoredPart = originalPart:Clone()
+									restoredPart.Parent = enchantingArea
+								end
+								print("[EnchanterController] Restored EnchantingArea from original build (monitor)")
+							else
+								-- Fallback: restore normal colors
+								local function restorePart(part)
+									if part:IsA("BasePart") then
+										part.Color = Color3.fromRGB(150, 100, 255)
+										part.Material = Enum.Material.Neon
+										if part:FindFirstChild("PointLight") then
+											part.PointLight.Color = Color3.fromRGB(150, 100, 255)
+										end
+									end
+									for _, child in pairs(part:GetChildren()) do
+										restorePart(child)
+									end
+								end
+								for _, part in pairs(enchantingArea:GetChildren()) do
+									restorePart(part)
+								end
+							end
+						end
+					else
+						-- Paint EnchantingArea parts neon black (recursive)
+						local function paintBlackRecursive(obj)
+							if obj:IsA("BasePart") then
+								obj.Color = Color3.fromRGB(0, 0, 0)
+								obj.Material = Enum.Material.Neon
+								if obj:FindFirstChild("PointLight") then
+									obj.PointLight.Color = Color3.fromRGB(0, 0, 0)
+								end
+							end
+							for _, child in ipairs(obj:GetChildren()) do
+								paintBlackRecursive(child)
+							end
+						end
+						paintBlackRecursive(enchantingArea)
+					end
+				end
+				
+				-- Also black out UI if it exists
+				if not isUnlocked and components and components.MainFrame then
+					-- Black out all UI elements
+					local function blackOutElement(element)
+						if element:IsA("GuiObject") then
+							element.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+							if element:IsA("TextLabel") or element:IsA("TextButton") then
+								element.TextColor3 = Color3.fromRGB(100, 100, 100)
+							end
+						end
+						
+						-- Recursively black out children
+						for _, child in pairs(element:GetChildren()) do
+							blackOutElement(child)
+						end
+					end
+					
+					blackOutElement(components.MainFrame)
+				end
+			end
+		end
+	end)
+	
 	-- Set up connections
 	self:SetupConnections()
 	
@@ -974,6 +1180,29 @@ function EnchanterController:SetupConnections()
 end
 
 function EnchanterController:Show(itemsList)
+	-- Check if enchanter is unlocked first
+	local success, unlockedFeatures = pcall(function()
+		return Remotes.GetUnlockedFeatures:InvokeServer()
+	end)
+	
+	if success and unlockedFeatures then
+		local isUnlocked = false
+		for _, feature in ipairs(unlockedFeatures) do
+			if feature == "Enchanter" then
+				isUnlocked = true
+				break
+			end
+		end
+		
+		if not isUnlocked then
+			-- Show locked notification
+			if BoxAnimator then
+				BoxAnimator.AnimateFloatingNotification("Enchanter unlocks at Rebirth 4!", "Error")
+			end
+			return
+		end
+	end
+	
 	if not components or type(itemsList) ~= "table" or #itemsList == 0 then return end
 	
 	availableItems = itemsList
@@ -1058,6 +1287,59 @@ end
 Remotes.OpenEnchanter.OnClientEvent:Connect(function(itemsList)
 	if EnchanterController.Show then
 		EnchanterController:Show(itemsList)
+	end
+end)
+
+-- Handle enchanter visual updates
+Remotes.UpdateEnchanterVisual.OnClientEvent:Connect(function(isUnlocked)
+	-- Paint EnchantingArea parts
+	local enchantingArea = workspace:FindFirstChild("EnchantingArea")
+	if enchantingArea then
+		if isUnlocked then
+			-- Restore from original build
+			local originalBuilds = ReplicatedStorage:FindFirstChild("OriginalBuilds")
+			if originalBuilds then
+				local originalEnchantingArea = originalBuilds:FindFirstChild("EnchantingArea")
+				if originalEnchantingArea then
+					enchantingArea:ClearAllChildren()
+					for _, originalPart in pairs(originalEnchantingArea:GetChildren()) do
+						local restoredPart = originalPart:Clone()
+						restoredPart.Parent = enchantingArea
+					end
+					print("[EnchanterController] Restored EnchantingArea from original build (monitor)")
+				else
+					-- Fallback: restore normal colors
+					local function restorePart(part)
+						if part:IsA("BasePart") then
+							part.Color = Color3.fromRGB(150, 100, 255)
+							part.Material = Enum.Material.Neon
+							if part:FindFirstChild("PointLight") then
+								part.PointLight.Color = Color3.fromRGB(150, 100, 255)
+							end
+						end
+						for _, child in pairs(part:GetChildren()) do
+							restorePart(child)
+						end
+					end
+					for _, part in pairs(enchantingArea:GetChildren()) do
+						restorePart(part)
+					end
+				end
+			end
+		end
+		
+		print("[EnchanterController] Painted EnchantingArea - Unlocked:", isUnlocked)
+	end
+end)
+
+-- Debug function to manually recreate ProximityPrompt (for testing)
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	
+	if input.KeyCode == Enum.KeyCode.R and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+		print("[EnchanterController] Debug: Manually recreating Enchanter ProximityPrompt")
+		Remotes.RecreateEnchanterPrompt:FireServer()
 	end
 end)
 

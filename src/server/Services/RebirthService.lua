@@ -8,7 +8,7 @@ local Remotes = require(Shared.Remotes.Remotes)
 local RebirthService = {}
 
 -- Store player rebirth data in memory
-local playerRebirthData = {} -- player.UserId -> {currentRebirth, luckBonus, unlockedCrates}
+local playerRebirthData = {} -- player.UserId -> {currentRebirth, luckBonus, unlockedCrates, unlockedFeatures}
 
 -- Initialize player rebirth data
 local function initializePlayerRebirthData(player)
@@ -16,7 +16,8 @@ local function initializePlayerRebirthData(player)
 		playerRebirthData[player.UserId] = {
 			currentRebirth = 0,
 			luckBonus = 0,
-			unlockedCrates = {"FreeCrate", "StarterCrate", "PremiumCrate"} -- Default unlocked crates
+			unlockedCrates = {"FreeCrate", "StarterCrate", "PremiumCrate"}, -- Default unlocked crates
+			unlockedFeatures = {} -- Default no features unlocked
 		}
 	end
 end
@@ -70,6 +71,41 @@ function RebirthService.IsCrateUnlocked(player, crateName)
 		end
 	end
 	return false
+end
+
+-- Get player unlocked features
+function RebirthService.GetPlayerUnlockedFeatures(player)
+	local rebirthData = RebirthService.GetPlayerRebirthData(player)
+	return rebirthData.unlockedFeatures or {}
+end
+
+-- Check if player has unlocked a specific feature
+function RebirthService.IsFeatureUnlocked(player, featureName)
+	local unlockedFeatures = RebirthService.GetPlayerUnlockedFeatures(player)
+	print("[RebirthService] Checking if", player.Name, "has unlocked", featureName)
+	print("[RebirthService] Unlocked features:", table.concat(unlockedFeatures, ", "))
+	for _, feature in ipairs(unlockedFeatures) do
+		if feature == featureName then
+			print("[RebirthService]", player.Name, "has unlocked", featureName)
+			return true
+		end
+	end
+	print("[RebirthService]", player.Name, "has NOT unlocked", featureName)
+	return false
+end
+
+-- Set player unlocked crates (for admin use)
+function RebirthService.SetPlayerUnlockedCrates(player, crates)
+	initializePlayerRebirthData(player)
+	playerRebirthData[player.UserId].unlockedCrates = crates
+	print("[RebirthService] Set unlocked crates for", player.Name, ":", table.concat(crates, ", "))
+end
+
+-- Set player unlocked features (for admin use)
+function RebirthService.SetPlayerUnlockedFeatures(player, features)
+	initializePlayerRebirthData(player)
+	playerRebirthData[player.UserId].unlockedFeatures = features
+	print("[RebirthService] Set unlocked features for", player.Name, ":", table.concat(features, ", "))
 end
 
 -- Check if player has required items
@@ -193,6 +229,20 @@ function RebirthService.PerformRebirth(player, rebirthLevel)
 	end
 	playerRebirthData[player.UserId].unlockedCrates = allUnlocked
 	
+	-- 5.5. Unlock new features (always ensure all features from all previous rebirths are included)
+	local allUnlockedFeatures = {}
+	for i = 1, rebirthLevel do
+		local config = GameConfig.Rebirths[i]
+		if config and config.Rewards and config.Rewards.UnlockedFeatures then
+			for _, feature in ipairs(config.Rewards.UnlockedFeatures) do
+				local already = false
+				for _, f in ipairs(allUnlockedFeatures) do if f == feature then already = true break end end
+				if not already then table.insert(allUnlockedFeatures, feature) end
+			end
+		end
+	end
+	playerRebirthData[player.UserId].unlockedFeatures = allUnlockedFeatures
+	
 	-- 6. Save data
 	PlayerDataService.Save(player)
 	
@@ -218,6 +268,13 @@ local function getUnlockedCrates(player)
 	return RebirthService.GetPlayerUnlockedCrates(player)
 end
 
+-- Get unlocked features for client
+local function getUnlockedFeatures(player)
+	local features = RebirthService.GetPlayerUnlockedFeatures(player)
+	print("[RebirthService] Client requested unlocked features for", player.Name, ":", table.concat(features, ", "))
+	return features
+end
+
 -- Handle rebirth request
 local function handleRebirthRequest(player, rebirthLevel)
 	return RebirthService.PerformRebirth(player, rebirthLevel)
@@ -228,6 +285,7 @@ function RebirthService.Init()
 	-- Connect remote events
 	Remotes.GetRebirthData.OnServerInvoke = getRebirthData
 	Remotes.GetUnlockedCrates.OnServerInvoke = getUnlockedCrates
+	Remotes.GetUnlockedFeatures.OnServerInvoke = getUnlockedFeatures
 	Remotes.PerformRebirth.OnServerInvoke = handleRebirthRequest
 	
 	-- Initialize rebirth data for existing players
@@ -242,6 +300,12 @@ function RebirthService.Init()
 		
 		-- Initialize rebirth data
 		initializePlayerRebirthData(player)
+		
+		-- Recalculate unlocked features based on current rebirth level
+		local currentRebirth = playerRebirthData[player.UserId].currentRebirth
+		local calculatedFeatures = calculateUnlockedFeatures(currentRebirth)
+		playerRebirthData[player.UserId].unlockedFeatures = calculatedFeatures
+		print("[RebirthService] Recalculated unlocked features for", player.Name, "at rebirth", currentRebirth, ":", table.concat(calculatedFeatures, ", "))
 		
 		-- Send current rebirth data to client
 		local rebirthData = RebirthService.GetPlayerRebirthData(player)
@@ -263,16 +327,37 @@ end)
 -- Save/load rebirth data with PlayerDataService
 function RebirthService.GetPlayerRebirthsForSave(player)
 	local data = RebirthService.GetPlayerRebirthData(player)
-	return {
+	local saveData = {
 		currentRebirth = data.currentRebirth,
 		luckBonus = data.luckBonus,
-		unlockedCrates = data.unlockedCrates
+		unlockedCrates = data.unlockedCrates,
+		unlockedFeatures = data.unlockedFeatures
 	}
+	print("[RebirthService] Saving rebirth data for", player.Name, ":", game:GetService("HttpService"):JSONEncode(saveData))
+	return saveData
+end
+
+-- Calculate unlocked features based on rebirth level
+local function calculateUnlockedFeatures(rebirthLevel)
+	local unlockedFeatures = {}
+	for i = 1, rebirthLevel do
+		local config = GameConfig.Rebirths[i]
+		if config and config.Rewards and config.Rewards.UnlockedFeatures then
+			for _, feature in ipairs(config.Rewards.UnlockedFeatures) do
+				local already = false
+				for _, f in ipairs(unlockedFeatures) do if f == feature then already = true break end end
+				if not already then table.insert(unlockedFeatures, feature) end
+			end
+		end
+	end
+	return unlockedFeatures
 end
 
 function RebirthService.LoadPlayerRebirthsFromSave(player, data)
 	-- Initialize player data if not exists
 	initializePlayerRebirthData(player)
+	
+	print("[RebirthService] Loading rebirth data for", player.Name, ":", game:GetService("HttpService"):JSONEncode(data or {}))
 	
 	if data and data.currentRebirth then
 		RebirthService.SetPlayerRebirthLevel(player, data.currentRebirth)
@@ -290,6 +375,12 @@ function RebirthService.LoadPlayerRebirthsFromSave(player, data)
 		playerRebirthData[player.UserId].unlockedCrates = {"FreeCrate", "StarterCrate", "PremiumCrate"}
 		print("[RebirthService] Using default unlocked crates for", player.Name)
 	end
+	
+	-- Always recalculate unlocked features based on current rebirth level
+	local currentRebirth = playerRebirthData[player.UserId].currentRebirth
+	local calculatedFeatures = calculateUnlockedFeatures(currentRebirth)
+	playerRebirthData[player.UserId].unlockedFeatures = calculatedFeatures
+	print("[RebirthService] Calculated unlocked features for rebirth", currentRebirth, ":", table.concat(calculatedFeatures, ", "))
 	
 	-- Ensure player attributes are set
 	player:SetAttribute("RebirthLevel", playerRebirthData[player.UserId].currentRebirth)

@@ -1943,7 +1943,7 @@ Config.Boxes = {
         [1] = {
             Name = "First Rebirth",
             Requirements = {
-                Money = 50000,
+                Money = 25000,
                 Items = {
                     {Name = "Cool Hoodie", Amount = 5},
                     {Name = "Designer Jeans", Amount = 3}
@@ -1960,7 +1960,7 @@ Config.Boxes = {
         [2] = {
             Name = "Second Rebirth",
             Requirements = {
-                Money = 100000,
+                Money = 75000,
                 Items = {
                     {Name = "Crown", Amount = 1},
                     {Name = "VR Goggles", Amount = 2}
@@ -1968,7 +1968,8 @@ Config.Boxes = {
             },
             Rewards = {
                 LuckBonus = 10, -- 10% luck increase (20% total)
-                UnlockedCrates = {"MythicalCrate"}
+                UnlockedCrates = {"MythicalCrate"},
+                UnlockedFeatures = {"Collection"} -- Unlock Collection at Rebirth 2
             },
             ResetMoney = 500,
             ClearInventory = true
@@ -1977,7 +1978,7 @@ Config.Boxes = {
         [3] = {
             Name = "Third Rebirth",
             Requirements = {
-                Money = 500000,
+                Money = 250000,
                 Items = {
                     {Name = "Diamond Crown", Amount = 1},
                     {Name = "Phoenix Wings", Amount = 1}
@@ -1994,7 +1995,7 @@ Config.Boxes = {
         [4] = {
             Name = "Fourth Rebirth",
             Requirements = {
-                Money = 2000000,
+                Money = 1000000,
                 Items = {
                     {Name = "God's Halo", Amount = 1},
                     {Name = "Reality Gloves", Amount = 1}
@@ -2002,7 +2003,8 @@ Config.Boxes = {
             },
             Rewards = {
                 LuckBonus = 10, -- 10% luck increase (40% total)
-                UnlockedCrates = {"DivineCrate"}
+                UnlockedCrates = {"DivineCrate"},
+                UnlockedFeatures = {"Enchanter"} -- Unlock Enchanter at Rebirth 4
             },
             ResetMoney = 500
         },
@@ -2010,7 +2012,7 @@ Config.Boxes = {
         [5] = {
             Name = "Fifth Rebirth",
             Requirements = {
-                Money = 10000000,
+                Money = 5000000,
                 Items = {
                     {Name = "Singularity Staff", Amount = 1},
                     {Name = "Cosmic Crown", Amount = 1}
@@ -2027,7 +2029,7 @@ Config.Boxes = {
         [6] = {
             Name = "Sixth Rebirth",
             Requirements = {
-                Money = 50000000,
+                Money = 10000000,
                 Items = {
                     {Name = "Aura of the Gods", Amount = 1},
                     {Name = "Black Hole Blade", Amount = 1}
@@ -2061,7 +2063,7 @@ Config.Boxes = {
         [8] = {
             Name = "Eighth Rebirth",
             Requirements = {
-                Money = 500000000,
+                Money = 100000000,
                 Items = {
                     {Name = "Mantle of the Architect", Amount = 1},
                     {Name = "Fragment of Creation", Amount = 1}
@@ -2078,7 +2080,7 @@ Config.Boxes = {
         [9] = {
             Name = "Ninth Rebirth",
             Requirements = {
-                Money = 2000000000,
+                Money = 1000000000,
                 Items = {
                     {Name = "Clockwork's Shades", Amount = 1},
                     {Name = "Brighteyes' Bloxy Cola Hat", Amount = 1}
@@ -2093,7 +2095,7 @@ Config.Boxes = {
         [10] = {
             Name = "Tenth Rebirth",
             Requirements = {
-                Money = 10000000000,
+                Money = 50000000000,
                 Items = {
                     {Name = "Dominus Empyreus", Amount = 1},
                     {Name = "Dominus Messor", Amount = 1}
@@ -2179,38 +2181,10 @@ Config.InfiniteStorageGamepassId = 1291387177 -- 49R$
 Config.ExtraLuckyGamepassId = 1293308405 -- Extra Lucky (+25%) 129R$
 Config.UltraLuckyGamepassId = 1294534907 -- ULTRA Lucky (+40%) 199R$
 
--- Area System Configuration
-Config.Areas = {
-    [1] = { 
-        Name = "Area 1", 
-        RebirthsRequired = 2, 
-        Position = Vector3.new(0, 5, 0),
-        Description = "The starting area for new players"
-    },
-    [2] = { 
-        Name = "Area 2", 
-        RebirthsRequired = 4, 
-        Position = Vector3.new(100, 5, 0),
-        Description = "Requires 4 rebirths to access"
-    },
-    [3] = { 
-        Name = "Area 3", 
-        RebirthsRequired = 6, 
-        Position = Vector3.new(200, 5, 0),
-        Description = "Requires 6 rebirths to access"
-    },
-    [4] = { 
-        Name = "Area 4", 
-        RebirthsRequired = 8, 
-        Position = Vector3.new(300, 5, 0),
-        Description = "Requires 8 rebirths to access"
-    },
-    [5] = { 
-        Name = "Area 5", 
-        RebirthsRequired = 10, 
-        Position = Vector3.new(400, 5, 0),
-        Description = "Requires 10 rebirths to access"
-    },
+-- Feature Requirements (Rebirth-based unlocks)
+Config.FeatureRequirements = {
+    Collection = 2, -- Unlocks at Rebirth 2
+    Enchanter = 4, -- Unlocks at Rebirth 4
 }
 
 return Config

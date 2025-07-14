@@ -33,6 +33,7 @@ return {
 	-- Rebirth System
 	GetRebirthData = createRemote("RemoteFunction", "GetRebirthData"),
 	GetUnlockedCrates = createRemote("RemoteFunction", "GetUnlockedCrates"),
+	GetUnlockedFeatures = createRemote("RemoteFunction", "GetUnlockedFeatures"),
 	PerformRebirth = createRemote("RemoteFunction", "PerformRebirth"),
 	RebirthUpdated = createRemote("RemoteEvent", "RebirthUpdated"),
 	
@@ -70,6 +71,8 @@ return {
 	StartAutoEnchanting = createRemote("RemoteEvent", "StartAutoEnchanting"),
 	StopAutoEnchanting = createRemote("RemoteEvent", "StopAutoEnchanting"),
 	AutoEnchantingProgress = createRemote("RemoteEvent", "AutoEnchantingProgress"),
+	UpdateEnchanterVisual = createRemote("RemoteEvent", "UpdateEnchanterVisual"),
+	RecreateEnchanterPrompt = createRemote("RemoteEvent", "RecreateEnchanterPrompt"),
 	
 	-- Auto-Open Remotes
 	CheckAutoOpenGamepass = createRemote("RemoteFunction", "CheckAutoOpenGamepass"),
@@ -85,7 +88,7 @@ return {
 	-- New RemoteFunction
 	GetAutoSettings = createRemote("RemoteFunction", "GetAutoSettings"),
 	
-	-- Portal Remotes
-	RequestPortalTeleport = createRemote("RemoteEvent", "RequestPortalTeleport"),
-	PortalTeleported = createRemote("RemoteEvent", "PortalTeleported"),
-} 
+	-- Selected Crate Remotes
+	SaveSelectedCrate = createRemote("RemoteEvent", "SaveSelectedCrate"),
+	GetSelectedCrate = createRemote("RemoteFunction", "GetSelectedCrate"),
+}
