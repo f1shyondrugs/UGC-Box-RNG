@@ -515,6 +515,11 @@ local function saveData(player: Player)
 	}
 	print("[SAVE DEBUG] Leaderboard data for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(dataToSave.leaderboardData))
 
+	-- Save tutorial completion status
+	local TutorialService = require(script.Parent.TutorialService)
+	dataToSave.tutorialCompleted = TutorialService.HasCompletedTutorial(player)
+	print("[SAVE DEBUG] Tutorial completion for " .. player.Name .. ":", dataToSave.tutorialCompleted)
+
 	-- Debug: Print complete save structure
 	print("[SAVE DEBUG] Complete save data for " .. player.Name .. ":")
 	print("  - Robux:", dataToSave.robux)
@@ -529,6 +534,7 @@ local function saveData(player: Player)
 	print("  - Auto-Settings:", game:GetService("HttpService"):JSONEncode(dataToSave.autoSettings or {}))
 	print("  - Collection:", game:GetService("HttpService"):JSONEncode(dataToSave.collection or {}))
 	print("  - Leaderboard Data:", game:GetService("HttpService"):JSONEncode(dataToSave.leaderboardData or {}))
+	print("  - Tutorial Completed:", dataToSave.tutorialCompleted)
 
 	-- Retry logic for DataStore operations
 	if not playerDataStore then
@@ -945,7 +951,16 @@ local function onPlayerAdded(player: Player)
 					print("[LOAD DEBUG] Loaded leaderboard data for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(data.leaderboardData))
 				else
 					print("[LOAD DEBUG] No leaderboard data found for " .. player.Name)
-						end
+				end
+
+				-- Load tutorial completion status
+				if data.tutorialCompleted ~= nil then
+					local TutorialService = require(script.Parent.TutorialService)
+					TutorialService.SetTutorialCompletion(player, data.tutorialCompleted)
+					print("[LOAD DEBUG] Loaded tutorial completion for " .. player.Name .. ": " .. tostring(data.tutorialCompleted))
+				else
+					print("[LOAD DEBUG] No tutorial completion data found for " .. player.Name)
+				end
 						
 						-- Load equipped items
 						if data.equippedItems then
@@ -1105,6 +1120,15 @@ local function onPlayerAdded(player: Player)
 					print("[LOAD DEBUG] Loaded leaderboard data for " .. player.Name .. " (no inventory):", game:GetService("HttpService"):JSONEncode(data.leaderboardData))
 				else
 					print("[LOAD DEBUG] No leaderboard data found for " .. player.Name .. " (no inventory)")
+				end
+
+				-- Load tutorial completion status
+				if data.tutorialCompleted ~= nil then
+					local TutorialService = require(script.Parent.TutorialService)
+					TutorialService.SetTutorialCompletion(player, data.tutorialCompleted)
+					print("[LOAD DEBUG] Loaded tutorial completion for " .. player.Name .. " (no inventory): " .. tostring(data.tutorialCompleted))
+				else
+					print("[LOAD DEBUG] No tutorial completion data found for " .. player.Name .. " (no inventory)")
 				end
 				
 				-- Calculate and set RAP

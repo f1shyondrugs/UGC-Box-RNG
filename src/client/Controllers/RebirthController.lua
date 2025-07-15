@@ -79,6 +79,11 @@ local function hideOtherUIs(show)
 	if show then
 		for _, gui in pairs(playerGui:GetChildren()) do
 			if gui:IsA("ScreenGui") and gui ~= (components and components.ScreenGui) then
+				-- Don't hide tutorial GUI
+				if gui.Name == "TutorialGui" then
+					continue
+				end
+				
 				-- Don't hide inventory GUI if it's in selection mode
 				if gui.Name == "InventoryGui" then
 					local inventoryController = require(script.Parent.InventoryController)

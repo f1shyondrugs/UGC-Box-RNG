@@ -36,6 +36,11 @@ local function hideOtherUIs(show)
 		-- Hide other UIs for clean upgrade experience
 		for _, gui in pairs(playerGui:GetChildren()) do
 			if gui:IsA("ScreenGui") and gui.Name ~= "UpgradeGui" then
+				-- Don't hide tutorial GUI
+				if gui.Name == "TutorialGui" then
+					continue
+				end
+				
 				if gui.Enabled then
 					hiddenUIs[gui] = true
 					gui.Enabled = false

@@ -32,6 +32,7 @@ local ToastNotificationController = require(script.Parent.Controllers.ToastNotif
 local BuyButtonUI = require(script.Parent.UI.BuyButtonUI)
 local StatsUI = require(script.Parent.UI.StatsUI)
 local BoostersController = require(script.Parent.Controllers.BoostersController)
+local TutorialController = require(script.Parent.Controllers.TutorialController)
 
 -- Constants (will be updated by upgrades)
 local MAX_BOXES = 1 -- Default, will be updated by upgrade system
@@ -138,6 +139,13 @@ local buyButtonGui = BuyButtonUI.Create(PlayerGui)
 
 -- Create Boosters UI in the bottom left (includes rebirth luck)
 local boostersGui = BoostersController.Start(PlayerGui)
+
+-- Start tutorial for new players (wait for inventory load to complete first)
+Remotes.InventoryLoadComplete.OnClientEvent:Connect(function()
+    -- Wait a moment to ensure all player data is fully loaded
+    task.wait(0.5)
+    TutorialController.Start(PlayerGui)
+end)
 
 -- Connect rebirth luck updates
 local function updateRebirthLuckDisplay()

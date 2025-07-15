@@ -23,6 +23,7 @@ local AutoSellService = require(Services:WaitForChild("AutoSellService"))
 local InfiniteStorageService = require(Services:WaitForChild("InfiniteStorageService"))
 local RebirthService = require(Services:WaitForChild("RebirthService"))
 local DiscordLoggingService = require(Services:WaitForChild("DiscordLoggingService"))
+local TutorialService = require(Services:WaitForChild("TutorialService"))
 -- local other services will be added here
 
 -- Start Services
@@ -44,4 +45,5 @@ AutoSellService.Start()
 InfiniteStorageService.Start()
 RebirthService.Init()
 DiscordLoggingService.Start()
+TutorialService.Start()
 -- other services will be started here 

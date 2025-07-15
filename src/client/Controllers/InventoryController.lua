@@ -631,6 +631,11 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 			-- Hide other UIs for clean inventory experience
 			for _, gui in pairs(playerGui:GetChildren()) do
 				if gui:IsA("ScreenGui") and gui ~= ui.ScreenGui then
+					-- Don't hide tutorial GUI
+					if gui.Name == "TutorialGui" then
+						continue
+					end
+					
 					if gui.Enabled then
 						if gui.Name == "EnchanterGui" and isEnchantingMode then
 							print("Hiding enchanter interface during item selection")

@@ -60,6 +60,11 @@ local function hideOtherUIs(show)
 	if show then
 		for _, gui in pairs(playerGui:GetChildren()) do
 			if gui:IsA("ScreenGui") and gui.Name ~= "ShopGui" then
+				-- Don't hide tutorial GUI
+				if gui.Name == "TutorialGui" then
+					continue
+				end
+				
 				if gui.Enabled then
 					hiddenUIs[gui] = true
 					gui.Enabled = false

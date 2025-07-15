@@ -91,4 +91,8 @@ return {
 	-- Selected Crate Remotes
 	SaveSelectedCrate = createRemote("RemoteEvent", "SaveSelectedCrate"),
 	GetSelectedCrate = createRemote("RemoteFunction", "GetSelectedCrate"),
+	
+	-- Tutorial Remotes
+	SaveTutorialCompletion = createRemote("RemoteEvent", "SaveTutorialCompletion"),
+	CheckTutorialCompletion = createRemote("RemoteFunction", "CheckTutorialCompletion"),
 }
