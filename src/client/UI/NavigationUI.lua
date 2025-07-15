@@ -34,7 +34,7 @@ function NavigationUI.Create(parentGui)
 	-- Main Container Frame (draggable)
 	local containerFrame = Instance.new("Frame")
 	containerFrame.Name = "NavigationContainer"
-	containerFrame.Size = UDim2.new(0, 220, 0, 300) -- Bigger container
+	containerFrame.Size = UDim2.new(0, 200, 0, 300) -- Smaller container
 	containerFrame.Position = UDim2.new(0, 15, 0.5, -150)
 	containerFrame.BackgroundColor3 = Color3.fromRGB(40, 50, 80)
 	containerFrame.BackgroundTransparency = 0.22 -- More transparent
@@ -64,7 +64,7 @@ function NavigationUI.Create(parentGui)
 	
 	-- Grid Layout (2 columns, 3 rows) - Bigger buttons
 	local gridLayout = Instance.new("UIGridLayout")
-	gridLayout.CellPadding = UDim2.new(0, 14, 0, 14)
+	gridLayout.CellPadding = UDim2.new(0, 8, 0, 14)
 	gridLayout.CellSize = UDim2.new(0, 85, 0, 85)
 	gridLayout.FillDirection = Enum.FillDirection.Horizontal
 	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -78,8 +78,8 @@ function NavigationUI.Create(parentGui)
 	local padding = Instance.new("UIPadding")
 	padding.PaddingTop = UDim.new(0, 18)
 	padding.PaddingBottom = UDim.new(0, 18)
-	padding.PaddingLeft = UDim.new(0, 15)
-	padding.PaddingRight = UDim.new(0, 15)
+	padding.PaddingLeft = UDim.new(0, 8)
+	padding.PaddingRight = UDim.new(0, 8)
 	padding.Parent = containerFrame
 
 	-- Store button references
@@ -99,9 +99,7 @@ function NavigationUI.Create(parentGui)
 		button.Active = true
 		button.Parent = containerFrame
 
-		local aspect = Instance.new("UIAspectRatioConstraint")
-		aspect.AspectRatio = 1
-		aspect.Parent = button
+		-- Removed aspect ratio constraint to let grid layout handle sizing
 
 		ButtonStyles.ApplyStyle(button, "Navigation", {
 			cornerRadius = 18,

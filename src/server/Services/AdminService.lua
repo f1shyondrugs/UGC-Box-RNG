@@ -476,6 +476,8 @@ local function onPlayerChatted(player, message)
 			return
 		end
 
+		Remotes.ShowFloatingNotification:FireClient(player, "Resetting " .. targetPlayer.Name .. "'s data... this may take a minute or two.", "Info")
+
 		-- Reset player data
 		local success = PlayerDataService.ResetPlayerData(targetPlayer)
 		

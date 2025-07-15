@@ -122,22 +122,6 @@ function RebirthUI.Create(parentGui)
 	title.Parent = titleBar
 	components.Title = title
 
-	-- Add text shadow effect
-	local titleShadow = Instance.new("TextLabel")
-	titleShadow.Name = "TitleShadow"
-	titleShadow.Size = title.Size
-	titleShadow.Position = UDim2.new(0, 27, 0, 2)
-	titleShadow.Text = title.Text
-	titleShadow.Font = title.Font
-	titleShadow.TextSize = title.TextSize
-	titleShadow.TextColor3 = Color3.fromRGB(0, 0, 0)
-	titleShadow.TextTransparency = 0.8
-	titleShadow.BackgroundTransparency = 1
-	titleShadow.TextXAlignment = Enum.TextXAlignment.Left
-	titleShadow.TextYAlignment = Enum.TextYAlignment.Center
-	titleShadow.ZIndex = 51
-	titleShadow.Parent = titleBar
-
 	-- Close button
 	local closeButton = Instance.new("TextButton")
 	closeButton.Name = "CloseButton"
@@ -182,6 +166,12 @@ function RebirthUI.Create(parentGui)
 	contentFrame.ScrollBarThickness = 8
 	contentFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 100)
 	components.ContentFrame = contentFrame
+	
+	-- Add layout to ContentFrame to ensure proper ordering
+	local contentLayout = Instance.new("UIListLayout")
+	contentLayout.Padding = UDim.new(0, 15)
+	contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	contentLayout.Parent = contentFrame
 
 	-- Current Stats Panel
 	local currentStatsPanel = Instance.new("Frame")
@@ -191,6 +181,7 @@ function RebirthUI.Create(parentGui)
 	currentStatsPanel.BackgroundTransparency = 0.5
 	currentStatsPanel.BorderSizePixel = 0
 	currentStatsPanel.ZIndex = 52
+	currentStatsPanel.LayoutOrder = 1
 	currentStatsPanel.Parent = contentFrame
 	components.CurrentStatsPanel = currentStatsPanel
 
@@ -255,6 +246,7 @@ function RebirthUI.Create(parentGui)
 	rebirthContainer.Position = UDim2.new(0, 0, 0, 140)
 	rebirthContainer.BackgroundTransparency = 1
 	rebirthContainer.ZIndex = 52
+	rebirthContainer.LayoutOrder = 2
 	rebirthContainer.Parent = contentFrame
 	components.RebirthContainer = rebirthContainer
 
@@ -276,7 +268,7 @@ function RebirthUI.Create(parentGui)
 end
 
 -- Create confirmation dialog
-function RebirthUI.CreateConfirmationDialog(parent, rebirthConfig, onConfirm, onCancel)
+function RebirthUI.CreateConfirmationDialog(parent, rebirthConfig, onConfirm, onCancel, selectedItems)
 	local dialog = Instance.new("ScreenGui")
 	dialog.Name = "RebirthConfirmationDialog"
 	dialog.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -393,6 +385,45 @@ function RebirthUI.CreateConfirmationDialog(parent, rebirthConfig, onConfirm, on
 	resetList.ZIndex = 1002
 	resetList.Parent = dialogFrame
 
+	-- Selected items section (if items were selected)
+	if selectedItems and #selectedItems > 0 then
+		local selectedTitle = Instance.new("TextLabel")
+		selectedTitle.Name = "SelectedTitle"
+		selectedTitle.Size = UDim2.new(1, -40, 0, 30)
+		selectedTitle.Position = UDim2.new(0, 20, 0, 390)
+		selectedTitle.Text = "💾 Items to KEEP:"
+		selectedTitle.Font = Enum.Font.GothamBold
+		selectedTitle.TextSize = 16
+		selectedTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
+		selectedTitle.BackgroundTransparency = 1
+		selectedTitle.TextXAlignment = Enum.TextXAlignment.Left
+		selectedTitle.ZIndex = 1002
+		selectedTitle.Parent = dialogFrame
+
+		local selectedList = Instance.new("TextLabel")
+		selectedList.Name = "SelectedList"
+		selectedList.Size = UDim2.new(1, -40, 0, 50)
+		selectedList.Position = UDim2.new(0, 20, 0, 420)
+		
+		local selectedText = ""
+		for i, itemName in ipairs(selectedItems) do
+			selectedText = selectedText .. "   • " .. itemName .. "\n"
+		end
+		
+		selectedList.Text = selectedText
+		selectedList.Font = Enum.Font.Gotham
+		selectedList.TextSize = 14
+		selectedList.TextColor3 = Color3.fromRGB(100, 255, 100)
+		selectedList.BackgroundTransparency = 1
+		selectedList.TextXAlignment = Enum.TextXAlignment.Left
+		selectedList.TextWrapped = true
+		selectedList.ZIndex = 1002
+		selectedList.Parent = dialogFrame
+
+		-- Adjust button container position
+		buttonContainer.Position = UDim2.new(0, 20, 1, -80)
+	end
+
 	-- Buttons container
 	local buttonContainer = Instance.new("Frame")
 	buttonContainer.Name = "ButtonContainer"
@@ -451,7 +482,7 @@ function RebirthUI.CreateConfirmationDialog(parent, rebirthConfig, onConfirm, on
 end
 
 -- Create a rebirth option entry
-function RebirthUI.CreateRebirthEntry(rebirthLevel, rebirthConfig, canAfford, hasItems)
+function RebirthUI.CreateRebirthEntry(rebirthLevel, rebirthConfig, canAfford, hasItems, selectedItems)
 	local entry = Instance.new("Frame")
 	entry.Name = "RebirthEntry" .. rebirthLevel
 	entry.Size = UDim2.new(1, 0, 0, 200)
@@ -608,6 +639,34 @@ if rebirthConfig.Rewards and rebirthConfig.Rewards.UnlockedFeatures and #rebirth
 	featuresLabel.Parent = rewardsContainer
 end
 
+	-- Item Selection Button (only show if rebirth clears inventory)
+	local itemSelectionButton = nil
+	if rebirthConfig.ClearInventory then
+		itemSelectionButton = Instance.new("TextButton")
+		itemSelectionButton.Name = "ItemSelectionButton"
+		itemSelectionButton.Size = UDim2.new(1, 0, 0, 35)
+		itemSelectionButton.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
+		itemSelectionButton.Text = "📦 SELECT 3 ITEMS TO KEEP"
+		itemSelectionButton.Font = Enum.Font.GothamBold
+		itemSelectionButton.TextSize = 14
+		itemSelectionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+		itemSelectionButton.ZIndex = 54
+		itemSelectionButton.LayoutOrder = 5
+		itemSelectionButton.Parent = entry
+
+		local itemButtonCorner = Instance.new("UICorner")
+		itemButtonCorner.CornerRadius = UDim.new(0, 8)
+		itemButtonCorner.Parent = itemSelectionButton
+
+		local itemButtonGradient = Instance.new("UIGradient")
+		itemButtonGradient.Color = ColorSequence.new{
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 170, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 130, 215))
+		}
+		itemButtonGradient.Rotation = 90
+		itemButtonGradient.Parent = itemSelectionButton
+	end
+
 	-- Rebirth button
 	local rebirthButton = Instance.new("TextButton")
 	rebirthButton.Name = "RebirthButton"
@@ -618,7 +677,7 @@ end
 	rebirthButton.TextSize = 16
 	rebirthButton.TextColor3 = Color3.fromRGB(0, 0, 0)
 	rebirthButton.ZIndex = 54
-	rebirthButton.LayoutOrder = 5
+	rebirthButton.LayoutOrder = itemSelectionButton and 6 or 5
 	rebirthButton.Parent = entry
 
 	local buttonCorner = Instance.new("UICorner")
@@ -640,7 +699,273 @@ end
 	buttonGradient.Rotation = 90
 	buttonGradient.Parent = rebirthButton
 
-	return entry, rebirthButton
+	-- Add selected items display below the rebirth button if items are selected
+	if selectedItems and #selectedItems > 0 then
+		local selectedItemsFrame = Instance.new("Frame")
+		selectedItemsFrame.Name = "SelectedItemsFrame"
+		selectedItemsFrame.Size = UDim2.new(1, 0, 0, 120)
+		selectedItemsFrame.BackgroundColor3 = Color3.fromRGB(20, 25, 35)
+		selectedItemsFrame.BackgroundTransparency = 0.1
+		selectedItemsFrame.BorderSizePixel = 0
+		selectedItemsFrame.ZIndex = 54
+		selectedItemsFrame.LayoutOrder = itemSelectionButton and 7 or 6
+		selectedItemsFrame.Parent = entry
+		
+		local selectedItemsCorner = Instance.new("UICorner")
+		selectedItemsCorner.CornerRadius = UDim.new(0, 8)
+		selectedItemsCorner.Parent = selectedItemsFrame
+		
+		local selectedItemsStroke = Instance.new("UIStroke")
+		selectedItemsStroke.Color = Color3.fromRGB(100, 255, 100)
+		selectedItemsStroke.Thickness = 1
+		selectedItemsStroke.Transparency = 0.7
+		selectedItemsStroke.Parent = selectedItemsFrame
+		
+		-- Title
+		local title = Instance.new("TextLabel")
+		title.Name = "SelectedItemsTitle"
+		title.Size = UDim2.new(1, 0, 0, 25)
+		title.Position = UDim2.new(0, 0, 0, 0)
+		title.Text = "💾 Selected Items to Keep:"
+		title.Font = Enum.Font.GothamBold
+		title.TextSize = 14
+		title.TextColor3 = Color3.fromRGB(100, 255, 100)
+		title.TextXAlignment = Enum.TextXAlignment.Center
+		title.BackgroundTransparency = 1
+		title.ZIndex = 55
+		title.Parent = selectedItemsFrame
+		
+		-- Items grid container
+		local gridContainer = Instance.new("Frame")
+		gridContainer.Name = "ItemsGridContainer"
+		gridContainer.Size = UDim2.new(1, -20, 1, -30)
+		gridContainer.Position = UDim2.new(0, 10, 0, 25)
+		gridContainer.BackgroundTransparency = 1
+		gridContainer.ZIndex = 55
+		gridContainer.Parent = selectedItemsFrame
+		
+		-- Grid layout for 3x1
+		local gridLayout = Instance.new("UIGridLayout")
+		gridLayout.CellSize = UDim2.new(0.33, -5, 1, 0)
+		gridLayout.CellPadding = UDim2.new(0, 5, 0, 0)
+		gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		gridLayout.Parent = gridContainer
+		
+		-- Create item slots
+		for i = 1, 3 do
+			local itemSlot = Instance.new("Frame")
+			itemSlot.Name = "ItemSlot" .. i
+			itemSlot.Size = UDim2.new(1, 0, 1, 0)
+			itemSlot.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
+			itemSlot.BorderSizePixel = 0
+			itemSlot.ZIndex = 56
+			itemSlot.Parent = gridContainer
+			
+			local slotCorner = Instance.new("UICorner")
+			slotCorner.CornerRadius = UDim.new(0, 6)
+			slotCorner.Parent = itemSlot
+			
+			local slotStroke = Instance.new("UIStroke")
+			slotStroke.Color = Color3.fromRGB(80, 120, 200)
+			slotStroke.Thickness = 1
+			slotStroke.Transparency = 0.5
+			slotStroke.Parent = itemSlot
+			
+			if selectedItems[i] then
+				-- Item name label (simplified for now)
+				local itemLabel = Instance.new("TextLabel")
+				itemLabel.Name = "ItemLabel"
+				itemLabel.Size = UDim2.new(1, -10, 1, 0)
+				itemLabel.Position = UDim2.new(0, 5, 0, 0)
+				itemLabel.Text = selectedItems[i]
+				itemLabel.Font = Enum.Font.Gotham
+				itemLabel.TextSize = 10
+				itemLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+				itemLabel.TextXAlignment = Enum.TextXAlignment.Center
+				itemLabel.TextYAlignment = Enum.TextYAlignment.Center
+				itemLabel.BackgroundTransparency = 1
+				itemLabel.TextWrapped = true
+				itemLabel.ZIndex = 57
+				itemLabel.Parent = itemSlot
+			else
+				-- Empty slot
+				local emptyLabel = Instance.new("TextLabel")
+				emptyLabel.Name = "EmptyLabel"
+				emptyLabel.Size = UDim2.new(1, -10, 1, 0)
+				emptyLabel.Position = UDim2.new(0, 5, 0, 0)
+				emptyLabel.Text = "Empty"
+				emptyLabel.Font = Enum.Font.Gotham
+				emptyLabel.TextSize = 10
+				emptyLabel.TextColor3 = Color3.fromRGB(100, 100, 100)
+				emptyLabel.TextXAlignment = Enum.TextXAlignment.Center
+				emptyLabel.TextYAlignment = Enum.TextYAlignment.Center
+				emptyLabel.BackgroundTransparency = 1
+				emptyLabel.ZIndex = 57
+				emptyLabel.Parent = itemSlot
+			end
+		end
+	end
+
+	return entry, rebirthButton, itemSelectionButton
+end
+
+-- Create selected items display
+function RebirthUI.CreateSelectedItemsDisplay(parent, selectedItems)
+	-- Clear any existing selected items display
+	for _, child in pairs(parent:GetChildren()) do
+		if child.Name == "SelectedItemsDisplay" then
+			child:Destroy()
+		end
+	end
+	
+	if not selectedItems or #selectedItems == 0 then
+		return nil
+	end
+	
+	-- Create container for selected items
+	local container = Instance.new("Frame")
+	container.Name = "SelectedItemsDisplay"
+	container.Size = UDim2.new(1, 0, 0, 150) -- Increased height for 3D views
+	container.BackgroundColor3 = Color3.fromRGB(24, 28, 40)
+	container.BackgroundTransparency = 0.1
+	container.BorderSizePixel = 0
+	container.ZIndex = 53
+	container.LayoutOrder = 999 -- Place at the bottom
+	container.Parent = parent
+	
+	local containerCorner = Instance.new("UICorner")
+	containerCorner.CornerRadius = UDim.new(0, 12)
+	containerCorner.Parent = container
+	
+	local containerStroke = Instance.new("UIStroke")
+	containerStroke.Color = Color3.fromRGB(100, 255, 100)
+	containerStroke.Thickness = 2
+	containerStroke.Transparency = 0.7
+	containerStroke.Parent = container
+	
+	-- Title
+	local title = Instance.new("TextLabel")
+	title.Name = "Title"
+	title.Size = UDim2.new(1, 0, 0, 30)
+	title.Position = UDim2.new(0, 0, 0, 0)
+	title.Text = "💾 Selected Items to Keep:"
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 18
+	title.TextColor3 = Color3.fromRGB(100, 255, 100)
+	title.TextXAlignment = Enum.TextXAlignment.Center
+	title.BackgroundTransparency = 1
+	title.ZIndex = 54
+	title.Parent = container
+	
+	-- Items grid container
+	local gridContainer = Instance.new("Frame")
+	gridContainer.Name = "GridContainer"
+	gridContainer.Size = UDim2.new(1, -20, 1, -40)
+	gridContainer.Position = UDim2.new(0, 10, 0, 35)
+	gridContainer.BackgroundTransparency = 1
+	gridContainer.ZIndex = 54
+	gridContainer.Parent = container
+	
+	-- Grid layout for 3x1
+	local gridLayout = Instance.new("UIGridLayout")
+	gridLayout.CellSize = UDim2.new(0.33, -5, 1, 0)
+	gridLayout.CellPadding = UDim2.new(0, 5, 0, 0)
+	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	gridLayout.Parent = gridContainer
+	
+	-- Create item slots with 3D views
+	for i = 1, 3 do
+		local itemSlot = Instance.new("Frame")
+		itemSlot.Name = "ItemSlot" .. i
+		itemSlot.Size = UDim2.new(1, 0, 1, 0)
+		itemSlot.BackgroundColor3 = Color3.fromRGB(35, 40, 55)
+		itemSlot.BorderSizePixel = 0
+		itemSlot.ZIndex = 55
+		itemSlot.Parent = gridContainer
+		
+		local slotCorner = Instance.new("UICorner")
+		slotCorner.CornerRadius = UDim.new(0, 8)
+		slotCorner.Parent = itemSlot
+		
+		local slotStroke = Instance.new("UIStroke")
+		slotStroke.Color = Color3.fromRGB(80, 120, 200)
+		slotStroke.Thickness = 1
+		slotStroke.Transparency = 0.5
+		slotStroke.Parent = itemSlot
+		
+		if selectedItems[i] then
+			-- Create 3D viewport for the item
+			local viewportFrame = Instance.new("ViewportFrame")
+			viewportFrame.Name = "ItemViewport"
+			viewportFrame.Size = UDim2.new(1, -10, 0.7, 0)
+			viewportFrame.Position = UDim2.new(0, 5, 0, 5)
+			viewportFrame.BackgroundColor3 = Color3.fromRGB(25, 30, 45)
+			viewportFrame.BorderSizePixel = 0
+			viewportFrame.ZIndex = 56
+			viewportFrame.Parent = itemSlot
+			
+			local viewportCorner = Instance.new("UICorner")
+			viewportCorner.CornerRadius = UDim.new(0, 6)
+			viewportCorner.Parent = viewportFrame
+			
+			-- Add camera to viewport
+			local camera = Instance.new("Camera")
+			camera.CFrame = CFrame.new(0, 0, 3) * CFrame.Angles(0, 0, 0)
+			viewportFrame.CurrentCamera = camera
+			viewportFrame.Parent = itemSlot
+			
+			-- Create a simple 3D model for the item (placeholder)
+			local itemModel = Instance.new("Part")
+			itemModel.Name = "ItemModel"
+			itemModel.Size = Vector3.new(1, 1, 1)
+			itemModel.Position = Vector3.new(0, 0, 0)
+			itemModel.Anchored = true
+			itemModel.CanCollide = false
+			itemModel.Material = Enum.Material.Neon
+			itemModel.Color = Color3.fromRGB(100, 255, 100)
+			itemModel.Parent = viewportFrame
+			
+			-- Add lighting
+			local light = Instance.new("PointLight")
+			light.Color = Color3.fromRGB(255, 255, 255)
+			light.Range = 10
+			light.Brightness = 1
+			light.Parent = itemModel
+			
+			-- Item name label below viewport
+			local itemLabel = Instance.new("TextLabel")
+			itemLabel.Name = "ItemLabel"
+			itemLabel.Size = UDim2.new(1, -10, 0.25, 0)
+			itemLabel.Position = UDim2.new(0, 5, 0.75, 0)
+			itemLabel.Text = selectedItems[i]
+			itemLabel.Font = Enum.Font.Gotham
+			itemLabel.TextSize = 10
+			itemLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+			itemLabel.TextXAlignment = Enum.TextXAlignment.Center
+			itemLabel.TextYAlignment = Enum.TextYAlignment.Center
+			itemLabel.BackgroundTransparency = 1
+			itemLabel.TextWrapped = true
+			itemLabel.ZIndex = 56
+			itemLabel.Parent = itemSlot
+		else
+			-- Empty slot
+			local emptyLabel = Instance.new("TextLabel")
+			emptyLabel.Name = "EmptyLabel"
+			emptyLabel.Size = UDim2.new(1, -10, 1, 0)
+			emptyLabel.Position = UDim2.new(0, 5, 0, 0)
+			emptyLabel.Text = "Empty"
+			emptyLabel.Font = Enum.Font.Gotham
+			emptyLabel.TextSize = 12
+			emptyLabel.TextColor3 = Color3.fromRGB(100, 100, 100)
+			emptyLabel.TextXAlignment = Enum.TextXAlignment.Center
+			emptyLabel.TextYAlignment = Enum.TextYAlignment.Center
+			emptyLabel.BackgroundTransparency = 1
+			emptyLabel.ZIndex = 56
+			emptyLabel.Parent = itemSlot
+		end
+	end
+	
+	return container
 end
 
 return RebirthUI 

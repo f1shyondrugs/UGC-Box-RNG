@@ -1714,6 +1714,7 @@ end
 function DataService.ResetPlayerData(player)
 	print("Resetting player data for: " .. player.Name)
 	
+	
 	-- Clear inventory
 	local inventory = player:FindFirstChild("Inventory")
 	if inventory then

@@ -41,6 +41,14 @@ local isEnchantingMode = false
 local enchantingCallback = nil
 local enchantingCloseCallback = nil
 
+-- Selection mode variables
+local isSelectionMode = false
+local selectionCallback = nil
+local selectionCloseCallback = nil
+local maxSelections = 3
+local selectedItems = {}
+local selectedCount = 0
+
 local function setupCharacterViewport(ui)
 	local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 	if not character then return end
@@ -997,6 +1005,57 @@ function InventoryController.Start(parentGui, openingBoxes, soundController)
 
 			soundController:playUIClick() -- Play click sound
 
+			-- Handle selection mode
+			if isSelectionMode then
+				-- Always update details panel in selection mode
+				updateDetails(itemInstance, template)
+				
+				if selectedItems[itemInstance] then
+					-- Deselect item
+					selectedItems[itemInstance] = nil
+					selectedCount = selectedCount - 1
+					
+					-- Update visual feedback
+					local highlight = template:FindFirstChild("SelectionHighlight")
+					if highlight then
+						highlight.Visible = false
+					end
+					
+					-- Update button text
+					if ui.ConfirmSelectionButton then
+						ui.ConfirmSelectionButton.Text = "✅ CONFIRM SELECTION (" .. selectedCount .. "/" .. maxSelections .. ")"
+					end
+					
+					-- Update inventory title
+					if ui.InventoryTitle then
+						ui.InventoryTitle.Text = "SELECTION MODE - " .. selectedCount .. "/" .. maxSelections
+					end
+				elseif selectedCount < maxSelections then
+					-- Select item
+					selectedItems[itemInstance] = true
+					selectedCount = selectedCount + 1
+					
+					-- Update visual feedback
+					local highlight = template:FindFirstChild("SelectionHighlight")
+					if highlight then
+						highlight.Visible = true
+						highlight.BackgroundColor3 = Color3.fromRGB(100, 255, 100)
+					end
+					
+					-- Update button text
+					if ui.ConfirmSelectionButton then
+						ui.ConfirmSelectionButton.Text = "✅ CONFIRM SELECTION (" .. selectedCount .. "/" .. maxSelections .. ")"
+					end
+					
+					-- Update inventory title
+					if ui.InventoryTitle then
+						ui.InventoryTitle.Text = "SELECTION MODE - " .. selectedCount .. "/" .. maxSelections
+					end
+				end
+				return
+			end
+
+			-- Normal mode behavior
 			-- If the same item is clicked again, deselect it
 			if selectedItem == itemInstance then
 				resetDetailsPanel()
@@ -1554,6 +1613,194 @@ function InventoryController.OpenForEnchanting(callback, closeCallback)
 	end
 	
 	return true
+end
+
+-- Update UI for selection mode
+local function updateUIForSelectionMode()
+	local ui = InventoryController._ui
+	if not ui then 
+		warn("UI not available for selection mode")
+		return 
+	end
+	
+	print("Updating UI for selection mode...")
+	
+	-- Reset all selection highlights
+	if itemEntries then
+		for itemInstance, entry in pairs(itemEntries) do
+			if entry.Template then
+				local highlight = entry.Template:FindFirstChild("SelectionHighlight")
+				if highlight then
+					highlight.Visible = false
+				end
+			end
+		end
+	end
+	
+	-- Hide normal action buttons
+	if ui.EquipButton then ui.EquipButton.Visible = false end
+	if ui.UnequipButton then ui.UnequipButton.Visible = false end
+	if ui.SellButton then ui.SellButton.Visible = false end
+	if ui.LockButton then ui.LockButton.Visible = false end
+	if ui.SellUnlockedButton then ui.SellUnlockedButton.Visible = false end
+	
+	-- Create or show selection button
+	if not ui.ConfirmSelectionButton then
+		local buttonContainer = ui.LeftPanel and ui.LeftPanel:FindFirstChild("ButtonContainer")
+		if not buttonContainer then
+			warn("ButtonContainer not found in LeftPanel")
+			return
+		end
+		
+		local button = Instance.new("TextButton")
+		button.Name = "ConfirmSelectionButton"
+		button.Size = UDim2.new(1, 0, 0, 35)
+		button.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+		button.Text = "✅ CONFIRM SELECTION (0/" .. maxSelections .. ")"
+		button.Font = Enum.Font.SourceSansBold
+		button.TextSize = 16
+		button.TextColor3 = Color3.fromRGB(255, 255, 255)
+		button.ZIndex = 53
+		button.LayoutOrder = 1
+		button.Parent = buttonContainer
+		
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 8)
+		corner.Parent = button
+		
+		local gradient = Instance.new("UIGradient")
+		gradient.Color = ColorSequence.new{
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 220, 120)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 180, 80))
+		}
+		gradient.Rotation = 90
+		gradient.Parent = button
+		
+		ui.ConfirmSelectionButton = button
+		
+		-- Connect the button click
+		button.MouseButton1Click:Connect(function()
+			if selectedCount > 0 and selectionCallback then
+				InventoryController._soundController:playUIClick()
+				local selectedItemNames = {}
+				for item, _ in pairs(selectedItems) do
+					table.insert(selectedItemNames, item:GetAttribute("ItemName") or item.Name)
+				end
+				print("Calling selection callback with items:", table.concat(selectedItemNames, ", "))
+				selectionCallback(selectedItemNames)
+			end
+		end)
+	else
+		ui.ConfirmSelectionButton.Visible = true
+		-- Update button text
+		ui.ConfirmSelectionButton.Text = "✅ CONFIRM SELECTION (" .. selectedCount .. "/" .. maxSelections .. ")"
+	end
+	
+			-- Update titles
+		if ui.DetailTitle then
+			ui.DetailTitle.Text = "SELECT ITEMS TO KEEP"
+		end
+		if ui.InventoryTitle then
+			ui.InventoryTitle.Text = "SELECTION MODE - " .. selectedCount .. "/" .. maxSelections
+		end
+		
+		-- Show item details panel in selection mode
+		if ui.LeftPanel then
+			ui.LeftPanel.Visible = true
+		end
+		
+		-- Show character viewport in selection mode
+		if ui.CharacterViewport then
+			ui.CharacterViewport.Visible = true
+		end
+end
+
+-- Update UI for normal mode
+local function updateUIForNormalMode()
+	local ui = InventoryController._ui
+	if not ui then return end
+	
+	-- Show normal action buttons (they'll be shown/hidden based on item selection)
+	ui.SellUnlockedButton.Visible = true
+	
+	-- Hide mode-specific buttons
+	if ui.UseForEnchantingButton then
+		ui.UseForEnchantingButton.Visible = false
+	end
+	if ui.ConfirmSelectionButton then
+		ui.ConfirmSelectionButton.Visible = false
+	end
+	
+	-- Restore titles
+	if ui.DetailTitle then
+		ui.DetailTitle.Text = "ITEM DETAILS"
+	end
+	if ui.InventoryTitle then
+		ui.InventoryTitle.Text = "INVENTORY"
+	end
+	
+	-- Show character viewport in normal mode
+	if ui.CharacterViewport then
+		ui.CharacterViewport.Visible = true
+	end
+end
+
+-- Function to open inventory in selection mode
+function InventoryController.OpenForSelection(callback, closeCallback, maxSelect)
+	maxSelections = maxSelect or 3
+	selectedItems = {}
+	selectedCount = 0
+	
+	-- Check if the UI is ready
+	if not InventoryController._ui or not InventoryController._toggleInventory then
+		warn("InventoryController not properly initialized for selection mode")
+		return false
+	end
+	
+	print("Opening inventory in selection mode...")
+	
+	isSelectionMode = true
+	selectionCallback = callback
+	selectionCloseCallback = closeCallback
+	
+	-- Update UI for selection mode
+	updateUIForSelectionMode()
+	
+	-- Open the inventory
+	InventoryController._toggleInventory(true)
+	
+	-- Ensure inventory UI is visible and enabled
+	task.wait(0.1)
+	local ui = InventoryController._ui
+	if ui and ui.ScreenGui then
+		ui.ScreenGui.Enabled = true
+		print("Inventory ScreenGui enabled for selection mode")
+	end
+	if ui and ui.MainFrame then
+		ui.MainFrame.Visible = true
+		print("Inventory MainFrame made visible for selection mode")
+	end
+	
+	return true
+end
+
+-- Function to close selection mode
+function InventoryController.CloseSelectionMode()
+	print("Closing selection mode...")
+	
+	isSelectionMode = false
+	selectionCallback = nil
+	selectionCloseCallback = nil
+	selectedItems = {}
+	selectedCount = 0
+	
+	-- Restore normal UI
+	updateUIForNormalMode()
+	
+	-- Close the inventory if it exists
+	if InventoryController._toggleInventory then
+		InventoryController._toggleInventory(false)
+	end
 end
 
 -- Function to close enchanting mode

@@ -818,4 +818,6 @@ function InventoryUI.CreateItemTemplate(itemInstance, itemName, itemConfig, rari
 	return template
 end
 
+
+
 return InventoryUI 

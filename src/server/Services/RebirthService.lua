@@ -151,22 +151,52 @@ local function removeRequiredItems(player, requirements)
 end
 
 -- Clear player inventory
-local function clearInventory(player)
+local function clearInventory(player, itemsToKeep)
 	local inventory = player:FindFirstChild("Inventory")
 	if inventory then
 		local itemCount = #inventory:GetChildren()
 		print("[RebirthService] Found", itemCount, "items in inventory for", player.Name)
-		for _, item in ipairs(inventory:GetChildren()) do
-			item:Destroy()
+		
+		-- Create a set of items to keep for faster lookup
+		local itemsToKeepSet = {}
+		if itemsToKeep then
+			for _, itemName in ipairs(itemsToKeep) do
+				itemsToKeepSet[itemName] = true
+			end
 		end
-		print("[RebirthService] Destroyed all items in inventory for", player.Name)
+		
+		-- Count how many of each item to keep
+		local itemsToKeepCount = {}
+		if itemsToKeep then
+			for _, itemName in ipairs(itemsToKeep) do
+				itemsToKeepCount[itemName] = (itemsToKeepCount[itemName] or 0) + 1
+			end
+		end
+		
+		-- Remove items, preserving selected ones
+		local itemsRemoved = 0
+		for _, item in ipairs(inventory:GetChildren()) do
+			local itemName = item:GetAttribute("ItemName") or item.Name
+			if itemsToKeepSet[itemName] and (itemsToKeepCount[itemName] or 0) > 0 then
+				-- Keep this item
+				itemsToKeepCount[itemName] = itemsToKeepCount[itemName] - 1
+				print("[RebirthService] Keeping item:", itemName, "for player", player.Name)
+			else
+				-- Remove this item
+				item:Destroy()
+				itemsRemoved = itemsRemoved + 1
+			end
+		end
+		
+		print("[RebirthService] Removed", itemsRemoved, "items from inventory for", player.Name)
+		print("[RebirthService] Kept", itemCount - itemsRemoved, "items for", player.Name)
 	else
 		print("[RebirthService] No inventory found for player", player.Name)
 	end
 end
 
 -- Perform rebirth
-function RebirthService.PerformRebirth(player, rebirthLevel)
+function RebirthService.PerformRebirth(player, rebirthLevel, itemsToKeep)
 	local rebirthConfig = GameConfig.Rebirths[rebirthLevel]
 	if not rebirthConfig then
 		return {success = false, error = "Invalid rebirth level"}
@@ -202,7 +232,7 @@ function RebirthService.PerformRebirth(player, rebirthLevel)
 	print("[RebirthService] ClearInventory value for rebirth", rebirthLevel, ":", rebirthConfig.ClearInventory)
 	if rebirthConfig.ClearInventory then
 		print("[RebirthService] Clearing inventory for player", player.Name)
-		clearInventory(player)
+		clearInventory(player, itemsToKeep)
 		print("[RebirthService] Inventory cleared for player", player.Name)
 	else
 		print("[RebirthService] Not clearing inventory for player", player.Name)
@@ -276,8 +306,8 @@ local function getUnlockedFeatures(player)
 end
 
 -- Handle rebirth request
-local function handleRebirthRequest(player, rebirthLevel)
-	return RebirthService.PerformRebirth(player, rebirthLevel)
+local function handleRebirthRequest(player, rebirthLevel, itemsToKeep)
+	return RebirthService.PerformRebirth(player, rebirthLevel, itemsToKeep)
 end
 
 -- Initialize service

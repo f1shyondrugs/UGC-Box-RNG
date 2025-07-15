@@ -79,6 +79,15 @@ local function hideOtherUIs(show)
 	if show then
 		for _, gui in pairs(playerGui:GetChildren()) do
 			if gui:IsA("ScreenGui") and gui ~= (components and components.ScreenGui) then
+				-- Don't hide inventory GUI if it's in selection mode
+				if gui.Name == "InventoryGui" then
+					local inventoryController = require(script.Parent.InventoryController)
+					-- Check if inventory is in selection mode
+					if inventoryController._ui and inventoryController._ui.MainFrame and inventoryController._ui.MainFrame.Visible then
+						continue -- Skip hiding inventory GUI
+					end
+				end
+				
 				if gui.Enabled then
 					hiddenUIs[gui] = true
 					gui.Enabled = false
@@ -121,28 +130,35 @@ local function checkItemRequirements(requirements)
 	return true
 end
 
--- Update the rebirth display
-local function updateRebirthDisplay()
-	if not components then return end
-	
-	-- Update current stats
-	local currentRebirths = rebirthData.currentRebirth or 0
-	local currentLuckBonus = rebirthData.luckBonus or 0
-	local currentMoney = LocalPlayer:GetAttribute("RobuxValue") or 0
-	
-	components.CurrentStatsInfo.Text = string.format(
-		"Rebirths: %d | Luck Bonus: %d%% | Money: %s R$",
-		currentRebirths,
-		currentLuckBonus,
-		NumberFormatter.FormatCurrency(currentMoney)
-	)
-	
-	-- Clear existing rebirth entries
-	for _, child in pairs(components.RebirthContainer:GetChildren()) do
-		if child:IsA("Frame") and child.Name:match("RebirthEntry") then
-			child:Destroy()
+	-- Update the rebirth display
+	local function updateRebirthDisplay()
+		if not components then return end
+		
+		-- Update current stats
+		local currentRebirths = rebirthData.currentRebirth or 0
+		local currentLuckBonus = rebirthData.luckBonus or 0
+		local currentMoney = LocalPlayer:GetAttribute("RobuxValue") or 0
+		
+		components.CurrentStatsInfo.Text = string.format(
+			"Rebirths: %d | Luck Bonus: %d%% | Money: %s R$",
+			currentRebirths,
+			currentLuckBonus,
+			NumberFormatter.FormatCurrency(currentMoney)
+		)
+		
+		-- Clear existing rebirth entries
+		for _, child in pairs(components.RebirthContainer:GetChildren()) do
+			if child:IsA("Frame") and child.Name:match("RebirthEntry") then
+				child:Destroy()
+			end
 		end
-	end
+		
+		-- Clear existing selected items display
+		for _, child in pairs(components.ContentFrame:GetChildren()) do
+			if child.Name == "SelectedItemsDisplay" then
+				child:Destroy()
+			end
+		end
 	
 	-- Create rebirth entries
 	local nextRebirthLevel = currentRebirths + 1
@@ -155,7 +171,7 @@ local function updateRebirthDisplay()
 			local canAfford = currentMoney >= rebirthConfig.Requirements.Money
 			local hasItems = checkItemRequirements(rebirthConfig.Requirements)
 			
-			local entry, rebirthButton = RebirthUI.CreateRebirthEntry(nextRebirthLevel, rebirthConfig, canAfford, hasItems)
+			local entry, rebirthButton, itemSelectionButton = RebirthUI.CreateRebirthEntry(nextRebirthLevel, rebirthConfig, canAfford, hasItems, RebirthController.selectedItemsForRebirth)
 			entry.LayoutOrder = nextRebirthLevel
 			entry.Parent = components.RebirthContainer
 			
@@ -167,6 +183,7 @@ local function updateRebirthDisplay()
 						LocalPlayer.PlayerGui,
 						rebirthConfig,
 						function() -- onConfirm
+							-- Pass selected items to rebirth if any were selected
 							RebirthController:PerformRebirth(nextRebirthLevel)
 						end,
 						function() -- onCancel
@@ -180,6 +197,40 @@ local function updateRebirthDisplay()
 					end
 				end
 			end)
+
+			-- Connect item selection button if it exists
+			if itemSelectionButton then
+				itemSelectionButton.MouseButton1Click:Connect(function()
+					-- Open inventory in selection mode
+					local InventoryController = require(script.Parent.InventoryController)
+					InventoryController.OpenForSelection(
+						function(selectedItems) -- onSelectionComplete
+							print("Selection completed! Selected items type:", typeof(selectedItems))
+							if type(selectedItems) == "table" then
+								print("Selected items count:", #selectedItems)
+								for i, item in ipairs(selectedItems) do
+									print("Item", i, ":", item)
+								end
+							end
+							-- Store selected items for rebirth
+							RebirthController.selectedItemsForRebirth = selectedItems
+							print("Stored selected items type:", typeof(RebirthController.selectedItemsForRebirth))
+							if type(RebirthController.selectedItemsForRebirth) == "table" then
+								print("Stored items count:", #RebirthController.selectedItemsForRebirth)
+							end
+							-- Close inventory UI
+							InventoryController.CloseSelectionMode()
+							-- Update the rebirth display to show selected items
+							updateRebirthDisplay()
+						end,
+						function() -- onCancel
+							-- Close inventory UI
+							InventoryController.CloseSelectionMode()
+						end,
+						3 -- Max 3 items
+					)
+				end)
+			end
 		end
 	else
 		-- Max rebirths reached
@@ -196,6 +247,8 @@ local function updateRebirthDisplay()
 		maxReachedLabel.ZIndex = 53
 		maxReachedLabel.Parent = components.RebirthContainer
 	end
+	
+	-- Selected items are now displayed inside the rebirth entry itself
 end
 
 -- Perform rebirth
@@ -206,12 +259,17 @@ function RebirthController:PerformRebirth(rebirthLevel)
 	local oldRebirthData = rebirthData
 	
 	local success, result = pcall(function()
-		return Remotes.PerformRebirth:InvokeServer(rebirthLevel)
+		-- Pass selected items to server if any were selected
+		local itemsToKeep = RebirthController.selectedItemsForRebirth or {}
+		return Remotes.PerformRebirth:InvokeServer(rebirthLevel, itemsToKeep)
 	end)
 	
 	if success and result.success then
 		-- Update local data
 		rebirthData = result.rebirthData
+		
+		-- Clear selected items
+		RebirthController.selectedItemsForRebirth = nil
 		
 		-- Play rebirth animation
 		self:PlayRebirthAnimation(rebirthLevel, result.rebirthData)
