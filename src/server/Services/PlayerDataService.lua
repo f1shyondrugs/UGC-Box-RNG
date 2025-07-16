@@ -471,22 +471,6 @@ local function saveData(player: Player)
 		print("[SAVE DEBUG] No auto-settings found for " .. player.Name)
 	end
 
-	-- Save selected crate data
-	local selectedCrateJson = player:GetAttribute("SelectedCrate")
-	if selectedCrateJson then
-		local success, selectedCrate = pcall(function()
-			return game:GetService("HttpService"):JSONDecode(selectedCrateJson)
-		end)
-		if success and selectedCrate then
-			dataToSave.selectedCrate = selectedCrate
-			print("[SAVE DEBUG] Selected crate for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(selectedCrate))
-		else
-			print("[SAVE DEBUG] Failed to decode selected crate for " .. player.Name .. ":", selectedCrateJson)
-		end
-	else
-		print("[SAVE DEBUG] No selected crate attribute found for " .. player.Name)
-	end
-
 	-- Save RAP value
 	local rapValue = player:GetAttribute("RAPValue") or 0
 	dataToSave.rapValue = rapValue
@@ -902,22 +886,13 @@ local function onPlayerAdded(player: Player)
 					print("[LOAD DEBUG] No auto-settings found for " .. player.Name)
 				end
 
-				-- Load selected crate data
-				if data.selectedCrate then
-					local selectedCrateJson = game:GetService("HttpService"):JSONEncode(data.selectedCrate)
-					player:SetAttribute("SelectedCrate", selectedCrateJson)
-					print("[LOAD DEBUG] Loaded selected crate for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(data.selectedCrate))
+				-- Load RAP value
+				if data.rapValue then
+					player:SetAttribute("RAPValue", data.rapValue)
+					print("[LOAD DEBUG] Loaded RAP value for " .. player.Name .. ":", data.rapValue)
 				else
-					print("[LOAD DEBUG] No selected crate data found for " .. player.Name)
+					print("[LOAD DEBUG] No RAP value found for " .. player.Name .. " - will calculate")
 				end
-
-						-- Load RAP value
-						if data.rapValue then
-							player:SetAttribute("RAPValue", data.rapValue)
-							print("[LOAD DEBUG] Loaded RAP value for " .. player.Name .. ":", data.rapValue)
-						else
-							print("[LOAD DEBUG] No RAP value found for " .. player.Name .. " - will calculate")
-						end
 
 						-- Load rebirths value
 						if data.rebirthsValue then
@@ -1069,15 +1044,6 @@ local function onPlayerAdded(player: Player)
 					print("[LOAD DEBUG] Loaded auto-settings for " .. player.Name .. " (no inventory):", game:GetService("HttpService"):JSONEncode(data.autoSettings))
 				else
 					print("[LOAD DEBUG] No auto-settings found for " .. player.Name .. " (no inventory)")
-				end
-
-				-- Load selected crate data
-				if data.selectedCrate then
-					local selectedCrateJson = game:GetService("HttpService"):JSONEncode(data.selectedCrate)
-					player:SetAttribute("SelectedCrate", selectedCrateJson)
-					print("[LOAD DEBUG] Loaded selected crate for " .. player.Name .. " (no inventory):", game:GetService("HttpService"):JSONEncode(data.selectedCrate))
-				else
-					print("[LOAD DEBUG] No selected crate data found for " .. player.Name .. " (no inventory)")
 				end
 
 				-- Load RAP value
@@ -1353,23 +1319,7 @@ function DataService.Start()
 		return DataService.GetPlayerSettings(player)
 	end
 
-	-- Connect selected crate remotes
-	Remotes.SaveSelectedCrate.OnServerEvent:Connect(function(player, selectedCrate)
-		DataService.SetSelectedCrate(player, selectedCrate)
-	end)
-	
-	Remotes.GetSelectedCrate.OnServerInvoke = function(player)
-		local selectedCrateJson = player:GetAttribute("SelectedCrate")
-		if selectedCrateJson then
-			local success, selectedCrate = pcall(function()
-				return game:GetService("HttpService"):JSONDecode(selectedCrateJson)
-			end)
-			if success and selectedCrate then
-				return selectedCrate
-			end
-		end
-		return "FreeCrate" -- Default fallback
-	end
+	-- Remove SetSelectedCrate and all code that saves/loads SelectedCrate separately
 
 	-- Save data on server shutdown with enhanced safety
 	game:BindToClose(function()
@@ -1722,19 +1672,17 @@ function DataService.SetAutoSettings(userId, settings)
 	if player then
 		saveQueue[userId] = player
 		print("[AUTO-SETTINGS] Updated cache and queued save for " .. player.Name .. " after auto-settings update.")
+		-- Force immediate save to DataStore for reliability
+		DataService.ForceSave(player)
 	end
-end
-
-function DataService.SetSelectedCrate(player, selectedCrate)
-	-- Save selected crate to player attribute for persistence
-	if player and player.UserId then
-		local HttpService = game:GetService("HttpService")
-		local selectedCrateJson = HttpService:JSONEncode(selectedCrate)
-		player:SetAttribute("SelectedCrate", selectedCrateJson)
-		
-		-- Queue save to ensure data is persisted
-		saveQueue[player.UserId] = player
-		print("[SELECTED CRATE DEBUG] Saved selected crate for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(selectedCrate))
+	-- Always write to AutoSettings DataStore immediately
+	local success, err = pcall(function()
+		autoSettingsStore:SetAsync(tostring(userId), settings)
+	end)
+	if success then
+		print("[PlayerDataService] Auto-settings saved to DataStore for user " .. userId)
+	else
+		warn("[PlayerDataService] Failed to save auto-settings to DataStore for user " .. userId .. ": " .. tostring(err))
 	end
 end
 

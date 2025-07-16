@@ -1,3 +1,31 @@
+-- Ensure all required remotes exist in ReplicatedStorage.Shared.Remotes before returning the Remotes table
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Shared = ReplicatedStorage:FindFirstChild("Shared") or ReplicatedStorage:WaitForChild("Shared")
+local RemotesFolder = Shared:FindFirstChild("Remotes") or Shared:WaitForChild("Remotes")
+
+local requiredRemotes = {
+    {type = "RemoteFunction", name = "GetAutoSettings"},
+    {type = "RemoteEvent", name = "UpdateAutoSellSettings"},
+    {type = "RemoteFunction", name = "CheckAutoOpenGamepass"},
+    {type = "RemoteFunction", name = "CheckAutoSellGamepass"},
+    {type = "RemoteEvent", name = "RequestBox"},
+    {type = "RemoteEvent", name = "RequestOpen"},
+    {type = "RemoteEvent", name = "SellItem"},
+    {type = "RemoteEvent", name = "InventoryLoadComplete"},
+    {type = "RemoteFunction", name = "GetPlayerSettings"},
+    {type = "RemoteEvent", name = "SaveSetting"},
+    {type = "RemoteFunction", name = "GetSelectedCrate"},
+    {type = "RemoteEvent", name = "SaveSelectedCrate"},
+    -- Add any other remotes you use here
+}
+for _, def in ipairs(requiredRemotes) do
+    if not RemotesFolder:FindFirstChild(def.name) then
+        local remote = Instance.new(def.type)
+        remote.Name = def.name
+        remote.Parent = RemotesFolder
+    end
+end
+
 local Remotes = {}
 
 local function createRemote(remoteType, name)

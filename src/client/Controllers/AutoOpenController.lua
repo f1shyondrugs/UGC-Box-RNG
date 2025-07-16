@@ -90,11 +90,7 @@ local function sendSettingsToServer()
 	if Remotes.UpdateAutoSellSettings then
 		Remotes.UpdateAutoSellSettings:FireServer(settings)
 	end
-	
-	-- Send selected crate to server for persistence
-	if Remotes.SaveSelectedCrate and settings.selectedCrate then
-		Remotes.SaveSelectedCrate:FireServer(settings.selectedCrate)
-	end
+	-- Removed separate SaveSelectedCrate logic
 end
 
 local function saveSettings()
@@ -118,163 +114,23 @@ local function saveSettings()
 	if not success then
 		warn("Failed to save Auto-Open settings:", errorMsg)
 	end
-	sendSettingsToServer()
-end
-
-local function loadSettings()
-	print("[AutoOpenController] Loading settings...")
-	local success, result = pcall(function()
-		local savedData = LocalPlayer:GetAttribute(SETTINGS_KEY)
-		if savedData then
-			return game:GetService("HttpService"):JSONDecode(savedData)
-		end
-		return nil
-	end)
-	
-	if success and result then
-		print("[AutoOpenController] Loaded local settings:", game:GetService("HttpService"):JSONEncode(result))
-		settings.enabled = result.enabled or false
-		settings.crateCount = result.crateCount or 10
-		settings.infiniteCrates = result.infiniteCrates or false
-		settings.moneyThreshold = result.moneyThreshold or 1000
-		settings.infiniteMoney = result.infiniteMoney or false
-		settings.sizeThreshold = result.sizeThreshold or 3
-		settings.valueThreshold = result.valueThreshold or 100
-		settings.autoSellEnabled = result.autoSellEnabled ~= nil and result.autoSellEnabled or true
-		settings.selectedCrate = result.selectedCrate or "FreeCrate"
-	else
-		print("[AutoOpenController] No local settings found or failed to load")
-	end
-	
-	-- Also request settings from server to ensure sync
-	local function requestSettingsFromServer()
-		if Remotes.GetAutoSettings then
-			local success, data = pcall(function()
-				return Remotes.GetAutoSettings:InvokeServer()
-			end)
-			if success and data then
-				-- Merge server settings with local settings, prioritizing server data
-				for k, v in pairs(data) do
-					if v ~= nil then -- Only update if server has a value
-						settings[k] = v
-					end
-				end
-				print("[AutoOpenController] Loaded settings from server:", game:GetService("HttpService"):JSONEncode(data))
-				
-				-- Update UI after loading server settings
-				if ui then
-					updateUI()
-				end
-			else
-				print("[AutoOpenController] Failed to load settings from server or no data available")
-			end
-		end
-	end
-	
-	-- Request server settings after a longer delay to ensure server has loaded player data
-	task.spawn(function()
-		task.wait(3) -- Wait for server to load player data
-		requestSettingsFromServer()
-	end)
-end
-
--- Gamepass checking
-local function checkAutoOpenGamepass()
-	local isWhitelisted = false
-	for _, id in ipairs(GameConfig.GamepassWhitelist or {}) do
-		if LocalPlayer.UserId == id then
-			isWhitelisted = true
-			break
-		end
-	end
-
-	if isWhitelisted then
-		hasAutoOpenGamepass = true
-		return true
-	end
-
-	local success, owns = pcall(function()
-		return Remotes.CheckAutoOpenGamepass:InvokeServer()
-	end)
-	
-	if success then
-		hasAutoOpenGamepass = owns
-	else
-		hasAutoOpenGamepass = false
-		warn("Failed to check Auto-Open gamepass ownership")
-	end
-	
-	return hasAutoOpenGamepass
-end
-
-local function checkAutoSellGamepass()
-	local isWhitelisted = false
-	for _, id in ipairs(GameConfig.GamepassWhitelist or {}) do
-		if LocalPlayer.UserId == id then
-			isWhitelisted = true
-			break
-		end
-	end
-
-	if isWhitelisted then
-		hasAutoSellGamepass = true
-		return true
-	end
-
-	local success, owns = pcall(function()
-		return Remotes.CheckAutoSellGamepass:InvokeServer()
-	end)
-	
-	if success then
-		hasAutoSellGamepass = owns
-	else
-		hasAutoSellGamepass = false
-		warn("Failed to check Auto-Sell gamepass ownership")
-	end
-	
-	return hasAutoSellGamepass
-end
-
-local function promptAutoOpenGamepassPurchase()
-	if soundController then
-		soundController:playUIClick()
-	end
-	
-	local success, errorMsg = pcall(function()
-		MarketplaceService:PromptGamePassPurchase(LocalPlayer, AUTO_OPEN_GAMEPASS_ID)
-	end)
-	
-	if not success then
-		warn("Failed to prompt Auto-Open gamepass purchase:", errorMsg)
+	-- Only send to server if this was a user-initiated change (never from loadSettings)
+	if not _G.__autoopen_loading_settings then
+		sendSettingsToServer()
 	end
 end
 
-local function promptAutoSellGamepassPurchase()
-	if soundController then
-		soundController:playUIClick()
-	end
-	
-	local success, errorMsg = pcall(function()
-		MarketplaceService:PromptGamePassPurchase(LocalPlayer, AUTO_SELL_GAMEPASS_ID)
-	end)
-	
-	if not success then
-		warn("Failed to prompt Auto-Sell gamepass purchase:", errorMsg)
-	end
-end
+
 
 -- UI Management
 local function updateUI()
-	if not ui then return end
-	
-	-- Update toggle state (only enable if has Auto-Open gamepass)
-	AutoOpenUI.UpdateToggleState(ui.EnableToggle, ui.EnableSection.Indicator, settings.enabled and hasAutoOpenGamepass)
-	
-	-- Update auto-sell toggle (always enabled visually)
-	if ui.AutoSellSection then
+	if not ui or not ui.EnableToggle or not ui.EnableSection or not ui.EnableSection.Indicator or not ui.AutoSellSection or not ui.AutoSellToggle or not ui.AutoSellSection.Indicator then
+		return
+	end
+	if AutoOpenUI and type(AutoOpenUI.UpdateToggleState) == "function" then
+		AutoOpenUI.UpdateToggleState(ui.EnableToggle, ui.EnableSection.Indicator, settings.enabled and hasAutoOpenGamepass)
 		AutoOpenUI.UpdateToggleState(ui.AutoSellToggle, ui.AutoSellSection.Indicator, settings.autoSellEnabled)
 	end
-	-- Always show and enable all Auto-Sell controls, regardless of gamepass
 	if ui.SizeSection and ui.SizeInput then
 		ui.SizeInput.TextEditable = true
 		ui.SizeInput.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -316,22 +172,24 @@ local function updateUI()
 			ui.ValueSection.Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 		end
 	end
-	
-	-- Update input values and infinite toggles
-	ui.CountInput.Text = tostring(settings.crateCount)
-	if ui.CountSection.SetInfinite then
+	if ui.CountInput then
+		ui.CountInput.Text = tostring(settings.crateCount)
+	end
+	if ui.CountSection and ui.CountSection.SetInfinite then
 		ui.CountSection.SetInfinite(settings.infiniteCrates)
 	end
-	
-	ui.MoneyInput.Text = NumberFormatter.FormatNumber(settings.moneyThreshold)
-	if ui.MoneySection.SetInfinite then
+	if ui.MoneyInput then
+		ui.MoneyInput.Text = NumberFormatter.FormatNumber(settings.moneyThreshold)
+	end
+	if ui.MoneySection and ui.MoneySection.SetInfinite then
 		ui.MoneySection.SetInfinite(settings.infiniteMoney)
 	end
-	
-	ui.SizeInput.Text = tostring(settings.sizeThreshold)
-	ui.ValueInput.Text = NumberFormatter.FormatNumber(settings.valueThreshold)
-	
-	-- Update crate selection button text
+	if ui.SizeInput then
+		ui.SizeInput.Text = tostring(settings.sizeThreshold)
+	end
+	if ui.ValueInput then
+		ui.ValueInput.Text = NumberFormatter.FormatNumber(settings.valueThreshold)
+	end
 	if ui.CrateSelectButton then
 		local crateName = settings.selectedCrate or "FreeCrate"
 		local displayName = crateName:gsub("Crate", "")
@@ -426,6 +284,150 @@ local function updateUI()
 	end
 	
 	-- Removed AutoOpenButton UI update logic as it is now part of NavigationUI
+end
+
+
+
+local function loadSettings()
+	print("[AutoOpenController] Loading settings...")
+	_G.__autoopen_loading_settings = true
+	local success, result = pcall(function()
+		local savedData = LocalPlayer:GetAttribute(SETTINGS_KEY)
+		if savedData then
+			return game:GetService("HttpService"):JSONDecode(savedData)
+		end
+		return nil
+	end)
+	
+	if success and result then
+		print("[AutoOpenController] Loaded local settings:", game:GetService("HttpService"):JSONEncode(result))
+		settings.enabled = result.enabled or false
+		settings.crateCount = result.crateCount or 10
+		settings.infiniteCrates = result.infiniteCrates or false
+		settings.moneyThreshold = result.moneyThreshold or 1000
+		settings.infiniteMoney = result.infiniteMoney or false
+		settings.sizeThreshold = result.sizeThreshold or 3
+		settings.valueThreshold = result.valueThreshold or 100
+		settings.autoSellEnabled = result.autoSellEnabled ~= nil and result.autoSellEnabled or true
+		settings.selectedCrate = result.selectedCrate or "FreeCrate"
+	else
+		print("[AutoOpenController] No local settings found or failed to load")
+	end
+	
+	-- Also request settings from server to ensure sync
+	local function requestSettingsFromServer()
+		if Remotes.GetAutoSettings then
+			local success, data = pcall(function()
+				return Remotes.GetAutoSettings:InvokeServer()
+			end)
+			if success and data then
+				-- Merge server settings with local settings, prioritizing server data
+				for k, v in pairs(data) do
+					if v ~= nil then -- Only update if server has a value
+						settings[k] = v
+					end
+				end
+				print("[AutoOpenController] Loaded settings from server:", game:GetService("HttpService"):JSONEncode(data))
+				-- Update UI after loading server settings
+				if ui then
+					updateUI()
+				end
+			else
+				print("[AutoOpenController] Failed to load settings from server or no data available")
+			end
+		end
+	end
+	-- Request server settings after a longer delay to ensure server has loaded player data
+	task.spawn(function()
+		task.wait(3) -- Wait for server to load player data
+		requestSettingsFromServer()
+		_G.__autoopen_loading_settings = false
+	end)
+end
+
+-- Gamepass checking
+local function checkAutoOpenGamepass()
+	local isWhitelisted = false
+	for _, id in ipairs(GameConfig.GamepassWhitelist or {}) do
+		if LocalPlayer.UserId == id then
+			isWhitelisted = true
+			break
+		end
+	end
+
+	if isWhitelisted then
+		hasAutoOpenGamepass = true
+		return true
+	end
+
+	local success, owns = pcall(function()
+		return Remotes.CheckAutoOpenGamepass:InvokeServer()
+	end)
+	
+	if success then
+		hasAutoOpenGamepass = owns
+	else
+		hasAutoOpenGamepass = false
+		warn("Failed to check Auto-Open gamepass ownership")
+	end
+	
+	return hasAutoOpenGamepass
+end
+
+local function checkAutoSellGamepass()
+	local isWhitelisted = false
+	for _, id in ipairs(GameConfig.GamepassWhitelist or {}) do
+		if LocalPlayer.UserId == id then
+			isWhitelisted = true
+			break
+		end
+	end
+
+	if isWhitelisted then
+		hasAutoSellGamepass = true
+		return true
+	end
+
+	local success, owns = pcall(function()
+		return Remotes.CheckAutoSellGamepass:InvokeServer()
+	end)
+	
+	if success then
+		hasAutoSellGamepass = owns
+	else
+		hasAutoSellGamepass = false
+		warn("Failed to check Auto-Sell gamepass ownership")
+	end
+	
+	return hasAutoSellGamepass
+end
+
+local function promptAutoOpenGamepassPurchase()
+	if soundController then
+		soundController:playUIClick()
+	end
+	
+	local success, errorMsg = pcall(function()
+		MarketplaceService:PromptGamePassPurchase(LocalPlayer, AUTO_OPEN_GAMEPASS_ID)
+	end)
+	
+	if not success then
+		warn("Failed to prompt Auto-Open gamepass purchase:", errorMsg)
+	end
+end
+
+local function promptAutoSellGamepassPurchase()
+	if soundController then
+		soundController:playUIClick()
+	end
+	
+	local success, errorMsg = pcall(function()
+		MarketplaceService:PromptGamePassPurchase(LocalPlayer, AUTO_SELL_GAMEPASS_ID)
+	end)
+	
+	if not success then
+		warn("Failed to prompt Auto-Sell gamepass purchase:", errorMsg)
+	end
 end
 
 local function collectSettingsFromUI()

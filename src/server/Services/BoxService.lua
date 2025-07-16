@@ -521,6 +521,20 @@ local function onAnimationComplete(player: Player, boxPart: BasePart)
 	end)
 end
 
+local function getDefaultAutoSettings()
+	return {
+		enabled = false,
+		crateCount = 10,
+		infiniteCrates = false,
+		moneyThreshold = 1000,
+		infiniteMoney = false,
+		sizeThreshold = 3,
+		valueThreshold = 100,
+		autoSellEnabled = false,
+		selectedCrate = "FreeCrate"
+	}
+end
+
 function BoxService.Start()
 	Remotes.RequestBox.OnServerEvent:Connect(requestBox)
 	Remotes.RequestOpen.OnServerEvent:Connect(openBox)
@@ -540,6 +554,8 @@ function BoxService.Start()
 		local settings = PlayerDataService.GetAutoSettings(player.UserId)
 		if settings then
 			autoSellSettings[player.UserId] = settings
+		else
+			autoSellSettings[player.UserId] = getDefaultAutoSettings()
 		end
 	end)
 
@@ -552,6 +568,13 @@ function BoxService.Start()
 
 	Remotes.GetAutoSettings.OnServerInvoke = function(player)
 		local settings = autoSellSettings[player.UserId] or {}
+		-- Merge with defaults to ensure all keys are present
+		local defaults = getDefaultAutoSettings()
+		for k, v in pairs(defaults) do
+			if settings[k] == nil then
+				settings[k] = v
+			end
+		end
 		print("[BoxService] Returning auto-settings for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(settings))
 		return settings
 	end
