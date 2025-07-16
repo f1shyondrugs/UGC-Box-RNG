@@ -1707,12 +1707,16 @@ function DataService.GetAutoSettings(userId)
 		return autoSettingsStore:GetAsync(tostring(userId))
 	end)
 	if success and data then
+		print("[PlayerDataService] Retrieved auto-settings from DataStore for user " .. userId .. ":", game:GetService("HttpService"):JSONEncode(data))
 		return data
+	else
+		print("[PlayerDataService] No auto-settings found in DataStore for user " .. userId)
 	end
 	return nil
 end
 
 function DataService.SetAutoSettings(userId, settings)
+	print("[PlayerDataService] Setting auto-settings for user " .. userId .. ":", game:GetService("HttpService"):JSONEncode(settings))
 	autoSettingsCache[userId] = settings
 	local player = Players:GetPlayerByUserId(userId)
 	if player then

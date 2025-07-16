@@ -86,6 +86,7 @@ end
 
 -- Settings persistence
 local function sendSettingsToServer()
+	print("[AutoOpenController] Sending settings to server:", game:GetService("HttpService"):JSONEncode(settings))
 	if Remotes.UpdateAutoSellSettings then
 		Remotes.UpdateAutoSellSettings:FireServer(settings)
 	end
@@ -97,6 +98,7 @@ local function sendSettingsToServer()
 end
 
 local function saveSettings()
+	print("[AutoOpenController] Saving settings:", game:GetService("HttpService"):JSONEncode(settings))
 	local dataToSave = {
 		enabled = settings.enabled,
 		crateCount = settings.crateCount,
@@ -120,6 +122,7 @@ local function saveSettings()
 end
 
 local function loadSettings()
+	print("[AutoOpenController] Loading settings...")
 	local success, result = pcall(function()
 		local savedData = LocalPlayer:GetAttribute(SETTINGS_KEY)
 		if savedData then
@@ -129,6 +132,7 @@ local function loadSettings()
 	end)
 	
 	if success and result then
+		print("[AutoOpenController] Loaded local settings:", game:GetService("HttpService"):JSONEncode(result))
 		settings.enabled = result.enabled or false
 		settings.crateCount = result.crateCount or 10
 		settings.infiniteCrates = result.infiniteCrates or false
@@ -138,7 +142,40 @@ local function loadSettings()
 		settings.valueThreshold = result.valueThreshold or 100
 		settings.autoSellEnabled = result.autoSellEnabled ~= nil and result.autoSellEnabled or true
 		settings.selectedCrate = result.selectedCrate or "FreeCrate"
+	else
+		print("[AutoOpenController] No local settings found or failed to load")
 	end
+	
+	-- Also request settings from server to ensure sync
+	local function requestSettingsFromServer()
+		if Remotes.GetAutoSettings then
+			local success, data = pcall(function()
+				return Remotes.GetAutoSettings:InvokeServer()
+			end)
+			if success and data then
+				-- Merge server settings with local settings, prioritizing server data
+				for k, v in pairs(data) do
+					if v ~= nil then -- Only update if server has a value
+						settings[k] = v
+					end
+				end
+				print("[AutoOpenController] Loaded settings from server:", game:GetService("HttpService"):JSONEncode(data))
+				
+				-- Update UI after loading server settings
+				if ui then
+					updateUI()
+				end
+			else
+				print("[AutoOpenController] Failed to load settings from server or no data available")
+			end
+		end
+	end
+	
+	-- Request server settings after a longer delay to ensure server has loaded player data
+	task.spawn(function()
+		task.wait(3) -- Wait for server to load player data
+		requestSettingsFromServer()
+	end)
 end
 
 -- Gamepass checking
@@ -903,22 +940,6 @@ function AutoOpenController.Start(parentGui, soundControllerRef)
 	
 	-- Initial UI update
 	updateUI()
-	
-	-- Request settings from server
-	local function requestSettingsFromServer()
-		if Remotes.GetAutoSettings then
-			local success, data = pcall(function()
-				return Remotes.GetAutoSettings:InvokeServer()
-			end)
-			if success and data then
-				for k, v in pairs(data) do
-					settings[k] = v
-				end
-			end
-		end
-	end
-	
-	requestSettingsFromServer()
 end
 
 function AutoOpenController.HandleNewItem(itemInstance, itemName)

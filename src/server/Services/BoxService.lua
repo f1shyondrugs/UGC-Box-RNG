@@ -544,13 +544,16 @@ function BoxService.Start()
 	end)
 
 	Remotes.UpdateAutoSellSettings.OnServerEvent:Connect(function(player, settings)
+		print("[BoxService] Received auto-settings update for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(settings))
 		autoSellSettings[player.UserId] = settings
 		local PlayerDataService = require(script.Parent.PlayerDataService)
 		PlayerDataService.SetAutoSettings(player.UserId, settings)
 	end)
 
 	Remotes.GetAutoSettings.OnServerInvoke = function(player)
-		return autoSellSettings[player.UserId] or {}
+		local settings = autoSellSettings[player.UserId] or {}
+		print("[BoxService] Returning auto-settings for " .. player.Name .. ":", game:GetService("HttpService"):JSONEncode(settings))
+		return settings
 	end
 end
 
